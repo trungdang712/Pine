@@ -276,7 +276,7 @@ export default function PendingApprovalPage() {
 
       {/* Detail Dialog */}
       <Dialog open={isDetailOpen} onOpenChange={setIsDetailOpen}>
-        <DialogContent className="sm:max-w-[700px]">
+        <DialogContent className="max-w-[100vw] sm:max-w-[700px] w-full max-h-[100dvh] sm:max-h-[80vh] overflow-y-auto">
           {selectedProposal && (
             <>
               <DialogHeader>
@@ -306,7 +306,7 @@ export default function PendingApprovalPage() {
                   <Label className="text-muted-foreground">Mo ta chi tiet</Label>
                   <p className="mt-1">{selectedProposal.description}</p>
                 </div>
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   {selectedProposal.budget && (
                     <div>
                       <Label className="text-muted-foreground">Ngan sach de xuat</Label>

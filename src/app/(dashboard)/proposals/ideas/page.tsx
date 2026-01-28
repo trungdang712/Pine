@@ -140,7 +140,7 @@ export default function InnovationIdeasPage() {
               Gui y tuong
             </Button>
           </DialogTrigger>
-          <DialogContent className="sm:max-w-[500px]">
+          <DialogContent className="max-w-[100vw] sm:max-w-[500px] w-full max-h-[100dvh] sm:max-h-[80vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>Gui y tuong moi</DialogTitle>
               <DialogDescription>

@@ -1041,6 +1041,74 @@ async function main() {
 
   console.log("Created innovation ideas");
 
+  // Create integration configs
+  await prisma.integrationConfig.deleteMany({});
+  const integrationConfigs = [
+    {
+      platform: "facebook",
+      credentials: JSON.stringify({
+        app_id: "fb_482917364820",
+        app_secret: "s3cr3t_fb_k9x7m2pq4w",
+        page_access_token: "EAAGm0PX4ZCpsBALz9kZBjWqK8xZA2nZB7",
+        page_id: "109283746501928",
+      }),
+      isActive: true,
+      lastSyncAt: daysAgo(0),
+    },
+    {
+      platform: "instagram",
+      credentials: JSON.stringify({
+        business_account_id: "ig_17841405793210",
+        access_token: "IGQVJWZAnRUcGdJR0hBbkFONjlxd3pV",
+        client_id: "ig_client_7293841650",
+        client_secret: "ig_s3cr3t_xk92m4",
+      }),
+      isActive: true,
+      lastSyncAt: daysAgo(1),
+    },
+    {
+      platform: "google_analytics",
+      credentials: JSON.stringify({
+        property_id: "GA4-382917465",
+        measurement_id: "G-X7K9M2PQ4W",
+        api_secret: "ga_s3cr3t_mZk9x2Pw",
+        service_account_email: "analytics@greenfield-clinic.iam.gserviceaccount.com",
+      }),
+      isActive: true,
+      lastSyncAt: daysAgo(0),
+    },
+    {
+      platform: "zalo",
+      credentials: JSON.stringify({
+        oa_id: "zalo_oa_4829173648",
+        app_id: "zalo_app_1928374650",
+        secret_key: "zalo_sk_Xk9m2Pw4Qr7",
+        access_token: "zalo_at_LmN8pR3sT5vW",
+        refresh_token: "zalo_rt_Hy6jK1bC9dE",
+      }),
+      isActive: true,
+      lastSyncAt: daysAgo(2),
+    },
+    {
+      platform: "tiktok",
+      credentials: JSON.stringify({}),
+      isActive: false,
+      lastSyncAt: null,
+    },
+    {
+      platform: "youtube",
+      credentials: JSON.stringify({}),
+      isActive: false,
+      lastSyncAt: null,
+    },
+  ];
+
+  for (const config of integrationConfigs) {
+    await prisma.integrationConfig.create({ data: config });
+  }
+
+  console.log("Created 6 integration configs");
+
   console.log("Database seeded successfully!");
 }
 

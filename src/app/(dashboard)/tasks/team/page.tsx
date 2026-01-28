@@ -65,7 +65,7 @@ const roleLabels: Record<string, string> = {
 export default function TeamTasksPage() {
   const [selectedMember, setSelectedMember] = useState<string>("all");
 
-  const usersQuery = trpc.user.getAll.useQuery();
+  const usersQuery = trpc.user.getTeamMembers.useQuery();
   const tasksQuery = trpc.task.getAll.useQuery();
   const statsQuery = trpc.task.getTaskStats.useQuery();
 

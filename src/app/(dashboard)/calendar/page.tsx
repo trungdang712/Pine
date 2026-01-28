@@ -392,9 +392,9 @@ export default function CalendarPage() {
   }
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="p-4 md:p-6 space-y-4 md:space-y-6">
       {/* Header */}
-      <div className="flex items-start justify-between">
+      <div className="flex flex-col sm:flex-row items-start justify-between gap-4">
         <div>
           <h1 className="text-2xl font-semibold mb-1">Content Calendar</h1>
           <p className="text-muted-foreground">Lich xuat ban noi dung tren cac nen tang</p>
@@ -570,9 +570,9 @@ export default function CalendarPage() {
           </div>
 
           {/* Calendar Grid */}
-          <div className="border rounded-lg overflow-hidden">
+          <div className="border rounded-lg overflow-x-auto">
             {/* Week Day Headers */}
-            <div className="grid grid-cols-7 bg-muted">
+            <div className="grid grid-cols-7 bg-muted min-w-[640px]">
               {weekDays.map((day) => (
                 <div
                   key={day}
@@ -584,7 +584,7 @@ export default function CalendarPage() {
             </div>
 
             {/* Calendar Days */}
-            <div className="grid grid-cols-7">
+            <div className="grid grid-cols-7 min-w-[640px]">
               {getDaysArray().map((day, index) => {
                 const dayContent = day ? getContentForDay(day) : [];
                 const isToday =
@@ -661,7 +661,7 @@ export default function CalendarPage() {
 
       {/* Content Detail Modal */}
       <Dialog open={isContentDetailOpen} onOpenChange={setIsContentDetailOpen}>
-        <DialogContent className="max-w-2xl">
+        <DialogContent className="max-w-[100vw] sm:max-w-2xl w-full max-h-[100dvh] sm:max-h-[80vh] overflow-y-auto">
           {selectedContent && (
             <>
               <DialogHeader>
@@ -670,7 +670,7 @@ export default function CalendarPage() {
               </DialogHeader>
 
               <div className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
                     <Label className="text-sm text-muted-foreground">Platform</Label>
                     <div className="mt-1">
@@ -743,7 +743,7 @@ export default function CalendarPage() {
                   />
                 </div>
 
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
                     <Label className="text-sm text-muted-foreground">Content Type</Label>
                     <Input
@@ -816,7 +816,7 @@ export default function CalendarPage() {
 
       {/* New Content Modal */}
       <Dialog open={isNewContentOpen} onOpenChange={setIsNewContentOpen}>
-        <DialogContent className="max-w-2xl">
+        <DialogContent className="max-w-[100vw] sm:max-w-2xl w-full max-h-[100dvh] sm:max-h-[80vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Them noi dung moi</DialogTitle>
             <DialogDescription>Tao content moi cho Content Calendar</DialogDescription>
@@ -844,7 +844,7 @@ export default function CalendarPage() {
               />
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <Label>Platform *</Label>
                 <Select
@@ -885,7 +885,7 @@ export default function CalendarPage() {
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <Label>Publish Date *</Label>
                 <Input
@@ -907,7 +907,7 @@ export default function CalendarPage() {
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <Label>Assignee</Label>
                 <Input

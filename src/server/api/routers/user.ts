@@ -4,6 +4,20 @@ import { createTRPCRouter, protectedProcedure, adminProcedure } from "../trpc";
 import { TRPCError } from "@trpc/server";
 
 export const userRouter = createTRPCRouter({
+  // Limited user listing available to all authenticated users (e.g., for assignee dropdowns)
+  getTeamMembers: protectedProcedure.query(async ({ ctx }) => {
+    return ctx.prisma.user.findMany({
+      where: { isActive: true },
+      select: {
+        id: true,
+        name: true,
+        avatar: true,
+        role: true,
+      },
+      orderBy: { name: "asc" },
+    });
+  }),
+
   getAll: adminProcedure.query(async ({ ctx }) => {
     return ctx.prisma.user.findMany({
       where: { isActive: true },

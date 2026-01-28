@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useMemo } from "react";
+import { useIsMobile } from "@/hooks/use-mobile";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -226,7 +227,49 @@ function KanbanColumn({ title, count, status, tasks, onTaskClick }: KanbanColumn
   );
 }
 
+// Mobile-friendly grouped list view for tasks
+function MobileTaskList({
+  groups,
+  onTaskClick,
+}: {
+  groups: { title: string; status: TaskStatus; tasks: Task[] }[];
+  onTaskClick: (task: Task) => void;
+}) {
+  return (
+    <div className="space-y-4">
+      {groups.map((group) => (
+        <Card key={group.status}>
+          <CardHeader className="pb-2 px-4 pt-4">
+            <CardTitle className="text-sm font-semibold flex items-center justify-between">
+              <span>{group.title}</span>
+              <Badge variant="secondary">{group.tasks.length}</Badge>
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="px-4 pb-4">
+            {group.tasks.length === 0 ? (
+              <p className="text-sm text-muted-foreground text-center py-4">
+                Không có task nào
+              </p>
+            ) : (
+              <div className="space-y-2">
+                {group.tasks.map((task) => (
+                  <TaskCard
+                    key={task.id}
+                    task={task}
+                    onClick={() => onTaskClick(task)}
+                  />
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      ))}
+    </div>
+  );
+}
+
 export default function TasksPage() {
+  const isMobile = useIsMobile();
   const [activeId, setActiveId] = useState<string | null>(null);
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
   const [isTaskDetailOpen, setIsTaskDetailOpen] = useState(false);
@@ -268,7 +311,7 @@ export default function TasksPage() {
   );
 
   // Fetch users for assignee filter and dropdown
-  const { data: users = [] } = trpc.user.getAll.useQuery();
+  const { data: users = [] } = trpc.user.getTeamMembers.useQuery();
 
   // Mutations
   const createTask = trpc.task.create.useMutation({
@@ -409,7 +452,7 @@ export default function TasksPage() {
   if (error) return <PageError error={error} onRetry={refetch} />;
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="p-4 md:p-6 space-y-4 md:space-y-6">
       {/* Header with Statistics */}
       <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
         <div>
@@ -562,6 +605,17 @@ export default function TasksPage() {
           description="Tạo task đầu tiên để bắt đầu quản lý công việc"
           action={{ label: "Tạo Task mới", onClick: () => setIsNewTaskOpen(true) }}
         />
+      ) : isMobile ? (
+        /* Mobile: show grouped list view instead of Kanban */
+        <MobileTaskList
+          groups={[
+            { title: "TO DO", status: "todo", tasks: todoTasks },
+            { title: "IN PROGRESS", status: "in_progress", tasks: inProgressTasks },
+            { title: "REVIEW", status: "review", tasks: reviewTasks },
+            { title: "DONE", status: "done", tasks: doneTasks },
+          ]}
+          onTaskClick={handleTaskClick}
+        />
       ) : (
         <Tabs defaultValue="kanban" className="space-y-4">
           <TabsList>
@@ -634,7 +688,7 @@ export default function TasksPage() {
 
       {/* Task Detail Modal */}
       <Dialog open={isTaskDetailOpen} onOpenChange={setIsTaskDetailOpen}>
-        <DialogContent className="max-w-3xl w-full max-h-[90vh] md:max-h-[80vh] overflow-y-auto">
+        <DialogContent className="max-w-[100vw] sm:max-w-3xl w-full max-h-[100dvh] sm:max-h-[80vh] overflow-y-auto">
           {selectedTask && (
             <>
               <DialogHeader>
@@ -797,7 +851,7 @@ export default function TasksPage() {
 
       {/* New Task Modal */}
       <Dialog open={isNewTaskOpen} onOpenChange={setIsNewTaskOpen}>
-        <DialogContent className="max-w-2xl w-full max-h-[90vh] md:max-h-[80vh] overflow-y-auto">
+        <DialogContent className="max-w-[100vw] sm:max-w-2xl w-full max-h-[100dvh] sm:max-h-[80vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Tạo Task mới</DialogTitle>
             <DialogDescription>

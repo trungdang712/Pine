@@ -656,7 +656,7 @@ export default function AssetLibraryPage() {
 
       {/* Upload Dialog */}
       <Dialog open={isUploadOpen} onOpenChange={setIsUploadOpen}>
-        <DialogContent className="max-w-md">
+        <DialogContent className="max-w-[100vw] sm:max-w-md w-full max-h-[100dvh] sm:max-h-[80vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Upload Asset</DialogTitle>
             <DialogDescription>
@@ -769,7 +769,7 @@ export default function AssetLibraryPage() {
 
       {/* Asset Preview Modal */}
       <Dialog open={isPreviewOpen} onOpenChange={setIsPreviewOpen}>
-        <DialogContent className="max-w-4xl max-h-[90vh] overflow-hidden">
+        <DialogContent className="max-w-[100vw] sm:max-w-4xl w-full max-h-[100dvh] sm:max-h-[90vh] overflow-hidden">
           {selectedAsset && (
             <>
               <DialogHeader>

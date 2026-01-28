@@ -513,7 +513,7 @@ export default function ProposalsPage() {
 
       {/* Proposal Detail Modal */}
       <Dialog open={isDetailOpen} onOpenChange={setIsDetailOpen}>
-        <DialogContent className="max-w-4xl w-full max-h-[90vh] md:max-h-[80vh] overflow-y-auto">
+        <DialogContent className="max-w-[100vw] sm:max-w-4xl w-full max-h-[100dvh] sm:max-h-[80vh] overflow-y-auto">
           {selectedProposal && (
             <>
               <DialogHeader>
@@ -705,7 +705,7 @@ export default function ProposalsPage() {
 
       {/* Approval/Rejection Modal */}
       <Dialog open={isApprovalModalOpen} onOpenChange={setIsApprovalModalOpen}>
-        <DialogContent>
+        <DialogContent className="max-w-[100vw] sm:max-w-lg w-full max-h-[100dvh] sm:max-h-[80vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>
               {approvalAction === "approve" ? "Approve Proposal" :
@@ -753,7 +753,7 @@ export default function ProposalsPage() {
 
       {/* New Proposal Modal */}
       <Dialog open={isNewProposalOpen} onOpenChange={setIsNewProposalOpen}>
-        <DialogContent className="max-w-3xl w-full max-h-[90vh] md:max-h-[80vh] overflow-y-auto">
+        <DialogContent className="max-w-[100vw] sm:max-w-3xl w-full max-h-[100dvh] sm:max-h-[80vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Tạo Proposal mới</DialogTitle>
             <DialogDescription>Điền thông tin đầy đủ cho proposal của bạn</DialogDescription>
@@ -851,7 +851,7 @@ export default function ProposalsPage() {
 
       {/* New Idea Modal */}
       <Dialog open={isNewIdeaOpen} onOpenChange={setIsNewIdeaOpen}>
-        <DialogContent className="max-w-2xl w-full">
+        <DialogContent className="max-w-[100vw] sm:max-w-2xl w-full max-h-[100dvh] sm:max-h-[80vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Đề xuất ý tưởng mới</DialogTitle>
             <DialogDescription>Chia sẻ ý tưởng sáng tạo của bạn và nhận +30 điểm</DialogDescription>

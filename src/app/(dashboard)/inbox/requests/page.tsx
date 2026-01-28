@@ -96,7 +96,7 @@ export default function TaskRequestsPage() {
     refetch,
   } = trpc.external.getTaskRequests.useQuery();
 
-  const { data: users = [] } = trpc.user.getAll.useQuery();
+  const { data: users = [] } = trpc.user.getTeamMembers.useQuery();
 
   // Mutations
   const acceptRequest = trpc.external.acceptTaskRequest.useMutation({
@@ -190,9 +190,9 @@ export default function TaskRequestsPage() {
   if (error) return <PageError error={error} onRetry={() => refetch()} />;
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="p-4 md:p-6 space-y-4 md:space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div>
           <div className="flex items-center gap-2 mb-2">
             <Link href="/inbox">
@@ -429,7 +429,7 @@ export default function TaskRequestsPage() {
 
       {/* Detail Dialog */}
       <Dialog open={isDetailOpen} onOpenChange={setIsDetailOpen}>
-        <DialogContent className="sm:max-w-[700px] max-h-[90vh] overflow-y-auto">
+        <DialogContent className="max-w-[100vw] sm:max-w-[700px] w-full max-h-[100dvh] sm:max-h-[90vh] overflow-y-auto">
           {selectedRequest && (() => {
             const typeInfo = typeConfig[selectedRequest.requestType] ?? defaultTypeConfig;
             const urgencyInfo = urgencyConfig[selectedRequest.urgency] ?? urgencyConfig.normal;
@@ -463,7 +463,7 @@ export default function TaskRequestsPage() {
                     <p className="mt-1">{selectedRequest.description}</p>
                   </div>
 
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
                       <Label className="text-muted-foreground">Requester</Label>
                       <p className="mt-1 font-medium">{selectedRequest.requesterName}</p>
@@ -475,7 +475,7 @@ export default function TaskRequestsPage() {
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
                       <Label className="text-muted-foreground">Deadline</Label>
                       <div className="mt-1 flex items-center gap-2">
@@ -578,7 +578,7 @@ export default function TaskRequestsPage() {
 
       {/* Create Task Dialog (after accepting) */}
       <Dialog open={isCreateTaskOpen} onOpenChange={setIsCreateTaskOpen}>
-        <DialogContent className="sm:max-w-[600px]">
+        <DialogContent className="max-w-[100vw] sm:max-w-[600px] w-full max-h-[100dvh] sm:max-h-[80vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <CheckSquare className="h-5 w-5" />
@@ -603,7 +603,7 @@ export default function TaskRequestsPage() {
                 readOnly
               />
             </div>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <Label>Assignee *</Label>
                 <Select value={selectedAssignee} onValueChange={setSelectedAssignee}>
@@ -633,7 +633,7 @@ export default function TaskRequestsPage() {
                 />
               </div>
             </div>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <Label>Urgency</Label>
                 <Input

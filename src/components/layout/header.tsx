@@ -14,6 +14,7 @@ import {
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/hooks/use-auth";
+import { useRealtimeAlerts } from "@/hooks/use-realtime-alerts";
 import { useSidebar } from "@/components/ui/sidebar";
 import { trpc } from "@/lib/trpc";
 import Link from "next/link";
@@ -21,9 +22,16 @@ import { formatDistanceToNow } from "date-fns";
 import { vi } from "date-fns/locale";
 
 export function Header() {
-  const { profile, signOut, isAuthenticated } = useAuth();
+  const { profile, signOut, isAuthenticated, isDemoMode } = useAuth();
   const { toggleSidebar, isMobile } = useSidebar();
   const utils = trpc.useUtils();
+
+  // Subscribe to realtime alerts via Supabase Realtime
+  // This handles instant notifications; polling below is a fallback
+  useRealtimeAlerts({
+    userId: profile?.id,
+    isDemoMode,
+  });
 
   const userName = profile?.name ?? "User";
   const userInitials = userName
@@ -32,16 +40,16 @@ export function Header() {
     .join("")
     .toUpperCase();
 
-  // Fetch real notification data
+  // Fetch real notification data (polling as fallback, realtime handles instant updates)
   const { data: unreadCount = 0 } = trpc.alerts.getUnreadCount.useQuery(undefined, {
-    refetchInterval: 30000, // Poll every 30 seconds
+    refetchInterval: 60000, // Fallback poll every 60 seconds (realtime handles instant updates)
     enabled: isAuthenticated,
   });
 
   const { data: recentAlerts = [] } = trpc.alerts.getMyAlerts.useQuery(
     { limit: 5 },
     {
-      refetchInterval: 30000,
+      refetchInterval: 60000, // Fallback poll every 60 seconds
       enabled: isAuthenticated,
     }
   );
@@ -79,21 +87,21 @@ export function Header() {
 
   return (
     <header className="border-b bg-card sticky top-0 z-10">
-      <div className="flex h-16 items-center gap-4 px-6">
+      <div className="flex h-14 sm:h-16 items-center gap-2 sm:gap-4 px-3 sm:px-6">
         {/* Mobile menu button */}
         {isMobile && (
           <Button
             variant="ghost"
             size="icon"
             onClick={toggleSidebar}
-            className="md:hidden"
+            className="md:hidden flex-shrink-0"
           >
             <Menu className="h-5 w-5" />
           </Button>
         )}
 
-        {/* Search Bar */}
-        <div className="flex-1 max-w-md">
+        {/* Search Bar - hidden on very small screens, compact on mobile */}
+        <div className="flex-1 max-w-md hidden sm:block">
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
             <Input
@@ -103,9 +111,11 @@ export function Header() {
             />
           </div>
         </div>
+        {/* Spacer for mobile when search is hidden */}
+        <div className="flex-1 sm:hidden" />
 
         {/* Right Side Actions */}
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1 sm:gap-2">
           {/* Notifications */}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
@@ -121,7 +131,7 @@ export function Header() {
                 )}
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-80">
+            <DropdownMenuContent align="end" className="w-[calc(100vw-2rem)] sm:w-80 max-w-sm">
               <DropdownMenuLabel className="flex items-center justify-between">
                 Thông báo
                 {unreadCount > 0 && (

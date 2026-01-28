@@ -307,7 +307,7 @@ export default function RewardsPage() {
 
       {/* Redeem Dialog */}
       <Dialog open={isRedeemOpen} onOpenChange={setIsRedeemOpen}>
-        <DialogContent className="sm:max-w-[400px]">
+        <DialogContent className="max-w-[100vw] sm:max-w-[400px] w-full max-h-[100dvh] sm:max-h-[80vh] overflow-y-auto">
           {selectedReward && (
             <>
               <DialogHeader>

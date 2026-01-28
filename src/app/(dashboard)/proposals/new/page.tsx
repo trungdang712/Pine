@@ -171,7 +171,7 @@ export default function NewProposalPage() {
           </div>
 
           {/* Category & Priority */}
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="grid gap-2">
               <Label>
                 Danh muc <span className="text-red-500">*</span>
@@ -233,7 +233,7 @@ export default function NewProposalPage() {
           </div>
 
           {/* Budget & Due Date */}
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="grid gap-2">
               <Label htmlFor="budget">
                 Ngan sach du kien

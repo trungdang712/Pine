@@ -698,7 +698,7 @@ export default function PerformancePage() {
             {displayMembers.length >= 3 && (
               <Card>
                 <CardContent className="p-6">
-                  <div className="grid grid-cols-3 gap-4 mb-6">
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
                     {/* 2nd Place */}
                     <div className="text-center">
                       <div className="inline-flex items-center justify-center w-20 h-20 rounded-full bg-gray-200 text-gray-700 font-bold text-2xl mb-2">

@@ -95,7 +95,7 @@ export default function InboxPage() {
     refetch: refetchRequests,
   } = trpc.external.getTaskRequests.useQuery();
 
-  const { data: users = [] } = trpc.user.getAll.useQuery();
+  const { data: users = [] } = trpc.user.getTeamMembers.useQuery();
 
   // Mutations
   const updateOpportunity = trpc.external.updateContentOpportunity.useMutation({
@@ -156,7 +156,7 @@ export default function InboxPage() {
   if (error) return <PageError error={error} onRetry={() => { refetchOpportunities(); refetchRequests(); }} />;
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="p-4 md:p-6 space-y-4 md:space-y-6">
       {/* Header */}
       <div>
         <h1 className="text-2xl font-semibold mb-1">Inbox Hub</h1>
@@ -394,7 +394,7 @@ export default function InboxPage() {
 
       {/* Opportunity Detail Modal */}
       <Dialog open={isOpportunityDetailOpen} onOpenChange={setIsOpportunityDetailOpen}>
-        <DialogContent className="max-w-2xl w-full max-h-[90vh] md:max-h-[80vh] overflow-y-auto">
+        <DialogContent className="max-w-[100vw] sm:max-w-2xl w-full max-h-[100dvh] sm:max-h-[80vh] overflow-y-auto">
           {selectedOpp && (
             <>
               <DialogHeader>
@@ -521,7 +521,7 @@ export default function InboxPage() {
 
       {/* Task Request Detail Modal */}
       <Dialog open={isRequestDetailOpen} onOpenChange={setIsRequestDetailOpen}>
-        <DialogContent className="max-w-2xl w-full max-h-[90vh] md:max-h-[80vh] overflow-y-auto">
+        <DialogContent className="max-w-[100vw] sm:max-w-2xl w-full max-h-[100dvh] sm:max-h-[80vh] overflow-y-auto">
           {selectedReq && (
             <>
               <DialogHeader>

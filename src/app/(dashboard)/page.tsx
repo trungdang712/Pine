@@ -253,7 +253,7 @@ export default function DashboardPage() {
   const isLoading = loadingTaskStats || loadingAlerts || loadingCalendar || loadingPoints;
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="p-4 md:p-6 space-y-4 md:space-y-6">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
         <div>

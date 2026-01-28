@@ -131,7 +131,7 @@ export default function ContentOpportunitiesPage() {
     refetch,
   } = trpc.external.getContentOpportunities.useQuery();
 
-  const { data: users = [] } = trpc.user.getAll.useQuery();
+  const { data: users = [] } = trpc.user.getTeamMembers.useQuery();
 
   // Mutations
   const updateOpportunity = trpc.external.updateContentOpportunity.useMutation({
@@ -214,9 +214,9 @@ export default function ContentOpportunitiesPage() {
   if (error) return <PageError error={error} onRetry={() => refetch()} />;
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="p-4 md:p-6 space-y-4 md:space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div>
           <div className="flex items-center gap-2 mb-2">
             <Link href="/inbox">
@@ -473,7 +473,7 @@ export default function ContentOpportunitiesPage() {
 
       {/* Detail Dialog */}
       <Dialog open={isDetailOpen} onOpenChange={setIsDetailOpen}>
-        <DialogContent className="sm:max-w-[800px] max-h-[90vh] overflow-y-auto">
+        <DialogContent className="max-w-[100vw] sm:max-w-[800px] w-full max-h-[100dvh] sm:max-h-[90vh] overflow-y-auto">
           {selectedOpportunity && (() => {
             const typeInfo = typeConfig[selectedOpportunity.type] ?? defaultTypeConfig;
             const urgencyInfo = urgencyConfig[selectedOpportunity.urgency] ?? urgencyConfig.normal;
@@ -508,7 +508,7 @@ export default function ContentOpportunitiesPage() {
                   </DialogDescription>
                 </DialogHeader>
 
-                <div className="grid grid-cols-3 gap-6 py-4">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6 py-4">
                   {/* Main Content */}
                   <div className="col-span-2 space-y-4">
                     <div>
@@ -703,7 +703,7 @@ export default function ContentOpportunitiesPage() {
 
       {/* Convert to Task/Proposal Modal */}
       <Dialog open={isConvertModalOpen} onOpenChange={setIsConvertModalOpen}>
-        <DialogContent className="sm:max-w-[600px]">
+        <DialogContent className="max-w-[100vw] sm:max-w-[600px] w-full max-h-[100dvh] sm:max-h-[80vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>
               {convertType === "task" ? "Convert to Task" : "Convert to Proposal"}
@@ -722,7 +722,7 @@ export default function ContentOpportunitiesPage() {
                 className="mt-1"
               />
             </div>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <Label>Assignee</Label>
                 <Select>
