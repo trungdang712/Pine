@@ -116,25 +116,29 @@ export default function AnalyticsPage() {
           title="Total Spend"
           value={formatCurrency(dashboardStats?.spend ?? 0)}
           subtitle={`${dateRange} days`}
-          icon={<DollarSign className="h-5 w-5" />}
+          icon={DollarSign}
+          color="bg-success"
         />
         <KPICard
           title="Total Leads"
           value={formatNumber(dashboardStats?.leadCount ?? 0)}
           subtitle={`CPL: ${formatCurrency(dashboardStats?.cpl ?? 0)}`}
-          icon={<Users className="h-5 w-5" />}
+          icon={Users}
+          color="bg-primary"
         />
         <KPICard
           title="Conversions"
           value={formatNumber(dashboardStats?.conversions ?? 0)}
           subtitle={`Rate: ${formatPercent(dashboardStats?.conversionRate ?? 0)}`}
-          icon={<Target className="h-5 w-5" />}
+          icon={Target}
+          color="bg-info"
         />
         <KPICard
           title="Clicks"
           value={formatNumber(dashboardStats?.clicks ?? 0)}
           subtitle={`CTR: ${formatPercent(dashboardStats?.ctr ?? 0)}`}
-          icon={<MousePointer className="h-5 w-5" />}
+          icon={MousePointer}
+          color="bg-warning"
         />
       </div>
 
