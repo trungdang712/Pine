@@ -38,13 +38,28 @@ import {
 import { formatCurrency, formatNumber, formatPercent } from "@/lib/utils";
 import { subDays, format } from "date-fns";
 
-const PLATFORM_COLORS = {
+const PLATFORM_COLORS: Record<string, string> = {
   google_ads: "#4285F4",
   facebook: "#1877F2",
   instagram: "#E4405F",
   zalo: "#0068FF",
   tiktok: "#000000",
 };
+
+interface Campaign {
+  id: string;
+  name: string;
+  platform: string;
+  status: string;
+  totalMetrics: {
+    spend: number;
+    leads: number;
+    clicks: number;
+    impressions: number;
+  };
+  cpl: number;
+  ctr: number;
+}
 
 export default function AnalyticsPage() {
   const [dateRange, setDateRange] = useState("30");
@@ -270,7 +285,7 @@ export default function AnalyticsPage() {
                 </tr>
               </thead>
               <tbody className="text-sm">
-                {campaigns?.map((campaign) => (
+                {(campaigns as Campaign[] | undefined)?.map((campaign: Campaign) => (
                   <tr
                     key={campaign.id}
                     className="border-b border-gray-100 hover:bg-gray-50"

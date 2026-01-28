@@ -1,14 +1,50 @@
 import { initTRPC, TRPCError } from "@trpc/server";
 import superjson from "superjson";
 import { ZodError } from "zod";
+import { createClient } from "@/lib/supabase/server";
 import { prisma } from "@/lib/prisma";
-import { auth } from "@/server/auth/config";
-import type { Session } from "next-auth";
+
+interface User {
+  id: string;
+  email: string;
+  name: string;
+  team: string;
+  role: string;
+}
+
+interface Session {
+  user: User | null;
+}
 
 export const createTRPCContext = async (opts: { headers: Headers }) => {
-  const session = await auth();
+  const supabase = await createClient();
+
+  const { data: { user: authUser } } = await supabase.auth.getUser();
+
+  let session: Session = { user: null };
+
+  if (authUser) {
+    const { data: profile } = await supabase
+      .from("users")
+      .select("id, email, name, team, role")
+      .eq("auth_id", authUser.id)
+      .single();
+
+    if (profile) {
+      session = {
+        user: {
+          id: profile.id,
+          email: profile.email,
+          name: profile.name,
+          team: profile.team,
+          role: profile.role,
+        },
+      };
+    }
+  }
 
   return {
+    supabase,
     prisma,
     session,
     ...opts,
@@ -48,7 +84,7 @@ const enforceUserIsAuthed = t.middleware(async ({ ctx, next }) => {
   }
   return next({
     ctx: {
-      session: { ...ctx.session, user: ctx.session.user } as Session & { user: NonNullable<Session["user"]> },
+      session: ctx.session as Session & { user: NonNullable<Session["user"]> },
     },
   });
 });
@@ -62,18 +98,15 @@ const enforceUserIsAdmin = t.middleware(async ({ ctx, next }) => {
     throw new TRPCError({ code: "UNAUTHORIZED" });
   }
 
-  const user = await ctx.prisma.user.findUnique({
-    where: { id: ctx.session.user.id as string },
-    select: { role: true },
-  });
+  const user = ctx.session.user;
 
-  if (!user || !["admin", "marketing_manager"].includes(user.role)) {
+  if (!["admin", "marketing_manager", "super_admin"].includes(user.role)) {
     throw new TRPCError({ code: "FORBIDDEN", message: "Admin access required" });
   }
 
   return next({
     ctx: {
-      session: { ...ctx.session, user: ctx.session.user } as Session & { user: NonNullable<Session["user"]> },
+      session: ctx.session as Session & { user: NonNullable<Session["user"]> },
     },
   });
 });

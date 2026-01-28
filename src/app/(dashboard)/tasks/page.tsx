@@ -506,8 +506,8 @@ export default function TasksPage() {
             <DndContext sensors={sensors} collisionDetection={closestCorners} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
               <div className="flex gap-4 overflow-x-auto pb-4">
                 {columnConfig.map((column) => {
-                  const tasks = kanbanData?.[column.id as keyof typeof kanbanData] ?? [];
-                  const taskIds = tasks.map((t) => t.id);
+                  const tasks = (kanbanData?.[column.id as keyof typeof kanbanData] ?? []) as TaskType[];
+                  const taskIds = tasks.map((t: TaskType) => t.id);
 
                   return (
                     <div key={column.id} className="flex-1 min-w-[280px]">
