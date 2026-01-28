@@ -161,8 +161,8 @@ export function Header() {
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem
-                  className="text-destructive"
-                  onClick={signOut}
+                  className="text-destructive cursor-pointer"
+                  onClick={() => signOut()}
                 >
                   <LogOut className="w-4 h-4 mr-2" />
                   Đăng xuất

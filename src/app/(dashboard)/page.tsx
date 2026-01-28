@@ -280,7 +280,22 @@ const statusLabels: Record<string, { label: string; variant: "default" | "second
 export default function DashboardPage() {
   const { profile } = useAuth();
   const userName = profile?.name?.split(" ")[0] ?? "User";
-  const [selectedRole, setSelectedRole] = useState<RoleType>("Content Creator");
+  const isAdmin = profile?.team === "admin";
+
+  // Map user's actual role to dashboard role type
+  const getUserRoleType = (): RoleType => {
+    const roleMap: Record<string, RoleType> = {
+      super_admin: "Admin",
+      marketing_manager: "Marketing Manager",
+      content_creator: "Content Creator",
+      digital_marketing: "Digital Marketing",
+      graphic_designer: "Graphic Designer",
+      video_producer: "Video Producer",
+    };
+    return roleMap[profile?.role || ""] || "Content Creator";
+  };
+
+  const [selectedRole, setSelectedRole] = useState<RoleType>(getUserRoleType());
 
   const currentDate = new Date().toLocaleDateString("vi-VN", {
     weekday: "long",
@@ -296,9 +311,11 @@ export default function DashboardPage() {
     return "Chào buổi tối";
   };
 
-  const roleConfig = roleConfigs[selectedRole];
-  const upcomingContent = getUpcomingContent(selectedRole);
-  const recentActivities = getRecentActivities(selectedRole);
+  // For non-admin users, always use their actual role
+  const effectiveRole = isAdmin ? selectedRole : getUserRoleType();
+  const roleConfig = roleConfigs[effectiveRole];
+  const upcomingContent = getUpcomingContent(effectiveRole);
+  const recentActivities = getRecentActivities(effectiveRole);
 
   return (
     <div className="p-6 space-y-6">
@@ -310,23 +327,25 @@ export default function DashboardPage() {
           </h1>
           <p className="text-muted-foreground">{currentDate}</p>
         </div>
-        {/* Role Selector */}
-        <div className="flex items-center gap-3">
-          <span className="text-sm text-muted-foreground">Xem dashboard với vai trò:</span>
-          <Select value={selectedRole} onValueChange={(v) => setSelectedRole(v as RoleType)}>
-            <SelectTrigger className="w-[200px]">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="Admin">Admin</SelectItem>
-              <SelectItem value="Marketing Manager">Marketing Manager</SelectItem>
-              <SelectItem value="Content Creator">Content Creator</SelectItem>
-              <SelectItem value="Digital Marketing">Digital Marketing</SelectItem>
-              <SelectItem value="Graphic Designer">Graphic Designer</SelectItem>
-              <SelectItem value="Video Producer">Video Producer</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
+        {/* Role Selector - Only for Admin */}
+        {isAdmin && (
+          <div className="flex items-center gap-3">
+            <span className="text-sm text-muted-foreground">Xem dashboard với vai trò:</span>
+            <Select value={selectedRole} onValueChange={(v) => setSelectedRole(v as RoleType)}>
+              <SelectTrigger className="w-[200px]">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="Admin">Admin</SelectItem>
+                <SelectItem value="Marketing Manager">Marketing Manager</SelectItem>
+                <SelectItem value="Content Creator">Content Creator</SelectItem>
+                <SelectItem value="Digital Marketing">Digital Marketing</SelectItem>
+                <SelectItem value="Graphic Designer">Graphic Designer</SelectItem>
+                <SelectItem value="Video Producer">Video Producer</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+        )}
       </div>
 
       {/* KPI Cards */}
