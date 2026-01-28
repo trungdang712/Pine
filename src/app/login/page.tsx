@@ -39,7 +39,7 @@ export default function LoginPage() {
         // Check if user has marketing team access
         const { data: userData, error: userError } = await supabase
           .from('users')
-          .select('team, role, name')
+          .select('id, team, role, name')
           .eq('auth_id', data.user.id)
           .single();
 
@@ -51,11 +51,11 @@ export default function LoginPage() {
 
         // Check team access
         if (userData.team !== 'admin' && userData.team !== 'marketing') {
-          // Check additional team access
+          // Check additional team access using database user ID
           const { data: teamAccess } = await supabase
             .from('user_team_access')
             .select('team')
-            .eq('user_id', data.user.id)
+            .eq('user_id', userData.id)
             .eq('team', 'marketing')
             .single();
 
@@ -71,7 +71,8 @@ export default function LoginPage() {
       }
     } catch (err) {
       console.error('Login error:', err);
-      setError("An error occurred. Please try again.");
+      const errorMessage = err instanceof Error ? err.message : "An error occurred";
+      setError(`Login failed: ${errorMessage}. Please try again.`);
     } finally {
       setLoading(false);
     }
