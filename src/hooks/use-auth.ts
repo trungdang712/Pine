@@ -29,6 +29,14 @@ const DEMO_PROFILE: UserProfile = {
   role: "marketing_manager",
 };
 
+// Helper for timeout
+function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T | null> {
+  return Promise.race([
+    promise,
+    new Promise<null>((resolve) => setTimeout(() => resolve(null), ms))
+  ]);
+}
+
 export function useAuth() {
   const [state, setState] = useState<AuthState>({
     user: null,
@@ -52,11 +60,23 @@ export function useAuth() {
     }
 
     const supabase = createClient();
+    let isMounted = true;
 
-    // Get initial session
+    // Get initial session with timeout
     const getInitialSession = async () => {
       try {
-        const { data: { user }, error: authError } = await supabase.auth.getUser();
+        // Add 5 second timeout to prevent infinite loading
+        const result = await withTimeout(supabase.auth.getUser(), 5000);
+
+        if (!isMounted) return;
+
+        if (!result) {
+          console.error("Auth timeout - no response in 5s");
+          setState({ user: null, profile: null, loading: false, isDemoMode: false });
+          return;
+        }
+
+        const { data: { user }, error: authError } = result;
 
         if (authError) {
           console.error("Auth error:", authError);
@@ -65,14 +85,21 @@ export function useAuth() {
         }
 
         if (user) {
-          const { data: profile, error: profileError } = await supabase
-            .from("users")
-            .select("id, email, name, avatar, team, role")
-            .eq("auth_id", user.id)
-            .single();
+          // Also add timeout for profile fetch
+          const profileResult = await withTimeout(
+            supabase
+              .from("users")
+              .select("id, email, name, avatar, team, role")
+              .eq("auth_id", user.id)
+              .single(),
+            3000
+          );
 
-          if (profileError) {
-            console.error("Profile error:", profileError);
+          if (!isMounted) return;
+
+          const profile = profileResult?.data ?? null;
+          if (profileResult?.error) {
+            console.error("Profile error:", profileResult.error);
           }
 
           setState({
@@ -86,7 +113,9 @@ export function useAuth() {
         }
       } catch (error) {
         console.error("Session error:", error);
-        setState({ user: null, profile: null, loading: false, isDemoMode: false });
+        if (isMounted) {
+          setState({ user: null, profile: null, loading: false, isDemoMode: false });
+        }
       }
     };
 
@@ -95,16 +124,23 @@ export function useAuth() {
     // Listen for auth changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
+        if (!isMounted) return;
+
         if (session?.user) {
-          const { data: profile } = await supabase
-            .from("users")
-            .select("id, email, name, avatar, team, role")
-            .eq("auth_id", session.user.id)
-            .single();
+          const profileResult = await withTimeout(
+            supabase
+              .from("users")
+              .select("id, email, name, avatar, team, role")
+              .eq("auth_id", session.user.id)
+              .single(),
+            3000
+          );
+
+          if (!isMounted) return;
 
           setState({
             user: session.user,
-            profile: profile as UserProfile | null,
+            profile: (profileResult?.data as UserProfile | null) ?? null,
             loading: false,
             isDemoMode: false,
           });
@@ -114,7 +150,9 @@ export function useAuth() {
       }
     );
 
+    // Cleanup
     return () => {
+      isMounted = false;
       subscription.unsubscribe();
     };
   }, []);
