@@ -92,7 +92,7 @@ const allUsers: UserToCreate[] = [
   {
     email: "ngoc.ch@nhakhoagreenfield.com",
     password: "95@Trunghoa",
-    name: "Chu Hải Ngọc",
+    name: "Chu Hải Ngọc (Annie)",
     role: "sales_consultant",
     team: "sales",
     allowedApps: ["crm", "quotation"],
@@ -100,7 +100,7 @@ const allUsers: UserToCreate[] = [
   {
     email: "khanh.dh@nhakhoagreenfield.com",
     password: "95@Trunghoa",
-    name: "Đỗ Hà Khanh",
+    name: "Đỗ Hà Khanh (Margaret)",
     role: "sales_consultant",
     team: "sales",
     allowedApps: ["crm", "quotation"],
