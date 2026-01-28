@@ -69,17 +69,17 @@ export async function updateSession(request: NextRequest) {
   if (user && isProtectedRoute) {
     const { data: userData } = await supabase
       .from('users')
-      .select('team, role')
+      .select('id, team, role')
       .eq('auth_id', user.id)
       .single()
 
     // Allow admin team access to everything
     if (userData && userData.team !== 'admin' && userData.team !== 'marketing') {
-      // Check if user has marketing team access
+      // Check if user has marketing team access using the database user ID
       const { data: teamAccess } = await supabase
         .from('user_team_access')
         .select('team')
-        .eq('user_id', user.id)
+        .eq('user_id', userData.id)
         .eq('team', 'marketing')
         .single()
 
