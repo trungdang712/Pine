@@ -1,0 +1,779 @@
+// Greenfield Dental Command Center - Database Schema
+// This schema supports the marketing and business development command center
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+// ==================== USER & AUTHENTICATION ====================
+
+model User {
+  id            String    @id @default(cuid())
+  email         String    @unique
+  password      String
+  name          String
+  avatar        String?
+  role          String    @default("content_creator") // admin, marketing_manager, content_creator, digital_marketing, graphic_designer, video_producer
+  isActive      Boolean   @default(true)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  // Relations
+  createdTasks     Task[]              @relation("TaskCreator")
+  assignedTasks    Task[]              @relation("TaskAssignee")
+  taskComments     TaskComment[]
+  proposals        Proposal[]          @relation("ProposalCreator")
+  proposalComments ProposalComment[]
+  approvalSteps    ApprovalStep[]
+  calendarItems    ContentCalendarItem[]
+  assets           Asset[]
+  brandAssets      BrandAsset[]
+  assetDownloads   BrandAssetDownload[]
+  points           UserPoints?
+  pointTransactions PointTransaction[]
+  achievements     UserAchievement[]
+  innovationIdeas  InnovationIdea[]
+  rewardRedemptions RewardRedemption[]
+  crossTeamRatings CrossTeamRating[]
+  qualityRatingsGiven    QualityRating[]   @relation("QualityRater")
+  qualityRatingsReceived QualityRating[]   @relation("QualityRated")
+  performanceMetrics     PerformanceMetric[]
+  performanceGoals       PerformanceGoal[]
+  bonusDistributions     BonusDistribution[]
+  contentOpportunities   ContentOpportunity[]
+  taskRequests          TaskRequest[]
+  alerts                UserAlert[]
+  budgetsCreated        MonthlyBudget[]   @relation("BudgetCreator")
+  budgetsApproved       MonthlyBudget[]   @relation("BudgetApprover")
+}
+
+model UserAlert {
+  id        String   @id @default(cuid())
+  userId    String
+  type      String   // task_due, approval_needed, budget_alert, mention, etc.
+  title     String
+  message   String
+  link      String?
+  isRead    Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, isRead])
+}
+
+// ==================== CRM SYNC (READ-ONLY) ====================
+
+model CrmAppointment {
+  id            String   @id @default(cuid())
+  externalId    String   @unique
+  patientName   String?
+  appointmentDate DateTime
+  status        String   // scheduled, completed, no_show, cancelled
+  serviceType   String?
+  doctorName    String?
+  source        String?  // UTM source
+  syncedAt      DateTime @default(now())
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
+
+model CrmLead {
+  id          String   @id @default(cuid())
+  externalId  String   @unique
+  name        String?
+  phone       String?
+  email       String?
+  source      String?  // facebook, google, zalo, direct, referral
+  campaign    String?
+  status      String   // new, contacted, qualified, converted, lost
+  utmSource   String?
+  utmMedium   String?
+  utmCampaign String?
+  syncedAt    DateTime @default(now())
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+// ==================== MARKETING CAMPAIGNS ====================
+
+model MarketingCampaign {
+  id           String   @id @default(cuid())
+  name         String
+  platform     String   // google_ads, facebook, instagram, zalo, tiktok
+  externalId   String?  @unique
+  status       String   @default("active") // draft, active, paused, completed
+  budget       Float?
+  startDate    DateTime?
+  endDate      DateTime?
+  objective    String?  // awareness, conversion, retargeting
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  metrics     CampaignMetric[]
+  ads         AdCreative[]
+  socialPosts SocialPost[]
+  landingPages LandingPage[]
+}
+
+model CampaignMetric {
+  id          String   @id @default(cuid())
+  campaignId  String
+  date        DateTime
+  impressions Int      @default(0)
+  clicks      Int      @default(0)
+  conversions Int      @default(0)
+  spend       Float    @default(0)
+  leads       Int      @default(0)
+  createdAt   DateTime @default(now())
+
+  campaign MarketingCampaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+
+  @@unique([campaignId, date])
+  @@index([date])
+}
+
+model SocialPost {
+  id           String   @id @default(cuid())
+  platform     String   // facebook, instagram, zalo, tiktok
+  externalId   String?
+  content      String?
+  mediaUrl     String?
+  publishedAt  DateTime?
+  reach        Int      @default(0)
+  impressions  Int      @default(0)
+  engagement   Int      @default(0)
+  clicks       Int      @default(0)
+  shares       Int      @default(0)
+  comments     Int      @default(0)
+  videoViews   Int      @default(0)
+  watchTime    Int      @default(0) // in seconds
+  campaignId   String?
+  calendarItemId String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  campaign     MarketingCampaign?   @relation(fields: [campaignId], references: [id])
+  calendarItem ContentCalendarItem? @relation(fields: [calendarItemId], references: [id])
+}
+
+model AdCreative {
+  id          String   @id @default(cuid())
+  campaignId  String
+  externalId  String?
+  headline    String?
+  description String?
+  imageUrl    String?
+  videoUrl    String?
+  impressions Int      @default(0)
+  clicks      Int      @default(0)
+  conversions Int      @default(0)
+  spend       Float    @default(0)
+  cpc         Float?   // cost per click
+  cpa         Float?   // cost per acquisition
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  campaign MarketingCampaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+}
+
+model LandingPage {
+  id          String   @id @default(cuid())
+  url         String   @unique
+  name        String
+  campaignId  String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  campaign MarketingCampaign? @relation(fields: [campaignId], references: [id])
+  metrics  LandingPageMetric[]
+}
+
+model LandingPageMetric {
+  id             String   @id @default(cuid())
+  landingPageId  String
+  date           DateTime
+  visits         Int      @default(0)
+  uniqueVisitors Int      @default(0)
+  bounceRate     Float    @default(0)
+  avgTimeOnPage  Int      @default(0) // in seconds
+  conversions    Int      @default(0)
+  createdAt      DateTime @default(now())
+
+  landingPage LandingPage @relation(fields: [landingPageId], references: [id], onDelete: Cascade)
+
+  @@unique([landingPageId, date])
+}
+
+// ==================== BUDGET MANAGEMENT ====================
+
+model MonthlyBudget {
+  id                  String   @id @default(cuid())
+  month               String   // YYYY-MM format
+  totalBudget         Float
+  currency            String   @default("VND")
+  googleAdsAllocation Float    @default(0)
+  facebookAllocation  Float    @default(0)
+  zaloAllocation      Float    @default(0)
+  status              String   @default("draft") // draft, active, closed
+  createdById         String?
+  approvedById        String?
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
+  createdBy   User?          @relation("BudgetCreator", fields: [createdById], references: [id])
+  approvedBy  User?          @relation("BudgetApprover", fields: [approvedById], references: [id])
+  spends      BudgetSpend[]
+  alerts      BudgetAlert[]
+
+  @@unique([month])
+}
+
+model BudgetSpend {
+  id         String   @id @default(cuid())
+  budgetId   String
+  platform   String   // google_ads, facebook, zalo
+  date       DateTime
+  amount     Float
+  campaignId String?
+  createdAt  DateTime @default(now())
+
+  budget MonthlyBudget @relation(fields: [budgetId], references: [id], onDelete: Cascade)
+
+  @@index([budgetId, date])
+}
+
+model BudgetAlert {
+  id          String   @id @default(cuid())
+  budgetId    String
+  type        String   // 50_percent, 80_percent, over_pace, under_pace, daily_limit
+  threshold   Float?
+  message     String
+  triggeredAt DateTime @default(now())
+  isRead      Boolean  @default(false)
+
+  budget MonthlyBudget @relation(fields: [budgetId], references: [id], onDelete: Cascade)
+}
+
+// ==================== TASK MANAGEMENT ====================
+
+model Task {
+  id           String    @id @default(cuid())
+  title        String
+  description  String?
+  status       String    @default("todo") // todo, in_progress, review, done
+  priority     String    @default("normal") // urgent, high, normal, low
+  category     String    @default("admin") // content, design, video, campaign, admin
+  dueDate      DateTime?
+  completedAt  DateTime?
+  creatorId    String
+  assigneeId   String?
+  proposalId   String?
+  parentTaskId String?
+  isRecurring  Boolean   @default(false)
+  recurringPattern String? // daily, weekly, monthly
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  creator     User          @relation("TaskCreator", fields: [creatorId], references: [id])
+  assignee    User?         @relation("TaskAssignee", fields: [assigneeId], references: [id])
+  proposal    Proposal?     @relation(fields: [proposalId], references: [id])
+  parentTask  Task?         @relation("TaskSubtasks", fields: [parentTaskId], references: [id])
+  subtasks    Task[]        @relation("TaskSubtasks")
+  comments    TaskComment[]
+  attachments TaskAttachment[]
+  taskRequest TaskRequest?
+
+  @@index([status])
+  @@index([assigneeId])
+  @@index([dueDate])
+}
+
+model TaskComment {
+  id        String   @id @default(cuid())
+  taskId    String
+  userId    String
+  content   String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  task Task @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id])
+}
+
+model TaskAttachment {
+  id        String   @id @default(cuid())
+  taskId    String
+  fileName  String
+  fileUrl   String
+  fileType  String?
+  fileSize  Int?
+  createdAt DateTime @default(now())
+
+  task Task @relation(fields: [taskId], references: [id], onDelete: Cascade)
+}
+
+model TaskTemplate {
+  id          String   @id @default(cuid())
+  name        String
+  description String?
+  category    String
+  tasks       String   // JSON array of task definitions
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+// ==================== PROPOSALS & APPROVALS ====================
+
+model Proposal {
+  id          String    @id @default(cuid())
+  title       String
+  description String
+  category    String    // content, design, video, campaign, event, partnership
+  priority    String    @default("normal") // urgent, high, normal, low
+  status      String    @default("draft") // draft, submitted, under_review, approved, rejected, in_progress, completed
+  creatorId   String
+  dueDate     DateTime?
+  budget      Float?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  creator      User              @relation("ProposalCreator", fields: [creatorId], references: [id])
+  comments     ProposalComment[]
+  approvals    ApprovalStep[]
+  tasks        Task[]
+  calendarItems ContentCalendarItem[]
+  attachments  ProposalAttachment[]
+}
+
+model ProposalComment {
+  id         String   @id @default(cuid())
+  proposalId String
+  userId     String
+  content    String
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  proposal Proposal @relation(fields: [proposalId], references: [id], onDelete: Cascade)
+  user     User     @relation(fields: [userId], references: [id])
+}
+
+model ProposalAttachment {
+  id         String   @id @default(cuid())
+  proposalId String
+  fileName   String
+  fileUrl    String
+  fileType   String?
+  fileSize   Int?
+  createdAt  DateTime @default(now())
+
+  proposal Proposal @relation(fields: [proposalId], references: [id], onDelete: Cascade)
+}
+
+model ApprovalStep {
+  id         String    @id @default(cuid())
+  proposalId String
+  approverId String
+  stepNumber Int
+  status     String    @default("pending") // pending, approved, rejected, revision_requested
+  comments   String?
+  decidedAt  DateTime?
+  createdAt  DateTime  @default(now())
+
+  proposal Proposal @relation(fields: [proposalId], references: [id], onDelete: Cascade)
+  approver User     @relation(fields: [approverId], references: [id])
+
+  @@unique([proposalId, stepNumber])
+}
+
+model ApprovalWorkflow {
+  id        String   @id @default(cuid())
+  category  String   @unique // content, design, video, campaign, event, partnership
+  steps     String   // JSON array of step definitions
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// ==================== CONTENT CALENDAR ====================
+
+model ContentCalendarItem {
+  id          String    @id @default(cuid())
+  title       String
+  description String?
+  platform    String    // facebook, instagram, zalo, tiktok, website
+  status      String    @default("planned") // planned, in_production, ready_for_review, approved, scheduled, published, needs_revision
+  scheduledAt DateTime?
+  publishedAt DateTime?
+  creatorId   String
+  proposalId  String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  creator     User          @relation(fields: [creatorId], references: [id])
+  proposal    Proposal?     @relation(fields: [proposalId], references: [id])
+  socialPosts SocialPost[]
+  comments    CalendarItemComment[]
+  attachments CalendarItemAttachment[]
+}
+
+model CalendarItemComment {
+  id             String   @id @default(cuid())
+  calendarItemId String
+  userId         String
+  content        String
+  createdAt      DateTime @default(now())
+
+  calendarItem ContentCalendarItem @relation(fields: [calendarItemId], references: [id], onDelete: Cascade)
+}
+
+model CalendarItemAttachment {
+  id             String   @id @default(cuid())
+  calendarItemId String
+  fileName       String
+  fileUrl        String
+  fileType       String?
+  fileSize       Int?
+  createdAt      DateTime @default(now())
+
+  calendarItem ContentCalendarItem @relation(fields: [calendarItemId], references: [id], onDelete: Cascade)
+}
+
+// ==================== ASSET LIBRARY ====================
+
+model Asset {
+  id          String   @id @default(cuid())
+  name        String
+  description String?
+  category    String   // image, video, document, template
+  fileUrl     String
+  thumbnailUrl String?
+  fileType    String?
+  fileSize    Int?
+  tags        String?  // comma-separated tags
+  campaignId  String?
+  uploadedById String
+  version     Int      @default(1)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  uploadedBy User @relation(fields: [uploadedById], references: [id])
+}
+
+model BrandAsset {
+  id           String   @id @default(cuid())
+  name         String
+  description  String?
+  category     String   // logo, guideline, template, photo, video, icon, font
+  fileUrl      String
+  thumbnailUrl String?
+  fileType     String?
+  fileSize     Int?
+  formats      String?  // JSON array of available formats
+  usageNotes   String?
+  tags         String?  // comma-separated tags
+  uploadedById String
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  uploadedBy User               @relation(fields: [uploadedById], references: [id])
+  downloads  BrandAssetDownload[]
+}
+
+model BrandAssetDownload {
+  id           String   @id @default(cuid())
+  brandAssetId String
+  userId       String
+  downloadedAt DateTime @default(now())
+
+  brandAsset BrandAsset @relation(fields: [brandAssetId], references: [id], onDelete: Cascade)
+  user       User       @relation(fields: [userId], references: [id])
+}
+
+model BrandColor {
+  id       String   @id @default(cuid())
+  name     String
+  hexCode  String
+  rgbCode  String?
+  cmykCode String?
+  usage    String?  // primary, secondary, accent, etc.
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// ==================== CONTENT OPPORTUNITIES (EXTERNAL GATEWAY) ====================
+
+model ContentOpportunity {
+  id                String   @id @default(cuid())
+  type              String   // testimonial, before_after, success_story, educational
+  description       String
+  urgency           String   @default("normal") // urgent, normal, low
+  submitterName     String
+  submitterEmail    String
+  submitterTeam     String   // sales, nurse
+  patientRef        String?
+  consentStatus     String   @default("pending") // pending, obtained, declined
+  status            String   @default("new") // new, accepted, declined, need_more_info, in_progress, published
+  assignedToId      String?
+  relatedTaskId     String?
+  relatedProposalId String?
+  externalSystemRef String?
+  attachments       String?  // JSON array of attachment URLs
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  assignedTo User? @relation(fields: [assignedToId], references: [id])
+  comments   OpportunityComment[]
+}
+
+model OpportunityComment {
+  id            String   @id @default(cuid())
+  opportunityId String
+  userId        String
+  content       String
+  createdAt     DateTime @default(now())
+
+  opportunity ContentOpportunity @relation(fields: [opportunityId], references: [id], onDelete: Cascade)
+}
+
+// ==================== GAMIFICATION & PERFORMANCE ====================
+
+model UserPoints {
+  id            String   @id @default(cuid())
+  userId        String   @unique
+  totalPoints   Int      @default(0)
+  weeklyPoints  Int      @default(0)
+  monthlyPoints Int      @default(0)
+  level         Int      @default(1)
+  currentStreak Int      @default(0)
+  longestStreak Int      @default(0)
+  updatedAt     DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model PointTransaction {
+  id          String   @id @default(cuid())
+  userId      String
+  action      String   // task_completed, task_early, proposal_submitted, proposal_approved, innovation_idea, etc.
+  points      Int
+  description String?
+  referenceId String?  // ID of related entity (task, proposal, etc.)
+  createdAt   DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt])
+}
+
+model Achievement {
+  id          String   @id @default(cuid())
+  name        String   @unique
+  description String
+  iconUrl     String?
+  category    String   // performance, innovation, collaboration, content
+  criteria    String   // JSON describing unlock criteria
+  points      Int      @default(0) // bonus points when earned
+  createdAt   DateTime @default(now())
+
+  users UserAchievement[]
+}
+
+model UserAchievement {
+  id            String   @id @default(cuid())
+  userId        String
+  achievementId String
+  earnedAt      DateTime @default(now())
+
+  user        User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  achievement Achievement @relation(fields: [achievementId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, achievementId])
+}
+
+model InnovationIdea {
+  id            String    @id @default(cuid())
+  title         String
+  description   String
+  category      String    // content_format, process_improvement, new_platform, campaign_concept, automation
+  status        String    @default("submitted") // submitted, reviewing, approved, implemented, rejected
+  impactScore   Int?      // 1-10, rated by manager
+  submitterId   String
+  implementedAt DateTime?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  submitter User @relation(fields: [submitterId], references: [id])
+}
+
+model Reward {
+  id          String   @id @default(cuid())
+  name        String
+  description String
+  pointsCost  Int
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  redemptions RewardRedemption[]
+}
+
+model RewardRedemption {
+  id         String   @id @default(cuid())
+  userId     String
+  rewardId   String
+  status     String   @default("pending") // pending, approved, fulfilled, rejected
+  redeemedAt DateTime @default(now())
+  fulfilledAt DateTime?
+
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  reward Reward @relation(fields: [rewardId], references: [id])
+}
+
+// ==================== CROSS-TEAM RATINGS (EXTERNAL GATEWAY) ====================
+
+model CrossTeamRating {
+  id             String   @id @default(cuid())
+  marketingUserId String
+  period         String   // YYYY-MM format
+  raterTeam      String   // sales, accounting, customer_service, medical
+  raterName      String
+  raterEmail     String
+  overallScore   Int      // 1-5
+  categoryScores String?  // JSON: {responsiveness: 4, quality: 5, collaboration: 4, communication: 5}
+  feedback       String?
+  receivedAt     DateTime @default(now())
+
+  marketingUser User @relation(fields: [marketingUserId], references: [id], onDelete: Cascade)
+
+  @@index([marketingUserId, period])
+}
+
+// ==================== TASK REQUESTS (EXTERNAL GATEWAY) ====================
+
+model TaskRequest {
+  id              String    @id @default(cuid())
+  requesterTeam   String    // sales, accounting, customer_service, medical
+  requesterName   String
+  requesterEmail  String
+  requestType     String    // design, content, video, other
+  title           String
+  description     String
+  urgency         String    @default("normal") // urgent, normal, low
+  deadline        DateTime?
+  status          String    @default("new") // new, accepted, declined, in_progress, completed
+  assignedToId    String?
+  relatedTaskId   String?   @unique
+  externalRef     String?
+  attachments     String?   // JSON array of attachment URLs
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  assignedTo  User? @relation(fields: [assignedToId], references: [id])
+  relatedTask Task? @relation(fields: [relatedTaskId], references: [id])
+}
+
+// ==================== BONUS POOL ====================
+
+model MonthlyBonusPool {
+  id              String   @id @default(cuid())
+  month           String   @unique // YYYY-MM format
+  totalRevenue    Float
+  bonusPercentage Float    @default(0.01) // 1%
+  poolAmount      Float
+  status          String   @default("pending") // pending, approved, distributed
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  distributions BonusDistribution[]
+}
+
+model BonusDistribution {
+  id                  String   @id @default(cuid())
+  poolId              String
+  userId              String
+  pointsContribution  Float    @default(0)
+  ratingContribution  Float    @default(0)
+  managerAllocation   Float    @default(0)
+  finalAmount         Float
+  status              String   @default("pending") // pending, approved, paid
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
+  pool MonthlyBonusPool @relation(fields: [poolId], references: [id], onDelete: Cascade)
+  user User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([poolId, userId])
+}
+
+// ==================== PERFORMANCE TRACKING ====================
+
+model PerformanceMetric {
+  id         String   @id @default(cuid())
+  userId     String
+  metricType String   // posts_published, on_time_rate, revision_rate, engagement_avg, roas, cost_per_lead, etc.
+  value      Float
+  date       DateTime
+  createdAt  DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, metricType, date])
+}
+
+model PerformanceGoal {
+  id          String   @id @default(cuid())
+  userId      String
+  metricType  String
+  targetValue Float
+  period      String   // weekly, monthly, quarterly
+  startDate   DateTime
+  endDate     DateTime
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model QualityRating {
+  id       String   @id @default(cuid())
+  userId   String   // user being rated
+  raterId  String   // manager rating
+  score    Int      // 1-5
+  notes    String?
+  category String?  // design, content, video
+  date     DateTime @default(now())
+
+  user  User @relation("QualityRated", fields: [userId], references: [id], onDelete: Cascade)
+  rater User @relation("QualityRater", fields: [raterId], references: [id])
+
+  @@index([userId, date])
+}
+
+// ==================== SYSTEM ====================
+
+model IntegrationConfig {
+  id          String   @id @default(cuid())
+  platform    String   @unique // google_ads, facebook, instagram, zalo, google_analytics, google_business, mailchimp
+  credentials String   // encrypted JSON
+  isActive    Boolean  @default(false)
+  lastSyncAt  DateTime?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model SyncLog {
+  id        String   @id @default(cuid())
+  platform  String
+  type      String   // campaigns, leads, appointments, posts, metrics
+  status    String   // success, failed, partial
+  recordsProcessed Int @default(0)
+  errorMessage String?
+  startedAt DateTime @default(now())
+  completedAt DateTime?
+}
