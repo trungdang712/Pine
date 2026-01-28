@@ -8,7 +8,6 @@ interface User {
   id: string;
   email: string;
   name: string;
-  team: string;
   role: string;
 }
 
@@ -24,22 +23,13 @@ export const createTRPCContext = async (opts: { headers: Headers }) => {
   let session: Session = { user: null };
 
   if (authUser) {
-    const { data: profile } = await supabase
-      .from("users")
-      .select("id, email, name, team, role")
-      .eq("auth_id", authUser.id)
-      .single();
+    const profile = await prisma.user.findUnique({
+      where: { authId: authUser.id },
+      select: { id: true, email: true, name: true, role: true },
+    });
 
     if (profile) {
-      session = {
-        user: {
-          id: profile.id,
-          email: profile.email,
-          name: profile.name,
-          team: profile.team,
-          role: profile.role,
-        },
-      };
+      session = { user: profile };
     }
   }
 
@@ -100,7 +90,7 @@ const enforceUserIsAdmin = t.middleware(async ({ ctx, next }) => {
 
   const user = ctx.session.user;
 
-  if (!["admin", "marketing_manager", "super_admin"].includes(user.role)) {
+  if (!["super_admin", "admin", "marketing_manager"].includes(user.role)) {
     throw new TRPCError({ code: "FORBIDDEN", message: "Admin access required" });
   }
 

@@ -8,22 +8,27 @@ generator client {
 }
 
 datasource db {
-  provider = "sqlite"
-  url      = env("DATABASE_URL")
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
 }
 
 // ==================== USER & AUTHENTICATION ====================
 
 model User {
-  id            String    @id @default(cuid())
-  email         String    @unique
-  password      String
-  name          String
-  avatar        String?
-  role          String    @default("content_creator") // admin, marketing_manager, content_creator, digital_marketing, graphic_designer, video_producer
-  isActive      Boolean   @default(true)
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
+  id                 String    @id @default(cuid())
+  authId             String?   @unique // Supabase Auth user ID
+  email              String    @unique
+  password           String    @default("")
+  name               String
+  avatar             String?
+  role               String    @default("content_creator") // super_admin, admin, marketing_manager, content_creator, digital_marketing, graphic_designer, video_producer, sales_manager, sales_consultant
+  team               String?   // admin, marketing, sales
+  doctorId           String?
+  mustChangePassword Boolean   @default(false)
+  isActive           Boolean   @default(true)
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
 
   // Relations
   createdTasks     Task[]              @relation("TaskCreator")
@@ -801,7 +806,7 @@ model RedditPost {
   redditId      String   @unique // Reddit's post ID
   subreddit     String
   title         String
-  content       String   // SQLite doesn't have @db.Text, use String
+  content       String   @db.Text
   author        String
   url           String
   score         Int
