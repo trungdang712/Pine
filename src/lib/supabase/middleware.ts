@@ -1,12 +1,24 @@
 import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
 
-// Helper to add timeout to promises
-function withTimeout<T>(promise: Promise<T>, ms: number, fallback: T): Promise<T> {
-  return Promise.race([
-    promise,
-    new Promise<T>((resolve) => setTimeout(() => resolve(fallback), ms))
-  ])
+// Helper to add timeout to async operations
+async function withTimeout<T>(
+  promise: Promise<T>,
+  ms: number
+): Promise<T | null> {
+  let timeoutId: ReturnType<typeof setTimeout>
+  const timeoutPromise = new Promise<null>((resolve) => {
+    timeoutId = setTimeout(() => resolve(null), ms)
+  })
+
+  try {
+    const result = await Promise.race([promise, timeoutPromise])
+    clearTimeout(timeoutId!)
+    return result
+  } catch {
+    clearTimeout(timeoutId!)
+    return null
+  }
 }
 
 export async function updateSession(request: NextRequest) {
@@ -48,11 +60,8 @@ export async function updateSession(request: NextRequest) {
   )
 
   // Check if user is authenticated (with 3s timeout)
-  const { data: { user } } = await withTimeout(
-    supabase.auth.getUser(),
-    3000,
-    { data: { user: null }, error: null }
-  )
+  const authResult = await withTimeout(supabase.auth.getUser(), 3000)
+  const user = authResult?.data?.user ?? null
 
   // Protected routes - redirect to login if not authenticated
   const protectedRoutes = [
@@ -89,29 +98,29 @@ export async function updateSession(request: NextRequest) {
 
   // Check team access for marketing-only routes (with timeouts)
   if (user && isProtectedRoute) {
-    const { data: userData } = await withTimeout(
+    const userResult = await withTimeout(
       supabase
         .from('users')
         .select('id, team, role')
         .eq('auth_id', user.id)
         .single(),
-      2000,
-      { data: null, error: null }
+      2000
     )
+    const userData = userResult?.data ?? null
 
     // Allow admin team access to everything
     if (userData && userData.team !== 'admin' && userData.team !== 'marketing') {
       // Check if user has marketing team access using the database user ID
-      const { data: teamAccess } = await withTimeout(
+      const teamResult = await withTimeout(
         supabase
           .from('user_team_access')
           .select('team')
           .eq('user_id', userData.id)
           .eq('team', 'marketing')
           .single(),
-        2000,
-        { data: null, error: null }
+        2000
       )
+      const teamAccess = teamResult?.data ?? null
 
       if (!teamAccess) {
         // User doesn't have access to marketing app
