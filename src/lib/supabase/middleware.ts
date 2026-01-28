@@ -103,7 +103,8 @@ export async function updateSession(request: NextRequest) {
         .from('users')
         .select('id, team, role')
         .eq('auth_id', user.id)
-        .single(),
+        .single()
+        .then(res => res),
       2000
     )
     const userData = userResult?.data ?? null
@@ -117,7 +118,8 @@ export async function updateSession(request: NextRequest) {
           .select('team')
           .eq('user_id', userData.id)
           .eq('team', 'marketing')
-          .single(),
+          .single()
+          .then(res => res),
         2000
       )
       const teamAccess = teamResult?.data ?? null
