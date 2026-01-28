@@ -70,10 +70,11 @@ export async function POST(request: NextRequest) {
     }
 
     // Get user profile from database
+    // Table is "User" (Prisma model name) and column is "authId" (Prisma field name)
     const { data: userData, error: userError } = await adminClient
-      .from('users')
+      .from('User')
       .select('id, team, role, name')
-      .eq('auth_id', signInData.user.id)
+      .eq('authId', signInData.user.id)
       .single()
 
     if (userError || !userData) {

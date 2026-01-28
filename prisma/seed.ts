@@ -4,161 +4,263 @@ import { hash } from "bcryptjs";
 
 const prisma = new PrismaClient();
 
-async function main() {
-  console.log("Seeding database...");
+// ---------------------------------------------------------------------------
+// Helper: role-based user lookup
+// ---------------------------------------------------------------------------
+interface SeedUser {
+  id: string;
+  email: string;
+  name: string;
+  role: string;
+}
 
-  // Create users
-  const adminPassword = await hash("admin123", 12);
-  const userPassword = await hash("user123", 12);
+/**
+ * Try to find real Supabase-linked users (those with @nhakhoagreenfield.com
+ * emails). If enough real users exist we use them; otherwise we fall back to
+ * creating demo users so the seed still works on a fresh install.
+ */
+async function resolveUsers(): Promise<{
+  admin: SeedUser;
+  manager: SeedUser;
+  contentCreator: SeedUser;
+  designer: SeedUser;
+  digitalMarketer: SeedUser;
+  videoProducer: SeedUser;
+  contentCreator2: SeedUser;
+  designer2: SeedUser;
+}> {
+  // ---- Try real users first ------------------------------------------------
+  const realUsers = await prisma.user.findMany({
+    where: { email: { contains: "@nhakhoagreenfield.com" } },
+    select: { id: true, email: true, name: true, role: true },
+  });
 
-  const admin = await prisma.user.upsert({
-    where: { email: "admin@greenfield.clinic" },
-    update: {},
-    create: {
-      email: "admin@greenfield.clinic",
-      password: adminPassword,
-      name: "Admin User",
-      role: "admin",
-      points: {
+  if (realUsers.length > 0) {
+    console.log(
+      `Found ${realUsers.length} real users with @nhakhoagreenfield.com emails`
+    );
+
+    // Build a lookup by email prefix (the part before @)
+    const byPrefix = new Map<string, SeedUser>();
+    for (const u of realUsers) {
+      const prefix = u.email.split("@")[0]; // e.g. "ducanh.nh"
+      byPrefix.set(prefix, u);
+    }
+
+    // Build a lookup by role for fallback assignment
+    const byRole = new Map<string, SeedUser[]>();
+    for (const u of realUsers) {
+      const list = byRole.get(u.role) || [];
+      list.push(u);
+      byRole.set(u.role, list);
+    }
+
+    // Helper: pick a user by preferred email prefix, then by role, then any
+    const pick = (
+      preferredPrefixes: string[],
+      preferredRoles: string[],
+      fallbackToAny = true
+    ): SeedUser | undefined => {
+      // Try exact email prefix match
+      for (const prefix of preferredPrefixes) {
+        const u = byPrefix.get(prefix);
+        if (u) return u;
+      }
+      // Try role match
+      for (const role of preferredRoles) {
+        const list = byRole.get(role);
+        if (list && list.length > 0) return list[0];
+      }
+      // Fallback to first available user
+      if (fallbackToAny && realUsers.length > 0) return realUsers[0];
+      return undefined;
+    };
+
+    // Assign specific real users to seed roles
+    const admin =
+      pick(["nhung", "trung"], ["super_admin", "admin"]) ?? realUsers[0];
+    const manager =
+      pick(["hoai.tt"], ["marketing_manager"]) ?? realUsers[0];
+    const digitalMarketer =
+      pick(["ducanh.nh"], ["digital_marketing"]) ?? realUsers[0];
+    const designer =
+      pick(["hoai.ptt"], ["graphic_designer"]) ?? realUsers[0];
+    const videoProducer =
+      pick(["tien.n"], ["video_producer"]) ?? realUsers[0];
+
+    // Content creators and second designer - pick remaining users
+    const usedIds = new Set([
+      admin.id,
+      manager.id,
+      digitalMarketer.id,
+      designer.id,
+      videoProducer.id,
+    ]);
+    const remaining = realUsers.filter((u) => !usedIds.has(u.id));
+
+    const contentCreator = remaining[0] ?? manager;
+    const contentCreator2 = remaining[1] ?? contentCreator;
+    const designer2 = remaining[2] ?? designer;
+
+    console.log("Seed role assignments:");
+    console.log(`  admin           -> ${admin.name} (${admin.email})`);
+    console.log(`  manager         -> ${manager.name} (${manager.email})`);
+    console.log(
+      `  digitalMarketer -> ${digitalMarketer.name} (${digitalMarketer.email})`
+    );
+    console.log(`  designer        -> ${designer.name} (${designer.email})`);
+    console.log(
+      `  videoProducer   -> ${videoProducer.name} (${videoProducer.email})`
+    );
+    console.log(
+      `  contentCreator  -> ${contentCreator.name} (${contentCreator.email})`
+    );
+    console.log(
+      `  contentCreator2 -> ${contentCreator2.name} (${contentCreator2.email})`
+    );
+    console.log(`  designer2       -> ${designer2.name} (${designer2.email})`);
+
+    // Ensure each real user has a UserPoints record
+    for (const u of realUsers) {
+      await prisma.userPoints.upsert({
+        where: { userId: u.id },
+        update: {},
         create: {
+          userId: u.id,
           totalPoints: 0,
           weeklyPoints: 0,
           monthlyPoints: 0,
         },
-      },
-    },
-  });
+      });
+    }
 
-  const manager = await prisma.user.upsert({
-    where: { email: "manager@greenfield.clinic" },
-    update: {},
-    create: {
+    return {
+      admin,
+      manager,
+      contentCreator,
+      designer,
+      digitalMarketer,
+      videoProducer,
+      contentCreator2,
+      designer2,
+    };
+  }
+
+  // ---- Fallback: create demo users for fresh installs ----------------------
+  console.log("No real users found. Creating demo users for fresh install...");
+
+  const adminPassword = await hash("admin123", 12);
+  const userPassword = await hash("user123", 12);
+
+  const demoUsers = [
+    {
+      email: "admin@greenfield.clinic",
+      password: adminPassword,
+      name: "Admin User",
+      role: "admin",
+      points: { totalPoints: 0, weeklyPoints: 0, monthlyPoints: 0 },
+    },
+    {
       email: "manager@greenfield.clinic",
       password: userPassword,
       name: "Marketing Manager",
       role: "marketing_manager",
-      points: {
-        create: {
-          totalPoints: 500,
-          weeklyPoints: 120,
-          monthlyPoints: 350,
-        },
-      },
+      points: { totalPoints: 500, weeklyPoints: 120, monthlyPoints: 350 },
     },
-  });
-
-  const contentCreator = await prisma.user.upsert({
-    where: { email: "content@greenfield.clinic" },
-    update: {},
-    create: {
+    {
       email: "content@greenfield.clinic",
       password: userPassword,
       name: "Nguyen Van A",
       role: "content_creator",
-      points: {
-        create: {
-          totalPoints: 450,
-          weeklyPoints: 85,
-          monthlyPoints: 280,
-        },
-      },
+      points: { totalPoints: 450, weeklyPoints: 85, monthlyPoints: 280 },
     },
-  });
-
-  const designer = await prisma.user.upsert({
-    where: { email: "designer@greenfield.clinic" },
-    update: {},
-    create: {
+    {
       email: "designer@greenfield.clinic",
       password: userPassword,
       name: "Tran Thi B",
       role: "graphic_designer",
-      points: {
-        create: {
-          totalPoints: 520,
-          weeklyPoints: 110,
-          monthlyPoints: 320,
-        },
-      },
+      points: { totalPoints: 520, weeklyPoints: 110, monthlyPoints: 320 },
     },
-  });
-
-  const digitalMarketer = await prisma.user.upsert({
-    where: { email: "digital@greenfield.clinic" },
-    update: {},
-    create: {
+    {
       email: "digital@greenfield.clinic",
       password: userPassword,
       name: "Le Van C",
       role: "digital_marketing",
-      points: {
-        create: {
-          totalPoints: 380,
-          weeklyPoints: 95,
-          monthlyPoints: 260,
-        },
-      },
+      points: { totalPoints: 380, weeklyPoints: 95, monthlyPoints: 260 },
     },
-  });
-
-  const videoProducer = await prisma.user.upsert({
-    where: { email: "video@greenfield.clinic" },
-    update: {},
-    create: {
+    {
       email: "video@greenfield.clinic",
       password: userPassword,
       name: "Pham Van D",
       role: "video_producer",
-      points: {
-        create: {
-          totalPoints: 320,
-          weeklyPoints: 75,
-          monthlyPoints: 200,
-        },
-      },
+      points: { totalPoints: 320, weeklyPoints: 75, monthlyPoints: 200 },
     },
-  });
-
-  // Additional users
-  const contentCreator2 = await prisma.user.upsert({
-    where: { email: "content2@greenfield.clinic" },
-    update: {},
-    create: {
+    {
       email: "content2@greenfield.clinic",
       password: userPassword,
       name: "Hoang Thi E",
       role: "content_creator",
-      points: {
-        create: {
-          totalPoints: 280,
-          weeklyPoints: 65,
-          monthlyPoints: 180,
-        },
-      },
+      points: { totalPoints: 280, weeklyPoints: 65, monthlyPoints: 180 },
     },
-  });
-
-  const designer2 = await prisma.user.upsert({
-    where: { email: "designer2@greenfield.clinic" },
-    update: {},
-    create: {
+    {
       email: "designer2@greenfield.clinic",
       password: userPassword,
       name: "Vo Van F",
       role: "graphic_designer",
-      points: {
-        create: {
-          totalPoints: 410,
-          weeklyPoints: 90,
-          monthlyPoints: 250,
-        },
-      },
+      points: { totalPoints: 410, weeklyPoints: 90, monthlyPoints: 250 },
     },
-  });
+  ];
 
-  console.log("Created users");
+  const created: SeedUser[] = [];
+  for (const u of demoUsers) {
+    const { points, ...userData } = u;
+    const user = await prisma.user.upsert({
+      where: { email: u.email },
+      update: {},
+      create: {
+        ...userData,
+        points: { create: points },
+      },
+      select: { id: true, email: true, name: true, role: true },
+    });
+    created.push(user);
+  }
 
-  // Create achievements
+  console.log(`Created ${created.length} demo users`);
+
+  return {
+    admin: created[0],
+    manager: created[1],
+    contentCreator: created[2],
+    designer: created[3],
+    digitalMarketer: created[4],
+    videoProducer: created[5],
+    contentCreator2: created[6],
+    designer2: created[7],
+  };
+}
+
+// ---------------------------------------------------------------------------
+// Main seed function
+// ---------------------------------------------------------------------------
+async function main() {
+  console.log("Seeding database...\n");
+
+  // 1. Resolve users (real or demo)
+  const {
+    admin,
+    manager,
+    contentCreator,
+    designer,
+    digitalMarketer,
+    videoProducer,
+    contentCreator2,
+    designer2,
+  } = await resolveUsers();
+
+  console.log("\nCreated / resolved users");
+
+  // 2. Achievements (upsert by unique name - idempotent)
   const achievements = [
     {
       name: "Task Master",
@@ -225,10 +327,9 @@ async function main() {
       create: achievement,
     });
   }
-
   console.log("Created achievements");
 
-  // Create rewards
+  // 3. Rewards (upsert by name via a find-or-create pattern)
   const rewards = [
     {
       name: "Team Meeting Recognition",
@@ -258,16 +359,17 @@ async function main() {
   ];
 
   for (const reward of rewards) {
-    await prisma.reward.upsert({
-      where: { id: reward.name.toLowerCase().replace(/\s+/g, "-") },
-      update: {},
-      create: reward,
+    // Rewards don't have a unique name field in schema, so use findFirst+create
+    const existing = await prisma.reward.findFirst({
+      where: { name: reward.name },
     });
+    if (!existing) {
+      await prisma.reward.create({ data: reward });
+    }
   }
-
   console.log("Created rewards");
 
-  // Create brand colors
+  // 4. Brand colors (idempotent: delete + recreate since no unique key)
   await prisma.brandColor.deleteMany({});
   const brandColors = [
     { name: "Teal Primary", hexCode: "#0D9488", rgbCode: "13, 148, 136", usage: "primary" },
@@ -279,18 +381,17 @@ async function main() {
   ];
 
   for (const color of brandColors) {
-    await prisma.brandColor.create({
-      data: color,
-    });
+    await prisma.brandColor.create({ data: color });
   }
-
   console.log("Created brand colors");
 
   // Helper for dates
-  const daysFromNow = (days: number) => new Date(Date.now() + days * 24 * 60 * 60 * 1000);
-  const daysAgo = (days: number) => new Date(Date.now() - days * 24 * 60 * 60 * 1000);
+  const daysFromNow = (days: number) =>
+    new Date(Date.now() + days * 24 * 60 * 60 * 1000);
+  const daysAgo = (days: number) =>
+    new Date(Date.now() - days * 24 * 60 * 60 * 1000);
 
-  // Create 25 tasks with various statuses
+  // 5. Tasks (delete + recreate for idempotency - seed data only)
   await prisma.task.deleteMany({});
   const tasks = [
     // TODO tasks
@@ -558,10 +659,9 @@ async function main() {
   for (const task of tasks) {
     await prisma.task.create({ data: task });
   }
-
   console.log("Created 25 tasks");
 
-  // Create 12 proposals with various statuses
+  // 6. Proposals (delete + recreate)
   await prisma.proposal.deleteMany({});
   const proposals = [
     // Draft proposals
@@ -694,25 +794,38 @@ async function main() {
     const created = await prisma.proposal.create({ data: proposal });
 
     // Create approval steps for submitted/under_review/approved/rejected proposals
-    if (["submitted", "under_review", "approved", "rejected"].includes(proposal.status)) {
+    if (
+      ["submitted", "under_review", "approved", "rejected"].includes(
+        proposal.status
+      )
+    ) {
       await prisma.approvalStep.create({
         data: {
           proposalId: created.id,
           approverId: manager.id,
           stepNumber: 1,
-          status: proposal.status === "approved" ? "approved" :
-                  proposal.status === "rejected" ? "rejected" : "pending",
-          comments: proposal.status === "approved" ? "Approved - good proposal" :
-                   proposal.status === "rejected" ? "Budget too high for current quarter" : null,
-          decidedAt: ["approved", "rejected"].includes(proposal.status) ? new Date() : null,
+          status:
+            proposal.status === "approved"
+              ? "approved"
+              : proposal.status === "rejected"
+                ? "rejected"
+                : "pending",
+          comments:
+            proposal.status === "approved"
+              ? "Approved - good proposal"
+              : proposal.status === "rejected"
+                ? "Budget too high for current quarter"
+                : null,
+          decidedAt: ["approved", "rejected"].includes(proposal.status)
+            ? new Date()
+            : null,
         },
       });
     }
   }
-
   console.log("Created 12 proposals");
 
-  // Create 8 content opportunities
+  // 7. Content opportunities (delete + recreate)
   await prisma.contentOpportunity.deleteMany({});
   const opportunities = [
     {
@@ -803,10 +916,9 @@ async function main() {
   for (const opp of opportunities) {
     await prisma.contentOpportunity.create({ data: opp });
   }
-
   console.log("Created 8 content opportunities");
 
-  // Create 6 task requests
+  // 8. Task requests (delete + recreate)
   await prisma.taskRequest.deleteMany({});
   const taskRequests = [
     {
@@ -883,10 +995,9 @@ async function main() {
   for (const request of taskRequests) {
     await prisma.taskRequest.create({ data: request });
   }
-
   console.log("Created 6 task requests");
 
-  // Create 20 user alerts (mix of read/unread)
+  // 9. User alerts (delete + recreate)
   await prisma.userAlert.deleteMany({});
   const alertsData = [
     // Unread alerts for different users
@@ -916,10 +1027,9 @@ async function main() {
   for (const alert of alertsData) {
     await prisma.userAlert.create({ data: alert });
   }
-
   console.log("Created 20 user alerts");
 
-  // Create 15 assets
+  // 10. Assets (delete + recreate)
   await prisma.asset.deleteMany({});
   const assets = [
     { name: "Logo Primary", fileUrl: "/assets/logo-primary.png", fileSize: 125000, fileType: "image/png", category: "image", uploadedById: designer.id },
@@ -942,10 +1052,9 @@ async function main() {
   for (const asset of assets) {
     await prisma.asset.create({ data: asset });
   }
-
   console.log("Created 15 assets");
 
-  // Create 15 calendar items
+  // 11. Calendar items (delete + recreate)
   await prisma.contentCalendarItem.deleteMany({});
   const calendarItems = [
     // Scheduled items (next 2 weeks)
@@ -972,10 +1081,9 @@ async function main() {
   for (const item of calendarItems) {
     await prisma.contentCalendarItem.create({ data: item });
   }
-
   console.log("Created 15 calendar items");
 
-  // Create sample monthly budget
+  // 12. Monthly budget (upsert by unique month - idempotent)
   const currentMonth = new Date().toISOString().slice(0, 7);
   await prisma.monthlyBudget.upsert({
     where: { month: currentMonth },
@@ -991,10 +1099,9 @@ async function main() {
       approvedById: admin.id,
     },
   });
-
   console.log("Created sample budget");
 
-  // Create innovation ideas
+  // 13. Innovation ideas (delete + recreate)
   await prisma.innovationIdea.deleteMany({});
   const ideas = [
     {
@@ -1038,10 +1145,9 @@ async function main() {
   for (const idea of ideas) {
     await prisma.innovationIdea.create({ data: idea });
   }
-
   console.log("Created innovation ideas");
 
-  // Create integration configs
+  // 14. Integration configs (delete + recreate)
   await prisma.integrationConfig.deleteMany({});
   const integrationConfigs = [
     {
@@ -1106,10 +1212,9 @@ async function main() {
   for (const config of integrationConfigs) {
     await prisma.integrationConfig.create({ data: config });
   }
-
   console.log("Created 6 integration configs");
 
-  console.log("Database seeded successfully!");
+  console.log("\nDatabase seeded successfully!");
 }
 
 main()

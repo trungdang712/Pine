@@ -2,6 +2,7 @@ import { z } from "zod";
 import { hash } from "bcryptjs";
 import { createTRPCRouter, protectedProcedure, adminProcedure } from "../trpc";
 import { TRPCError } from "@trpc/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 
 export const userRouter = createTRPCRouter({
   // Limited user listing available to all authenticated users (e.g., for assignee dropdowns)
@@ -105,14 +106,29 @@ export const userRouter = createTRPCRouter({
         });
       }
 
-      const hashedPassword = await hash(input.password, 12);
+      // Create Supabase Auth user first
+      const supabaseAdmin = createAdminClient();
+      const { data: authData, error: authError } = await supabaseAdmin.auth.admin.createUser({
+        email: input.email,
+        password: input.password,
+        email_confirm: true, // Auto-confirm the email
+      });
+
+      if (authError) {
+        throw new TRPCError({
+          code: "INTERNAL_SERVER_ERROR",
+          message: `Failed to create auth account: ${authError.message}`,
+        });
+      }
 
       const user = await ctx.prisma.user.create({
         data: {
           email: input.email,
-          password: hashedPassword,
+          password: "", // Password is managed by Supabase Auth
+          authId: authData.user.id,
           name: input.name,
           role: input.role,
+          team: "marketing",
           points: {
             create: {
               totalPoints: 0,
@@ -201,12 +217,44 @@ export const userRouter = createTRPCRouter({
     .mutation(async ({ ctx, input }) => {
       const user = await ctx.prisma.user.findUnique({
         where: { id: ctx.session.user.id },
+        select: { id: true, authId: true, password: true, email: true },
       });
 
       if (!user) {
         throw new TRPCError({ code: "NOT_FOUND", message: "User not found" });
       }
 
+      // For Supabase Auth users, change password via Supabase Auth
+      if (user.authId) {
+        // Verify current password by attempting a sign-in
+        const { error: signInError } = await ctx.supabase.auth.signInWithPassword({
+          email: user.email,
+          password: input.currentPassword,
+        });
+
+        if (signInError) {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message: "Current password is incorrect",
+          });
+        }
+
+        // Update password in Supabase Auth
+        const { error: updateError } = await ctx.supabase.auth.updateUser({
+          password: input.newPassword,
+        });
+
+        if (updateError) {
+          throw new TRPCError({
+            code: "INTERNAL_SERVER_ERROR",
+            message: "Failed to update password",
+          });
+        }
+
+        return { success: true };
+      }
+
+      // Fallback for legacy users without Supabase Auth
       const { compare } = await import("bcryptjs");
       const isValid = await compare(input.currentPassword, user.password);
 

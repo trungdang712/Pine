@@ -88,9 +88,9 @@ export function useAuth() {
           // Also add timeout for profile fetch
           const profileResult = await withTimeout(
             supabase
-              .from("users")
+              .from("User")
               .select("id, email, name, avatar, team, role")
-              .eq("auth_id", user.id)
+              .eq("authId", user.id)
               .single(),
             3000
           );
@@ -129,9 +129,9 @@ export function useAuth() {
         if (session?.user) {
           const profileResult = await withTimeout(
             supabase
-              .from("users")
+              .from("User")
               .select("id, email, name, avatar, team, role")
-              .eq("auth_id", session.user.id)
+              .eq("authId", session.user.id)
               .single(),
             3000
           );

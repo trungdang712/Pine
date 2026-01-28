@@ -100,9 +100,9 @@ export async function updateSession(request: NextRequest) {
   if (user && isProtectedRoute) {
     const userResult = await withTimeout(
       supabase
-        .from('users')
+        .from('User')
         .select('id, team, role')
-        .eq('auth_id', user.id)
+        .eq('authId', user.id)
         .single(),
       2000
     )
