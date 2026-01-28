@@ -3,7 +3,7 @@ import { NextResponse, type NextRequest } from 'next/server'
 
 // Helper to add timeout to async operations
 async function withTimeout<T>(
-  promise: Promise<T>,
+  promiseLike: PromiseLike<T>,
   ms: number
 ): Promise<T | null> {
   let timeoutId: ReturnType<typeof setTimeout>
@@ -12,7 +12,7 @@ async function withTimeout<T>(
   })
 
   try {
-    const result = await Promise.race([promise, timeoutPromise])
+    const result = await Promise.race([Promise.resolve(promiseLike), timeoutPromise])
     clearTimeout(timeoutId!)
     return result
   } catch {
@@ -103,8 +103,7 @@ export async function updateSession(request: NextRequest) {
         .from('users')
         .select('id, team, role')
         .eq('auth_id', user.id)
-        .single()
-        .then(res => res),
+        .single(),
       2000
     )
     const userData = userResult?.data ?? null
@@ -118,8 +117,7 @@ export async function updateSession(request: NextRequest) {
           .select('team')
           .eq('user_id', userData.id)
           .eq('team', 'marketing')
-          .single()
-          .then(res => res),
+          .single(),
         2000
       )
       const teamAccess = teamResult?.data ?? null
