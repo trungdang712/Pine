@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { useAuth } from "@/hooks/use-auth";
 import { KPICard } from "@/components/dashboard/kpi-card";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -49,6 +50,7 @@ interface QuickAction {
   label: string;
   icon: LucideIcon;
   variant: "default" | "outline";
+  href: string;
 }
 
 interface UpcomingItem {
@@ -78,10 +80,10 @@ const roleConfigs: Record<RoleType, { kpis: KPIConfig[]; quickActions: QuickActi
       { title: "Team Performance", value: "92%", subtitle: "Hiệu suất", icon: BarChart3, color: "bg-amber-500", trend: { value: 5, isPositive: true } },
     ],
     quickActions: [
-      { label: "Thêm Team Member", icon: Plus, variant: "default" },
-      { label: "Xem Budget Report", icon: DollarSign, variant: "outline" },
-      { label: "Team Performance", icon: BarChart3, variant: "outline" },
-      { label: "Duyệt Proposals", icon: CheckCircle, variant: "outline" },
+      { label: "Thêm Team Member", icon: Plus, variant: "default", href: "/settings" },
+      { label: "Xem Budget Report", icon: DollarSign, variant: "outline", href: "/analytics/budget" },
+      { label: "Team Performance", icon: BarChart3, variant: "outline", href: "/performance/team" },
+      { label: "Duyệt Proposals", icon: CheckCircle, variant: "outline", href: "/proposals/pending" },
     ],
   },
   "Marketing Manager": {
@@ -92,10 +94,10 @@ const roleConfigs: Record<RoleType, { kpis: KPIConfig[]; quickActions: QuickActi
       { title: "Team Tasks", value: "45/52", subtitle: "Tuần này", icon: CheckSquare, color: "bg-success", trend: { value: 12, isPositive: true } },
     ],
     quickActions: [
-      { label: "Duyệt Proposals", icon: CheckCircle, variant: "default" },
-      { label: "Tạo Campaign mới", icon: Plus, variant: "outline" },
-      { label: "Xem Analytics", icon: BarChart3, variant: "outline" },
-      { label: "Assign Tasks", icon: Users, variant: "outline" },
+      { label: "Duyệt Proposals", icon: CheckCircle, variant: "default", href: "/proposals/pending" },
+      { label: "Tạo Campaign mới", icon: Plus, variant: "outline", href: "/analytics/campaigns" },
+      { label: "Xem Analytics", icon: BarChart3, variant: "outline", href: "/analytics" },
+      { label: "Assign Tasks", icon: Users, variant: "outline", href: "/tasks/team" },
     ],
   },
   "Content Creator": {
@@ -106,10 +108,10 @@ const roleConfigs: Record<RoleType, { kpis: KPIConfig[]; quickActions: QuickActi
       { title: "Điểm của tôi", value: 450, subtitle: "Hạng #2", icon: Trophy, color: "bg-amber-500", trend: { value: 15, isPositive: true } },
     ],
     quickActions: [
-      { label: "Tạo Content mới", icon: Plus, variant: "default" },
-      { label: "Xem Content Calendar", icon: CalendarIcon, variant: "outline" },
-      { label: "My Tasks", icon: CheckSquare, variant: "outline" },
-      { label: "Brand Library", icon: FileText, variant: "outline" },
+      { label: "Tạo Content mới", icon: Plus, variant: "default", href: "/calendar" },
+      { label: "Xem Content Calendar", icon: CalendarIcon, variant: "outline", href: "/calendar" },
+      { label: "My Tasks", icon: CheckSquare, variant: "outline", href: "/tasks" },
+      { label: "Brand Library", icon: FileText, variant: "outline", href: "/library/brand" },
     ],
   },
   "Digital Marketing": {
@@ -120,10 +122,10 @@ const roleConfigs: Record<RoleType, { kpis: KPIConfig[]; quickActions: QuickActi
       { title: "Conversion Rate", value: "3.8%", icon: TrendingUp, color: "bg-success", trend: { value: 0.5, isPositive: true } },
     ],
     quickActions: [
-      { label: "Tạo Campaign mới", icon: Plus, variant: "default" },
-      { label: "Xem Analytics", icon: BarChart3, variant: "outline" },
-      { label: "Manage Ads", icon: Megaphone, variant: "outline" },
-      { label: "Landing Pages", icon: Target, variant: "outline" },
+      { label: "Tạo Campaign mới", icon: Plus, variant: "default", href: "/analytics/campaigns" },
+      { label: "Xem Analytics", icon: BarChart3, variant: "outline", href: "/analytics" },
+      { label: "Manage Ads", icon: Megaphone, variant: "outline", href: "/analytics/campaigns" },
+      { label: "Landing Pages", icon: Target, variant: "outline", href: "/analytics/landing" },
     ],
   },
   "Graphic Designer": {
@@ -134,10 +136,10 @@ const roleConfigs: Record<RoleType, { kpis: KPIConfig[]; quickActions: QuickActi
       { title: "Design Points", value: 520, subtitle: "Hạng #1", icon: Trophy, color: "bg-amber-500", trend: { value: 25, isPositive: true } },
     ],
     quickActions: [
-      { label: "Upload Design mới", icon: Plus, variant: "default" },
-      { label: "Brand Library", icon: Palette, variant: "outline" },
-      { label: "My Tasks", icon: CheckSquare, variant: "outline" },
-      { label: "Design Requests", icon: ImageIcon, variant: "outline" },
+      { label: "Upload Design mới", icon: Plus, variant: "default", href: "/library/assets" },
+      { label: "Brand Library", icon: Palette, variant: "outline", href: "/library/brand" },
+      { label: "My Tasks", icon: CheckSquare, variant: "outline", href: "/tasks" },
+      { label: "Design Requests", icon: ImageIcon, variant: "outline", href: "/inbox/requests" },
     ],
   },
   "Video Producer": {
@@ -148,10 +150,10 @@ const roleConfigs: Record<RoleType, { kpis: KPIConfig[]; quickActions: QuickActi
       { title: "Video Points", value: 320, subtitle: "Hạng #4", icon: Trophy, color: "bg-amber-500", trend: { value: 18, isPositive: true } },
     ],
     quickActions: [
-      { label: "Tạo Video Project", icon: Plus, variant: "default" },
-      { label: "Production Timeline", icon: CalendarIcon, variant: "outline" },
-      { label: "My Tasks", icon: CheckSquare, variant: "outline" },
-      { label: "Video Assets", icon: Film, variant: "outline" },
+      { label: "Tạo Video Project", icon: Plus, variant: "default", href: "/tasks" },
+      { label: "Production Timeline", icon: CalendarIcon, variant: "outline", href: "/calendar" },
+      { label: "My Tasks", icon: CheckSquare, variant: "outline", href: "/tasks" },
+      { label: "Video Assets", icon: Film, variant: "outline", href: "/library/assets" },
     ],
   },
 };
@@ -424,9 +426,11 @@ export default function DashboardPage() {
             {roleConfig.quickActions.map((action, index) => {
               const Icon = action.icon;
               return (
-                <Button key={index} variant={action.variant} className="gap-2">
-                  <Icon className="w-4 h-4" />
-                  {action.label}
+                <Button key={index} variant={action.variant} className="gap-2" asChild>
+                  <Link href={action.href}>
+                    <Icon className="w-4 h-4" />
+                    {action.label}
+                  </Link>
                 </Button>
               );
             })}

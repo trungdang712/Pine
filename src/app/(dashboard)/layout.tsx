@@ -1,5 +1,7 @@
 "use client";
 
+import { useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { AppSidebar } from "@/components/layout/app-sidebar";
 import { Header } from "@/components/layout/header";
 import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar";
@@ -11,6 +13,13 @@ export default function DashboardLayout({
   children: React.ReactNode;
 }) {
   const { loading, isAuthenticated } = useAuth();
+  const router = useRouter();
+
+  useEffect(() => {
+    if (!loading && !isAuthenticated) {
+      router.push("/login");
+    }
+  }, [loading, isAuthenticated, router]);
 
   if (loading) {
     return (
@@ -20,7 +29,6 @@ export default function DashboardLayout({
     );
   }
 
-  // Middleware handles redirects, but show nothing while client catches up
   if (!isAuthenticated) {
     return (
       <div className="flex h-screen items-center justify-center bg-background">

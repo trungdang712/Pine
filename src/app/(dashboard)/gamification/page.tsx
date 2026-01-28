@@ -3,53 +3,26 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
-import { Button } from "@/components/ui/button";
+import { TrendingUp, TrendingDown, Trophy, Star } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { Trophy, Award, Gift, Star } from "lucide-react";
+import { useState } from "react";
 
 export default function GamificationPage() {
-  const teamMembers = [
-    {
-      name: "Trần Văn B",
-      role: "Graphic Designer",
-      points: 520,
-      badges: ["🏆", "🎯", "⚡"],
-      rank: 1,
-    },
-    {
-      name: "Nguyễn Văn A",
-      role: "Content Creator",
-      points: 450,
-      badges: ["🏆", "🎯"],
-      rank: 2,
-    },
-    {
-      name: "Phạm Văn D",
-      role: "Video Producer",
-      points: 420,
-      badges: ["🎬"],
-      rank: 3,
-    },
-    {
-      name: "Lê Thị C",
-      role: "Digital Marketing",
-      points: 380,
-      badges: ["🎯"],
-      rank: 4,
-    },
+  const [activeTab, setActiveTab] = useState("leaderboard");
+
+  const leaderboard = [
+    { rank: 1, name: "Tran Van B", role: "Design", points: 520, change: 2, badges: ["trophy", "target", "zap"] },
+    { rank: 2, name: "Nguyen Van A", role: "Content", points: 450, change: 0, badges: ["trophy", "target"] },
+    { rank: 3, name: "Le Thi C", role: "Digital", points: 380, change: -1, badges: ["target"] },
+    { rank: 4, name: "Pham Van D", role: "Video", points: 320, change: 1, badges: ["video"] },
+    { rank: 5, name: "Hoang Thi E", role: "Content", points: 280, change: 0, badges: ["edit"] },
+    { rank: 6, name: "Dang Van F", role: "Design", points: 250, change: -2, badges: ["palette"] },
   ];
 
   const achievements = [
     {
       id: 1,
-      icon: "🏆",
+      icon: "trophy",
       name: "Task Master",
       description: "Complete 50 tasks",
       earned: true,
@@ -58,7 +31,7 @@ export default function GamificationPage() {
     },
     {
       id: 2,
-      icon: "🎯",
+      icon: "target",
       name: "On-Time Pro",
       description: "Maintain 90% on-time rate for 3 months",
       earned: true,
@@ -67,7 +40,7 @@ export default function GamificationPage() {
     },
     {
       id: 3,
-      icon: "⚡",
+      icon: "zap",
       name: "Speed Demon",
       description: "Complete 10 tasks ahead of deadline",
       earned: true,
@@ -76,7 +49,7 @@ export default function GamificationPage() {
     },
     {
       id: 4,
-      icon: "💡",
+      icon: "lightbulb",
       name: "Idea Machine",
       description: "Have 3 innovation ideas implemented",
       earned: true,
@@ -85,7 +58,7 @@ export default function GamificationPage() {
     },
     {
       id: 5,
-      icon: "🎨",
+      icon: "palette",
       name: "Creative Master",
       description: "Create content with 2x average engagement 5 times",
       earned: false,
@@ -95,32 +68,13 @@ export default function GamificationPage() {
     },
     {
       id: 6,
-      icon: "🌟",
+      icon: "star",
       name: "Team Player",
       description: "Receive 5-star rating from 10 different team members",
       earned: false,
       progress: 7,
       total: 10,
       rarity: "legendary",
-    },
-    {
-      id: 7,
-      icon: "🔥",
-      name: "Streak Master",
-      description: "Complete tasks on-time for 30 consecutive days",
-      earned: false,
-      progress: 23,
-      total: 30,
-      rarity: "legendary",
-    },
-    {
-      id: 8,
-      icon: "🎬",
-      name: "Video Star",
-      description: "Create a video with over 10K views",
-      earned: true,
-      earnedDate: "January 10, 2024",
-      rarity: "epic",
     },
   ];
 
@@ -130,15 +84,15 @@ export default function GamificationPage() {
       name: "Coffee Voucher",
       pointsCost: 100,
       available: true,
-      icon: "☕",
-      description: "Free coffee at clinic café",
+      icon: "coffee",
+      description: "Free coffee at clinic cafe",
     },
     {
       id: 2,
       name: "Extra Day Off",
       pointsCost: 500,
       available: true,
-      icon: "🏖️",
+      icon: "palmtree",
       description: "One extra day of paid leave",
     },
     {
@@ -146,7 +100,7 @@ export default function GamificationPage() {
       name: "Team Lunch",
       pointsCost: 300,
       available: true,
-      icon: "🍽️",
+      icon: "utensils",
       description: "Lunch treat for your team",
     },
     {
@@ -154,24 +108,8 @@ export default function GamificationPage() {
       name: "Tech Gadget",
       pointsCost: 1000,
       available: false,
-      icon: "🎧",
+      icon: "headphones",
       description: "Premium headphones or accessories",
-    },
-    {
-      id: 5,
-      name: "Training Course",
-      pointsCost: 400,
-      available: true,
-      icon: "📚",
-      description: "Online course of your choice",
-    },
-    {
-      id: 6,
-      name: "Spa Voucher",
-      pointsCost: 600,
-      available: true,
-      icon: "💆",
-      description: "Relaxing spa treatment",
     },
   ];
 
@@ -201,430 +139,324 @@ export default function GamificationPage() {
     }
   };
 
-  const userPoints = 450;
+  const getIconDisplay = (iconName: string) => {
+    const iconMap: Record<string, string> = {
+      trophy: "🏆",
+      target: "🎯",
+      zap: "⚡",
+      lightbulb: "💡",
+      palette: "🎨",
+      star: "🌟",
+      video: "🎬",
+      edit: "📝",
+      coffee: "☕",
+      palmtree: "🏖️",
+      utensils: "🍽️",
+      headphones: "🎧",
+    };
+    return iconMap[iconName] || "⭐";
+  };
 
-  return (
+  const renderLeaderboard = () => (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-semibold mb-1">Leaderboard & Achievements</h1>
-        <p className="text-muted-foreground">
-          Gamification system to motivate and reward team performance
-        </p>
+      <div className="flex items-center justify-between">
+        <h2 className="text-xl font-semibold">Leaderboard</h2>
+        <Tabs defaultValue="this-month">
+          <TabsList>
+            <TabsTrigger value="this-week">This Week</TabsTrigger>
+            <TabsTrigger value="this-month">This Month</TabsTrigger>
+            <TabsTrigger value="all-time">All Time</TabsTrigger>
+          </TabsList>
+        </Tabs>
       </div>
 
-      <Tabs defaultValue="leaderboard">
-        <TabsList>
-          <TabsTrigger value="leaderboard">
-            <Trophy className="w-4 h-4 mr-2" />
-            Leaderboard
-          </TabsTrigger>
-          <TabsTrigger value="achievements">
-            <Award className="w-4 h-4 mr-2" />
-            Achievements
-          </TabsTrigger>
-          <TabsTrigger value="rewards">
-            <Gift className="w-4 h-4 mr-2" />
-            Rewards
-          </TabsTrigger>
-        </TabsList>
+      {/* Top 3 Podium */}
+      <Card className="bg-gradient-to-br from-primary/5 to-accent/5">
+        <CardContent className="p-8">
+          <div className="flex items-end justify-center gap-4">
+            {/* 2nd Place */}
+            <div className="flex flex-col items-center">
+              <div className="text-4xl mb-2">🥈</div>
+              <div className="w-24 h-24 bg-gradient-to-br from-gray-300 to-gray-400 rounded-full flex items-center justify-center mb-2">
+                <span className="text-2xl font-bold text-white">{leaderboard[1].name.split(" ")[0]}</span>
+              </div>
+              <div className="text-center">
+                <div className="font-semibold">{leaderboard[1].name}</div>
+                <div className="text-2xl font-bold text-primary">{leaderboard[1].points}</div>
+                <div className="text-sm text-muted-foreground">points</div>
+              </div>
+            </div>
 
-        <TabsContent value="leaderboard" className="space-y-6">
-          <div className="flex items-center justify-between">
-            <h2 className="text-lg font-semibold">Team Rankings</h2>
-            <Select defaultValue="this-month">
-              <SelectTrigger className="w-[150px]">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="this-week">This Week</SelectItem>
-                <SelectItem value="this-month">This Month</SelectItem>
-                <SelectItem value="all-time">All Time</SelectItem>
-              </SelectContent>
-            </Select>
+            {/* 1st Place */}
+            <div className="flex flex-col items-center -mt-8">
+              <div className="text-5xl mb-2">🥇</div>
+              <div className="w-32 h-32 bg-gradient-to-br from-yellow-400 to-yellow-600 rounded-full flex items-center justify-center mb-2 shadow-lg">
+                <span className="text-3xl font-bold text-white">{leaderboard[0].name.split(" ")[0]}</span>
+              </div>
+              <div className="text-center">
+                <div className="font-semibold text-lg">{leaderboard[0].name}</div>
+                <div className="text-3xl font-bold text-primary">{leaderboard[0].points}</div>
+                <div className="text-sm text-muted-foreground">points</div>
+              </div>
+            </div>
+
+            {/* 3rd Place */}
+            <div className="flex flex-col items-center">
+              <div className="text-4xl mb-2">🥉</div>
+              <div className="w-24 h-24 bg-gradient-to-br from-amber-600 to-amber-800 rounded-full flex items-center justify-center mb-2">
+                <span className="text-2xl font-bold text-white">{leaderboard[2].name.split(" ")[0]}</span>
+              </div>
+              <div className="text-center">
+                <div className="font-semibold">{leaderboard[2].name}</div>
+                <div className="text-2xl font-bold text-primary">{leaderboard[2].points}</div>
+                <div className="text-sm text-muted-foreground">points</div>
+              </div>
+            </div>
           </div>
+        </CardContent>
+      </Card>
 
-          {/* Top 3 Podium */}
-          <Card>
-            <CardContent className="p-6">
-              <div className="grid grid-cols-3 gap-4 mb-6">
-                {/* 2nd Place */}
-                <div className="text-center pt-8">
-                  <div className="inline-flex items-center justify-center w-20 h-20 rounded-full bg-gray-200 text-gray-700 font-bold text-2xl mb-2">
-                    #2
-                  </div>
-                  <h3 className="font-semibold">{teamMembers[1].name}</h3>
-                  <p className="text-sm text-muted-foreground">
-                    {teamMembers[1].role}
-                  </p>
-                  <p className="text-lg font-bold text-primary mt-2">
-                    {teamMembers[1].points} pts
-                  </p>
-                </div>
-
-                {/* 1st Place */}
-                <div className="text-center">
-                  <div className="inline-flex items-center justify-center w-24 h-24 rounded-full bg-gradient-to-br from-yellow-400 to-orange-500 text-white font-bold text-3xl mb-2">
-                    #1
-                  </div>
-                  <h3 className="font-semibold text-lg">{teamMembers[0].name}</h3>
-                  <p className="text-sm text-muted-foreground">
-                    {teamMembers[0].role}
-                  </p>
-                  <p className="text-xl font-bold text-primary mt-2">
-                    {teamMembers[0].points} pts
-                  </p>
-                  <Trophy className="w-6 h-6 text-yellow-500 mx-auto mt-1" />
-                </div>
-
-                {/* 3rd Place */}
-                <div className="text-center pt-12">
-                  <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-amber-100 text-amber-700 font-bold text-xl mb-2">
-                    #3
-                  </div>
-                  <h3 className="font-semibold">{teamMembers[2].name}</h3>
-                  <p className="text-sm text-muted-foreground">
-                    {teamMembers[2].role}
-                  </p>
-                  <p className="text-lg font-bold text-primary mt-2">
-                    {teamMembers[2].points} pts
-                  </p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Full Leaderboard */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Full Rankings</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-3">
-                {teamMembers.map((member) => (
-                  <div
-                    key={member.rank}
-                    className={`flex items-center gap-4 p-4 rounded-lg ${
-                      member.rank <= 3 ? "border-2 border-primary/20" : "border"
-                    }`}
-                  >
-                    <div
-                      className={`flex items-center justify-center w-10 h-10 rounded-full font-bold ${
-                        member.rank === 1
-                          ? "bg-gradient-to-br from-yellow-400 to-orange-500 text-white"
-                          : member.rank === 2
-                          ? "bg-gray-200 text-gray-700"
-                          : member.rank === 3
-                          ? "bg-amber-100 text-amber-700"
-                          : "bg-muted text-muted-foreground"
-                      }`}
-                    >
-                      #{member.rank}
-                    </div>
-                    <div className="flex-1">
+      {/* Full Rankings */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Full Rankings</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead>
+                <tr className="border-b">
+                  <th className="text-left p-3 font-medium">Rank</th>
+                  <th className="text-left p-3 font-medium">Name</th>
+                  <th className="text-left p-3 font-medium">Role</th>
+                  <th className="text-center p-3 font-medium">Points</th>
+                  <th className="text-center p-3 font-medium">Change</th>
+                  <th className="text-left p-3 font-medium">Badges</th>
+                </tr>
+              </thead>
+              <tbody>
+                {leaderboard.map((person, index) => (
+                  <tr key={index} className={`border-b hover:bg-accent/50 ${person.rank === 3 ? "bg-accent/20" : ""}`}>
+                    <td className="p-3">
                       <div className="flex items-center gap-2">
-                        <h3 className="font-semibold">{member.name}</h3>
-                        <div className="flex gap-1">
-                          {member.badges.map((badge, i) => (
-                            <span key={i}>{badge}</span>
-                          ))}
-                        </div>
+                        {person.rank <= 3 && <Trophy className="w-5 h-5 text-yellow-500" />}
+                        <span className="font-semibold">#{person.rank}</span>
                       </div>
-                      <p className="text-sm text-muted-foreground">
-                        {member.role}
-                      </p>
-                    </div>
-                    <div className="text-right">
-                      <p className="text-2xl font-bold text-primary">
-                        {member.points}
-                      </p>
-                      <p className="text-xs text-muted-foreground">points</p>
-                    </div>
-                  </div>
+                    </td>
+                    <td className="p-3">
+                      <div className="font-medium">{person.name}</div>
+                    </td>
+                    <td className="p-3">
+                      <Badge variant="outline">{person.role}</Badge>
+                    </td>
+                    <td className="p-3 text-center">
+                      <span className="font-semibold text-primary">{person.points}</span>
+                    </td>
+                    <td className="p-3 text-center">
+                      {person.change !== 0 && (
+                        <div className={`flex items-center justify-center gap-1 ${person.change > 0 ? "text-green-500" : "text-red-500"}`}>
+                          {person.change > 0 ? <TrendingUp className="w-4 h-4" /> : <TrendingDown className="w-4 h-4" />}
+                          <span>{Math.abs(person.change)}</span>
+                        </div>
+                      )}
+                      {person.change === 0 && <span className="text-muted-foreground">-</span>}
+                    </td>
+                    <td className="p-3">
+                      <div className="flex items-center gap-1">
+                        {person.badges.map((badge, i) => (
+                          <span key={i} className="text-xl">{getIconDisplay(badge)}</span>
+                        ))}
+                      </div>
+                    </td>
+                  </tr>
                 ))}
-              </div>
-            </CardContent>
-          </Card>
+              </tbody>
+            </table>
+          </div>
+        </CardContent>
+      </Card>
 
-          {/* Point System */}
-          <Card>
-            <CardHeader>
-              <CardTitle>How to Earn Points</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                <div className="p-4 rounded-lg bg-muted/50">
-                  <div className="flex items-center gap-2 mb-2">
-                    <span className="text-2xl">✅</span>
-                    <span className="font-medium">Task Completed</span>
-                  </div>
-                  <p className="text-2xl font-bold text-primary">+10 pts</p>
-                </div>
-                <div className="p-4 rounded-lg bg-muted/50">
-                  <div className="flex items-center gap-2 mb-2">
-                    <span className="text-2xl">⚡</span>
-                    <span className="font-medium">Early Completion</span>
-                  </div>
-                  <p className="text-2xl font-bold text-primary">+5 pts</p>
-                </div>
-                <div className="p-4 rounded-lg bg-muted/50">
-                  <div className="flex items-center gap-2 mb-2">
-                    <span className="text-2xl">💡</span>
-                    <span className="font-medium">Proposal Submitted</span>
-                  </div>
-                  <p className="text-2xl font-bold text-primary">+15 pts</p>
-                </div>
-                <div className="p-4 rounded-lg bg-muted/50">
-                  <div className="flex items-center gap-2 mb-2">
-                    <span className="text-2xl">✨</span>
-                    <span className="font-medium">Proposal Approved</span>
-                  </div>
-                  <p className="text-2xl font-bold text-primary">+25 pts</p>
-                </div>
-                <div className="p-4 rounded-lg bg-muted/50">
-                  <div className="flex items-center gap-2 mb-2">
-                    <span className="text-2xl">🚀</span>
-                    <span className="font-medium">Innovation Implemented</span>
-                  </div>
-                  <p className="text-2xl font-bold text-primary">+50 pts</p>
-                </div>
-                <div className="p-4 rounded-lg bg-muted/50">
-                  <div className="flex items-center gap-2 mb-2">
-                    <span className="text-2xl">🔥</span>
-                    <span className="font-medium">7-Day Streak</span>
-                  </div>
-                  <p className="text-2xl font-bold text-primary">+20 pts</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
+      {/* Your Position Card */}
+      <Card className="border-2 border-primary">
+        <CardContent className="p-5">
+          <div className="flex items-center gap-3">
+            <Trophy className="w-8 h-8 text-primary" />
+            <div>
+              <p className="font-semibold">Your Position: Rank #3</p>
+              <p className="text-sm text-muted-foreground">You earned 380 points this month</p>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+    </div>
+  );
 
-        <TabsContent value="achievements" className="space-y-6">
-          <Card>
-            <CardHeader>
-              <div className="flex items-center justify-between">
-                <CardTitle>All Achievements</CardTitle>
-                <Badge variant="secondary">
-                  {achievements.filter((a) => a.earned).length} /{" "}
-                  {achievements.length} Earned
-                </Badge>
+  const renderAchievements = () => (
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <h2 className="text-xl font-semibold">Achievements</h2>
+        <Tabs defaultValue="my">
+          <TabsList>
+            <TabsTrigger value="my">My Achievements</TabsTrigger>
+            <TabsTrigger value="all">All Badges</TabsTrigger>
+          </TabsList>
+        </Tabs>
+      </div>
+
+      {/* Recent Achievement */}
+      {achievements.filter((a) => a.earned).length > 0 && (
+        <Card className="border-2 border-primary/50 bg-gradient-to-br from-primary/5 to-accent/5">
+          <CardContent className="p-5">
+            <div className="flex items-center gap-3">
+              <span className="text-4xl">{getIconDisplay(achievements[0].icon)}</span>
+              <div className="flex-1">
+                <div className="flex items-center gap-2 mb-1">
+                  <h3 className="font-semibold text-lg">NEW! {achievements[0].name}</h3>
+                  <Badge className={getRarityColor(achievements[0].rarity)}>
+                    {getRarityLabel(achievements[0].rarity)}
+                  </Badge>
+                </div>
+                <p className="text-sm text-muted-foreground">{achievements[0].description}</p>
+                {achievements[0].earned && (
+                  <p className="text-xs text-muted-foreground mt-1">Earned: {achievements[0].earnedDate}</p>
+                )}
               </div>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                {achievements.map((achievement) => (
-                  <Card
-                    key={achievement.id}
-                    className={`${
-                      achievement.earned ? "border-2" : "opacity-60"
-                    } ${
-                      achievement.earned ? getRarityColor(achievement.rarity) : ""
-                    }`}
-                  >
-                    <CardContent className="p-4">
-                      <div className="text-center space-y-2">
-                        <div className="text-4xl mb-2">{achievement.icon}</div>
-                        <Badge
-                          variant={achievement.earned ? "secondary" : "outline"}
-                        >
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Your Badges */}
+      <div>
+        <h3 className="font-semibold mb-3">Your Badges</h3>
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+          {achievements
+            .filter((a) => a.earned)
+            .map((achievement) => (
+              <Card key={achievement.id} className="hover:shadow-lg transition-shadow cursor-pointer">
+                <CardContent className="p-4 text-center">
+                  <div className="text-5xl mb-2">{getIconDisplay(achievement.icon)}</div>
+                  <Badge className={`${getRarityColor(achievement.rarity)} mb-2 text-xs`}>
+                    {getRarityLabel(achievement.rarity)}
+                  </Badge>
+                  <h4 className="font-semibold mb-1">{achievement.name}</h4>
+                  <p className="text-xs text-muted-foreground mb-2">{achievement.description}</p>
+                  {achievement.earned && (
+                    <p className="text-xs text-muted-foreground">Earned</p>
+                  )}
+                </CardContent>
+              </Card>
+            ))}
+        </div>
+      </div>
+
+      {/* Progress to Next Badge */}
+      <div>
+        <h3 className="font-semibold mb-3">Progress to Next Badge</h3>
+        <div className="space-y-4">
+          {achievements
+            .filter((a) => !a.earned && a.progress !== undefined)
+            .map((achievement) => (
+              <Card key={achievement.id}>
+                <CardContent className="p-5">
+                  <div className="flex items-start gap-4">
+                    <div className="text-4xl opacity-50">{getIconDisplay(achievement.icon)}</div>
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2 mb-2">
+                        <h4 className="font-semibold">{achievement.name}</h4>
+                        <Badge variant="outline" className="text-xs">
                           {getRarityLabel(achievement.rarity)}
                         </Badge>
-                        <h3
-                          className={`font-semibold ${
-                            achievement.earned ? "text-white" : ""
-                          }`}
-                        >
-                          {achievement.name}
-                        </h3>
-                        <p
-                          className={`text-sm ${
-                            achievement.earned
-                              ? "text-white/90"
-                              : "text-muted-foreground"
-                          }`}
-                        >
-                          {achievement.description}
-                        </p>
-                        {achievement.earned && (
-                          <p className="text-xs text-white/80">
-                            ✓ Earned {achievement.earnedDate}
-                          </p>
-                        )}
-                        {!achievement.earned &&
-                          achievement.progress !== undefined && (
-                            <div className="space-y-1">
-                              <Progress
-                                value={
-                                  (achievement.progress / achievement.total!) *
-                                  100
-                                }
-                                className="h-2"
-                              />
-                              <p className="text-xs text-muted-foreground">
-                                Progress: {achievement.progress} /{" "}
-                                {achievement.total}
-                              </p>
-                            </div>
-                          )}
                       </div>
-                    </CardContent>
-                  </Card>
-                ))}
+                      <p className="text-sm text-muted-foreground mb-3">{achievement.description}</p>
+                      <div className="space-y-1">
+                        <div className="flex items-center justify-between text-sm">
+                          <span>Progress</span>
+                          <span className="font-medium">
+                            {achievement.progress}/{achievement.total}
+                          </span>
+                        </div>
+                        <Progress value={(achievement.progress! / achievement.total!) * 100} className="h-2" />
+                        <p className="text-xs text-muted-foreground">
+                          {achievement.total! - achievement.progress!} more to unlock
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+        </div>
+      </div>
+    </div>
+  );
+
+  const renderRewards = () => (
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-xl font-semibold">Rewards</h2>
+          <p className="text-sm text-muted-foreground">Exchange your points for rewards</p>
+        </div>
+        <Card className="border-2 border-primary">
+          <CardContent className="p-4">
+            <div className="text-center">
+              <p className="text-sm text-muted-foreground">Your Points</p>
+              <p className="text-3xl font-bold text-primary">450</p>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        {rewards.map((reward) => (
+          <Card key={reward.id} className={reward.available ? "" : "opacity-50"}>
+            <CardContent className="p-5">
+              <div className="text-center">
+                <div className="text-5xl mb-3">{getIconDisplay(reward.icon)}</div>
+                <h3 className="font-semibold mb-1">{reward.name}</h3>
+                <p className="text-sm text-muted-foreground mb-3">{reward.description}</p>
+                <div className="flex items-center justify-center gap-2 mb-3">
+                  <Star className="w-5 h-5 text-yellow-500" />
+                  <span className="text-xl font-bold text-primary">{reward.pointsCost}</span>
+                  <span className="text-sm text-muted-foreground">points</span>
+                </div>
+                {reward.available ? (
+                  <Badge variant="default" className="w-full justify-center py-2">
+                    Redeem
+                  </Badge>
+                ) : (
+                  <Badge variant="secondary" className="w-full justify-center py-2">
+                    Not Enough Points
+                  </Badge>
+                )}
               </div>
             </CardContent>
           </Card>
+        ))}
+      </div>
+    </div>
+  );
 
-          {/* Achievement Categories */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-base">Performance</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <ul className="space-y-2 text-sm">
-                  <li className="flex items-center gap-2">
-                    <span>🏆</span> Task Master - 50 tasks
-                  </li>
-                  <li className="flex items-center gap-2">
-                    <span>⚡</span> Speed Demon - 10 early
-                  </li>
-                  <li className="flex items-center gap-2">
-                    <span>🔥</span> Streak Master - 30 days
-                  </li>
-                </ul>
-              </CardContent>
-            </Card>
+  return (
+    <div className="p-6">
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
+        <TabsList>
+          <TabsTrigger value="leaderboard">Leaderboard</TabsTrigger>
+          <TabsTrigger value="achievements">Achievements</TabsTrigger>
+          <TabsTrigger value="rewards">Rewards</TabsTrigger>
+        </TabsList>
 
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-base">Innovation</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <ul className="space-y-2 text-sm">
-                  <li className="flex items-center gap-2">
-                    <span>💡</span> Idea Machine - 3 ideas
-                  </li>
-                  <li className="flex items-center gap-2">
-                    <span>🎨</span> Creative Master - 5 viral
-                  </li>
-                  <li className="flex items-center gap-2">
-                    <span>🌟</span> Trendsetter - new format
-                  </li>
-                </ul>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-base">Collaboration</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <ul className="space-y-2 text-sm">
-                  <li className="flex items-center gap-2">
-                    <span>🌟</span> Team Player - 10 ratings
-                  </li>
-                  <li className="flex items-center gap-2">
-                    <span>🤝</span> Bridge Builder - collab
-                  </li>
-                  <li className="flex items-center gap-2">
-                    <span>💬</span> Mentor - 20 reviews
-                  </li>
-                </ul>
-              </CardContent>
-            </Card>
-          </div>
+        <TabsContent value="leaderboard">
+          {renderLeaderboard()}
         </TabsContent>
 
-        <TabsContent value="rewards" className="space-y-6">
-          <Card className="border-2 border-primary/20">
-            <CardContent className="p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-muted-foreground">
-                    Your Available Points
-                  </p>
-                  <p className="text-3xl font-bold text-primary">{userPoints}</p>
-                </div>
-                <Trophy className="w-12 h-12 text-amber-500" />
-              </div>
-            </CardContent>
-          </Card>
+        <TabsContent value="achievements">
+          {renderAchievements()}
+        </TabsContent>
 
-          <Card>
-            <CardHeader>
-              <CardTitle>Redeem Rewards</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {rewards.map((reward) => (
-                  <Card
-                    key={reward.id}
-                    className={!reward.available ? "opacity-50" : ""}
-                  >
-                    <CardContent className="p-6">
-                      <div className="text-center space-y-3">
-                        <div className="text-5xl">{reward.icon}</div>
-                        <h3 className="font-semibold">{reward.name}</h3>
-                        <p className="text-sm text-muted-foreground">
-                          {reward.description}
-                        </p>
-                        <Badge variant="secondary" className="text-lg">
-                          {reward.pointsCost} points
-                        </Badge>
-                        <Button
-                          className="w-full"
-                          disabled={
-                            !reward.available || reward.pointsCost > userPoints
-                          }
-                        >
-                          {!reward.available
-                            ? "Out of Stock"
-                            : reward.pointsCost > userPoints
-                            ? "Not Enough Points"
-                            : "Redeem"}
-                        </Button>
-                      </div>
-                    </CardContent>
-                  </Card>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Redemption History */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Redemption History</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-3">
-                <div className="flex items-center justify-between p-3 rounded-lg bg-muted/50">
-                  <div className="flex items-center gap-3">
-                    <span className="text-2xl">☕</span>
-                    <div>
-                      <p className="font-medium">Coffee Voucher</p>
-                      <p className="text-sm text-muted-foreground">
-                        December 15, 2023
-                      </p>
-                    </div>
-                  </div>
-                  <Badge variant="outline">-100 pts</Badge>
-                </div>
-                <div className="flex items-center justify-between p-3 rounded-lg bg-muted/50">
-                  <div className="flex items-center gap-3">
-                    <span className="text-2xl">🍽️</span>
-                    <div>
-                      <p className="font-medium">Team Lunch</p>
-                      <p className="text-sm text-muted-foreground">
-                        November 20, 2023
-                      </p>
-                    </div>
-                  </div>
-                  <Badge variant="outline">-300 pts</Badge>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+        <TabsContent value="rewards">
+          {renderRewards()}
         </TabsContent>
       </Tabs>
     </div>

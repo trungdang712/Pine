@@ -17,16 +17,40 @@ interface AuthState {
   user: User | null;
   profile: UserProfile | null;
   loading: boolean;
+  isDemoMode: boolean;
 }
+
+const DEMO_PROFILE: UserProfile = {
+  id: "demo-user",
+  email: "demo@greenfield.clinic",
+  name: "Demo User",
+  avatar: null,
+  team: "marketing",
+  role: "marketing_manager",
+};
 
 export function useAuth() {
   const [state, setState] = useState<AuthState>({
     user: null,
     profile: null,
     loading: true,
+    isDemoMode: false,
   });
 
   useEffect(() => {
+    // Check for demo mode first
+    const isDemoMode = typeof window !== "undefined" && localStorage.getItem("demo_mode") === "true";
+
+    if (isDemoMode) {
+      setState({
+        user: { id: "demo-user" } as User,
+        profile: DEMO_PROFILE,
+        loading: false,
+        isDemoMode: true,
+      });
+      return;
+    }
+
     const supabase = createClient();
 
     // Get initial session
@@ -44,9 +68,10 @@ export function useAuth() {
           user,
           profile: profile as UserProfile | null,
           loading: false,
+          isDemoMode: false,
         });
       } else {
-        setState({ user: null, profile: null, loading: false });
+        setState({ user: null, profile: null, loading: false, isDemoMode: false });
       }
     };
 
@@ -66,9 +91,10 @@ export function useAuth() {
             user: session.user,
             profile: profile as UserProfile | null,
             loading: false,
+            isDemoMode: false,
           });
         } else {
-          setState({ user: null, profile: null, loading: false });
+          setState({ user: null, profile: null, loading: false, isDemoMode: false });
         }
       }
     );
@@ -79,6 +105,10 @@ export function useAuth() {
   }, []);
 
   const signOut = async () => {
+    // Clear demo mode
+    if (typeof window !== "undefined") {
+      localStorage.removeItem("demo_mode");
+    }
     const supabase = createClient();
     await supabase.auth.signOut();
     window.location.href = "/login";
@@ -87,6 +117,6 @@ export function useAuth() {
   return {
     ...state,
     signOut,
-    isAuthenticated: !!state.user,
+    isAuthenticated: !!state.user || state.isDemoMode,
   };
 }

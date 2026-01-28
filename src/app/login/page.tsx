@@ -124,6 +124,29 @@ export default function LoginPage() {
             <Button type="submit" className="w-full" disabled={loading}>
               {loading ? "Signing in..." : "Sign In"}
             </Button>
+
+            <div className="relative my-4">
+              <div className="absolute inset-0 flex items-center">
+                <span className="w-full border-t" />
+              </div>
+              <div className="relative flex justify-center text-xs uppercase">
+                <span className="bg-card px-2 text-muted-foreground">Or</span>
+              </div>
+            </div>
+
+            <Button
+              type="button"
+              variant="outline"
+              className="w-full"
+              onClick={() => {
+                // Set demo mode in localStorage and redirect
+                localStorage.setItem("demo_mode", "true");
+                router.push("/");
+                router.refresh();
+              }}
+            >
+              Continue in Demo Mode
+            </Button>
           </form>
         </CardContent>
       </Card>

@@ -52,6 +52,8 @@ model User {
   alerts                UserAlert[]
   budgetsCreated        MonthlyBudget[]   @relation("BudgetCreator")
   budgetsApproved       MonthlyBudget[]   @relation("BudgetApprover")
+  redditPosts           RedditPost[]
+  redditNotifications   RedditNotificationConfig[]
 }
 
 model UserAlert {
@@ -777,4 +779,74 @@ model SyncLog {
   errorMessage String?
   startedAt DateTime @default(now())
   completedAt DateTime?
+}
+
+// ==================== REDDIT MONITORING ====================
+
+// Reddit monitoring configuration
+model RedditMonitorConfig {
+  id          String   @id @default(cuid())
+  subreddit   String   // e.g., "dentistry", "medicaltourism"
+  keywords    String   // JSON array of keywords
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@unique([subreddit])
+}
+
+// Captured Reddit posts
+model RedditPost {
+  id            String   @id @default(cuid())
+  redditId      String   @unique // Reddit's post ID
+  subreddit     String
+  title         String
+  content       String   // SQLite doesn't have @db.Text, use String
+  author        String
+  url           String
+  score         Int
+  numComments   Int
+  createdUtc    DateTime
+
+  // AI Analysis
+  intent        String?  // e.g., "seeking_dentist", "price_inquiry"
+  sentiment     String?  // positive, neutral, negative
+  leadScore     Int?     // 0-100
+  keySignals    String?  // JSON array
+  aiNotes       String?  // AI analysis notes
+  suggestedResponse String? // AI suggested response
+
+  // Status tracking
+  status        String   @default("new") // new, reviewed, responded, ignored
+  respondedAt   DateTime?
+  respondedBy   String?
+  responseUrl   String?  // Link to our response
+
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  // Relations
+  userId        String?
+  user          User?    @relation(fields: [userId], references: [id])
+
+  @@index([status])
+  @@index([subreddit])
+  @@index([leadScore])
+  @@index([createdUtc])
+}
+
+// Notification settings for Reddit monitoring
+model RedditNotificationConfig {
+  id           String   @id @default(cuid())
+  userId       String
+  type         String   // "email", "telegram"
+  endpoint     String   // email address or telegram chat id
+  minLeadScore Int      @default(70) // Only notify for high-score leads
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
 }

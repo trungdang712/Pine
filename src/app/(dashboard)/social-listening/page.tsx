@@ -48,10 +48,11 @@ import {
   Send,
   Loader2,
   Trophy,
+  RefreshCw,
+  Settings,
+  AlertTriangle,
 } from "lucide-react";
 import {
-  LineChart,
-  Line,
   PieChart,
   Pie,
   Cell,
@@ -68,14 +69,43 @@ import {
   PolarAngleAxis,
   PolarRadiusAxis,
   Radar,
+  BarChart,
+  Bar,
 } from "recharts";
+import { trpc } from "@/lib/trpc";
 
 export default function SocialListeningPage() {
   const [selectedLeadFilter, setSelectedLeadFilter] = useState("all");
-  const [aiScanningStatus, setAiScanningStatus] = useState<
-    "idle" | "scanning" | "complete"
-  >("idle");
+  const [selectedSubreddit, setSelectedSubreddit] = useState("all");
+  const [searchQuery, setSearchQuery] = useState("");
 
+  // tRPC queries for Reddit data
+  const { data: redditStats, isLoading: statsLoading } =
+    trpc.reddit.getStats.useQuery();
+
+  const { data: redditPosts, isLoading: postsLoading, refetch: refetchPosts } =
+    trpc.reddit.getPosts.useQuery({
+      status: selectedLeadFilter === "all" ? undefined : selectedLeadFilter as "new" | "reviewed" | "responded" | "ignored",
+      subreddit: selectedSubreddit === "all" ? undefined : selectedSubreddit,
+      search: searchQuery || undefined,
+      limit: 20,
+    });
+
+  const { data: subreddits } = trpc.reddit.getSubreddits.useQuery();
+
+  const refreshMutation = trpc.reddit.refreshPosts.useMutation({
+    onSuccess: () => {
+      refetchPosts();
+    },
+  });
+
+  const updateStatusMutation = trpc.reddit.updatePostStatus.useMutation({
+    onSuccess: () => {
+      refetchPosts();
+    },
+  });
+
+  // Mock data for other tabs (keeping existing functionality)
   const sentimentTrendData = [
     { date: "T2", positive: 145, neutral: 78, negative: 23 },
     { date: "T3", positive: 167, neutral: 82, negative: 19 },
@@ -121,6 +151,13 @@ export default function SocialListeningPage() {
       sentiment: 4.4,
       trend: 5.2,
       icon: "⭐",
+    },
+    {
+      platform: "Reddit",
+      mentions: redditStats?.totalPosts ?? 0,
+      sentiment: 4.0,
+      trend: redditStats?.postsLast24h ?? 0,
+      icon: "🔴",
     },
   ];
 
@@ -293,99 +330,6 @@ export default function SocialListeningPage() {
     },
   ];
 
-  const leadOpportunities = [
-    {
-      id: 1,
-      platform: "Facebook Group",
-      groupName: "Hội phụ huynh Q7",
-      author: "Trần Thị Lan",
-      authorAvatar: "👩",
-      location: "Quận 7, TP.HCM",
-      content:
-        "Các mẹ ơi, con mình 12 tuổi răng hô và khấp khểnh quá. Có nha khoa nào ở Q7 uy tín niềng răng cho trẻ em không ạ? Giá khoảng bao nhiêu các mẹ?",
-      timestamp: "15 phút trước",
-      intent: "Tìm kiếm dịch vụ niềng răng",
-      leadScore: 95,
-      priority: "hot",
-      signals: ["Hỏi giá", "Tìm nha khoa", "Có nhu cầu cụ thể", "Khu vực gần"],
-      demographics: { age: "35-40", income: "Trung bình", location: "Quận 7" },
-      suggestedAction:
-        "Comment giới thiệu dịch vụ niềng răng trẻ em + case study + ưu đãi",
-      estimatedValue: "45-60 triệu",
-      status: "new",
-      aiNotes:
-        "High intent - Đang tích cực tìm kiếm trong khu vực. Nhấn mạnh chuyên môn niềng răng trẻ em và location Q7.",
-    },
-    {
-      id: 2,
-      platform: "Zalo Community",
-      groupName: "Cư dân Sunrise City",
-      author: "Nguyễn Văn Minh",
-      authorAvatar: "👨",
-      location: "Quận 7, TP.HCM",
-      content:
-        "Mình đang bị đau răng cấm dữ lắm, có bác sĩ nào giỏi nhổ răng khôn không? Ai có kinh nghiệm chỉ mình với.",
-      timestamp: "32 phút trước",
-      intent: "Cần nhổ răng khôn gấp",
-      leadScore: 92,
-      priority: "hot",
-      signals: ["Nhu cầu khẩn cấp", "Đau răng", "Tìm bác sĩ", "Khu vực gần"],
-      demographics: {
-        age: "25-35",
-        income: "Cao",
-        location: "Sunrise City Q7",
-      },
-      suggestedAction:
-        "DM ngay với thông tin bác sĩ + slot khẩn cấp + công nghệ không đau",
-      estimatedValue: "3-5 triệu",
-      status: "new",
-      aiNotes:
-        "Urgent need - Nên contact trong 1 giờ. Nhấn mạnh công nghệ nhổ răng không đau và có thể đặt lịch gấp.",
-    },
-    {
-      id: 3,
-      platform: "Facebook",
-      groupName: "Hội chị em văn phòng",
-      author: "Lê Thu Hà",
-      authorAvatar: "👩‍💼",
-      location: "Quận 1, TP.HCM",
-      content:
-        "Sắp cưới rồi muốn tẩy trắng răng cho đẹp. Chị em có chỗ nào uy tín không, giá tầm 3-5 triệu. Cần kết quả nhanh trong 2 tuần nữa.",
-      timestamp: "1 giờ trước",
-      intent: "Tẩy trắng răng cho sự kiện",
-      leadScore: 88,
-      priority: "warm",
-      signals: [
-        "Budget rõ ràng",
-        "Deadline cụ thể",
-        "Sự kiện quan trọng",
-        "Sẵn sàng chi tiền",
-      ],
-      demographics: {
-        age: "25-30",
-        income: "Trung bình-Cao",
-        location: "Quận 1",
-      },
-      suggestedAction:
-        "Comment với case study cô dâu + before/after + công nghệ Zoom 1 giờ",
-      estimatedValue: "4-6 triệu",
-      status: "engaging",
-      aiNotes:
-        "Time-sensitive - Nhấn mạnh kết quả nhanh (1 session), before/after của cô dâu, và đặt lịch ngay.",
-    },
-  ];
-
-  const leadStats = {
-    total: leadOpportunities.length,
-    hot: leadOpportunities.filter((l) => l.priority === "hot").length,
-    warm: leadOpportunities.filter((l) => l.priority === "warm").length,
-    new: leadOpportunities.filter((l) => l.status === "new").length,
-    engaging: leadOpportunities.filter((l) => l.status === "engaging").length,
-    totalValue: "240-380 triệu",
-    avgResponseTime: "18 phút",
-    conversionRate: "34%",
-  };
-
   const influencerMentions = [
     {
       name: "Dr. Beauty Tips",
@@ -412,14 +356,6 @@ export default function SocialListeningPage() {
       sentiment: "positive",
     },
   ];
-
-  const handleAiScan = () => {
-    setAiScanningStatus("scanning");
-    setTimeout(() => {
-      setAiScanningStatus("complete");
-      setTimeout(() => setAiScanningStatus("idle"), 3000);
-    }, 3000);
-  };
 
   const getSentimentIcon = (sentiment: string) => {
     switch (sentiment) {
@@ -455,25 +391,49 @@ export default function SocialListeningPage() {
     }
   };
 
-  const getPriorityBadge = (priority: string) => {
-    if (priority === "hot") {
+  const getPriorityBadge = (score: number | null) => {
+    if (!score) return null;
+    if (score >= 70) {
       return (
         <Badge variant="destructive" className="gap-1">
           🔥 Hot Lead
         </Badge>
       );
     }
+    if (score >= 40) {
+      return (
+        <Badge variant="secondary" className="gap-1 bg-orange-100 text-orange-700">
+          💡 Warm Lead
+        </Badge>
+      );
+    }
     return (
       <Badge variant="secondary" className="gap-1">
-        💡 Warm Lead
+        📊 Low Score
       </Badge>
     );
   };
 
-  const getLeadScoreColor = (score: number) => {
-    if (score >= 90) return "text-red-500";
-    if (score >= 80) return "text-orange-500";
+  const getLeadScoreColor = (score: number | null) => {
+    if (!score) return "text-gray-500";
+    if (score >= 70) return "text-red-500";
+    if (score >= 40) return "text-orange-500";
     return "text-yellow-500";
+  };
+
+  const getStatusBadge = (status: string) => {
+    switch (status) {
+      case "new":
+        return <Badge variant="default">New</Badge>;
+      case "reviewed":
+        return <Badge variant="secondary">Reviewed</Badge>;
+      case "responded":
+        return <Badge className="bg-green-100 text-green-700">Responded</Badge>;
+      case "ignored":
+        return <Badge variant="outline">Ignored</Badge>;
+      default:
+        return <Badge variant="outline">{status}</Badge>;
+    }
   };
 
   const responseMetrics = {
@@ -482,6 +442,14 @@ export default function SocialListeningPage() {
     totalResponses: 387,
     pendingResponses: 12,
   };
+
+  // Convert subreddit stats to chart data
+  const subredditChartData = Object.entries(redditStats?.postsBySubreddit ?? {})
+    .map(([subreddit, count]) => ({
+      name: `r/${subreddit}`,
+      posts: count,
+    }))
+    .slice(0, 6);
 
   return (
     <div className="space-y-6">
@@ -493,8 +461,17 @@ export default function SocialListeningPage() {
         </p>
       </div>
 
-      <Tabs defaultValue="overview" className="space-y-6">
+      <Tabs defaultValue="reddit" className="space-y-6">
         <TabsList className="flex-wrap">
+          <TabsTrigger value="reddit">
+            <Bot className="w-4 h-4 mr-2" />
+            Reddit Leads
+            {redditStats && redditStats.newPosts > 0 && (
+              <Badge variant="destructive" className="ml-2">
+                {redditStats.newPosts}
+              </Badge>
+            )}
+          </TabsTrigger>
           <TabsTrigger value="overview">
             <Activity className="w-4 h-4 mr-2" />
             Tổng Quan
@@ -511,20 +488,395 @@ export default function SocialListeningPage() {
             <Target className="w-4 h-4 mr-2" />
             Competitors
           </TabsTrigger>
-          <TabsTrigger value="leads">
-            <Bot className="w-4 h-4 mr-2" />
-            AI Lead Detection
-            {leadStats.new > 0 && (
-              <Badge variant="destructive" className="ml-2">
-                {leadStats.new}
-              </Badge>
-            )}
-          </TabsTrigger>
           <TabsTrigger value="influencers">
             <Star className="w-4 h-4 mr-2" />
             Influencers
           </TabsTrigger>
         </TabsList>
+
+        {/* Reddit Leads Tab - NEW */}
+        <TabsContent value="reddit" className="space-y-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <h2 className="text-xl font-semibold flex items-center gap-2">
+                <Bot className="w-6 h-6 text-primary" />
+                Reddit Lead Detection
+              </h2>
+              <p className="text-sm text-muted-foreground">
+                AI-powered monitoring of dental tourism discussions on Reddit
+              </p>
+            </div>
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                onClick={() => refreshMutation.mutate()}
+                disabled={refreshMutation.isPending}
+              >
+                {refreshMutation.isPending ? (
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                ) : (
+                  <RefreshCw className="w-4 h-4 mr-2" />
+                )}
+                Refresh
+              </Button>
+            </div>
+          </div>
+
+          {/* Stats Cards */}
+          <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+            <Card>
+              <CardContent className="p-4">
+                <div className="flex items-center justify-between mb-2">
+                  <p className="text-sm text-muted-foreground">Total Posts</p>
+                  <Target className="w-4 h-4 text-muted-foreground" />
+                </div>
+                <p className="text-2xl font-bold">
+                  {statsLoading ? "-" : redditStats?.totalPosts ?? 0}
+                </p>
+                <p className="text-xs text-muted-foreground mt-1">All time</p>
+              </CardContent>
+            </Card>
+
+            <Card className="border-2 border-red-200">
+              <CardContent className="p-4">
+                <div className="flex items-center justify-between mb-2">
+                  <p className="text-sm text-muted-foreground">New Leads</p>
+                  <Zap className="w-4 h-4 text-red-500" />
+                </div>
+                <p className="text-2xl font-bold text-red-500">
+                  {statsLoading ? "-" : redditStats?.newPosts ?? 0}
+                </p>
+                <p className="text-xs text-red-600 mt-1">Needs attention</p>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardContent className="p-4">
+                <div className="flex items-center justify-between mb-2">
+                  <p className="text-sm text-muted-foreground">High Score</p>
+                  <Activity className="w-4 h-4 text-muted-foreground" />
+                </div>
+                <p className="text-2xl font-bold text-orange-500">
+                  {statsLoading ? "-" : redditStats?.highScoreCount ?? 0}
+                </p>
+                <p className="text-xs text-muted-foreground mt-1">Score 70+</p>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardContent className="p-4">
+                <div className="flex items-center justify-between mb-2">
+                  <p className="text-sm text-muted-foreground">Avg Score</p>
+                  <DollarSign className="w-4 h-4 text-muted-foreground" />
+                </div>
+                <p className="text-lg font-bold text-primary">
+                  {statsLoading ? "-" : redditStats?.avgLeadScore ?? 0}/100
+                </p>
+                <p className="text-xs text-muted-foreground mt-1">Lead quality</p>
+              </CardContent>
+            </Card>
+
+            <Card className="border-2 border-green-200">
+              <CardContent className="p-4">
+                <div className="flex items-center justify-between mb-2">
+                  <p className="text-sm text-muted-foreground">Responded</p>
+                  <CheckCircle className="w-4 h-4 text-green-600" />
+                </div>
+                <p className="text-2xl font-bold text-green-600">
+                  {statsLoading ? "-" : redditStats?.respondedPosts ?? 0}
+                </p>
+                <p className="text-xs text-green-600 mt-1">Engaged</p>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Subreddit Distribution Chart */}
+          {subredditChartData.length > 0 && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-base">Posts by Subreddit</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <ResponsiveContainer width="100%" height={200}>
+                  <BarChart data={subredditChartData}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis dataKey="name" tick={{ fontSize: 12 }} />
+                    <YAxis />
+                    <Tooltip />
+                    <Bar dataKey="posts" fill="#0d9488" radius={[4, 4, 0, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Filters */}
+          <div className="flex items-center gap-4">
+            <Input
+              placeholder="Search posts..."
+              className="flex-1 max-w-sm"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+            />
+            <Select value={selectedLeadFilter} onValueChange={setSelectedLeadFilter}>
+              <SelectTrigger className="w-[180px]">
+                <SelectValue placeholder="Status" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Status</SelectItem>
+                <SelectItem value="new">New</SelectItem>
+                <SelectItem value="reviewed">Reviewed</SelectItem>
+                <SelectItem value="responded">Responded</SelectItem>
+                <SelectItem value="ignored">Ignored</SelectItem>
+              </SelectContent>
+            </Select>
+            <Select value={selectedSubreddit} onValueChange={setSelectedSubreddit}>
+              <SelectTrigger className="w-[180px]">
+                <SelectValue placeholder="Subreddit" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Subreddits</SelectItem>
+                {subreddits?.map((s) => (
+                  <SelectItem key={s.subreddit} value={s.subreddit}>
+                    r/{s.subreddit} ({s.count})
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          {/* Posts List */}
+          {postsLoading ? (
+            <div className="flex items-center justify-center py-12">
+              <Loader2 className="w-8 h-8 animate-spin text-primary" />
+            </div>
+          ) : !redditPosts?.posts?.length ? (
+            <Card>
+              <CardContent className="p-12 text-center">
+                <Bot className="w-12 h-12 mx-auto text-muted-foreground mb-4" />
+                <h3 className="text-lg font-semibold mb-2">No Reddit Posts Yet</h3>
+                <p className="text-muted-foreground mb-4">
+                  Click &quot;Refresh&quot; to fetch new posts from monitored subreddits,
+                  or configure monitoring in settings.
+                </p>
+                <Button
+                  onClick={() => refreshMutation.mutate()}
+                  disabled={refreshMutation.isPending}
+                >
+                  {refreshMutation.isPending ? (
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  ) : (
+                    <RefreshCw className="w-4 h-4 mr-2" />
+                  )}
+                  Fetch Posts Now
+                </Button>
+              </CardContent>
+            </Card>
+          ) : (
+            <div className="space-y-4">
+              {redditPosts.posts.map((post) => (
+                <Card
+                  key={post.id}
+                  className={`${
+                    (post.leadScore ?? 0) >= 70
+                      ? "border-l-4 border-l-red-500"
+                      : (post.leadScore ?? 0) >= 40
+                        ? "border-l-4 border-l-orange-400"
+                        : ""
+                  }`}
+                >
+                  <CardContent className="p-6">
+                    <div className="space-y-4">
+                      {/* Header */}
+                      <div className="flex items-start justify-between">
+                        <div className="flex items-start gap-4">
+                          <div className="w-10 h-10 rounded-full bg-orange-100 flex items-center justify-center text-orange-600 font-bold">
+                            🔴
+                          </div>
+                          <div className="flex-1">
+                            <div className="flex items-center gap-2 mb-1 flex-wrap">
+                              <Badge variant="outline" className="text-xs">
+                                r/{post.subreddit}
+                              </Badge>
+                              {getPriorityBadge(post.leadScore)}
+                              {getStatusBadge(post.status)}
+                            </div>
+                            <h3 className="font-semibold mb-1">{post.title}</h3>
+                            <div className="flex items-center gap-3 text-sm text-muted-foreground">
+                              <span>u/{post.author}</span>
+                              <span>•</span>
+                              <span className="flex items-center gap-1">
+                                <Clock className="w-3 h-3" />
+                                {new Date(post.createdUtc).toLocaleDateString()}
+                              </span>
+                              <span>•</span>
+                              <span>{post.score}↑</span>
+                              <span>•</span>
+                              <span>{post.numComments} comments</span>
+                            </div>
+                          </div>
+                        </div>
+                        <div className="text-right">
+                          <div className="flex items-center gap-2 mb-1">
+                            <span className="text-xs text-muted-foreground">
+                              Lead Score
+                            </span>
+                            <div
+                              className={`text-2xl font-bold ${getLeadScoreColor(
+                                post.leadScore
+                              )}`}
+                            >
+                              {post.leadScore ?? "-"}
+                            </div>
+                          </div>
+                          {getSentimentBadge(post.sentiment ?? "neutral")}
+                        </div>
+                      </div>
+
+                      {/* Content */}
+                      {post.content && (
+                        <div className="bg-accent/50 p-4 rounded-lg">
+                          <p className="text-sm">
+                            {post.content.length > 500
+                              ? `${post.content.substring(0, 500)}...`
+                              : post.content}
+                          </p>
+                        </div>
+                      )}
+
+                      {/* Analysis */}
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                          {post.intent && (
+                            <div>
+                              <p className="text-xs font-semibold text-muted-foreground mb-1">
+                                Intent Detected
+                              </p>
+                              <Badge className="bg-primary/10 text-primary border-primary">
+                                <Target className="w-3 h-3 mr-1" />
+                                {post.intent}
+                              </Badge>
+                            </div>
+                          )}
+
+                          {post.keySignals && post.keySignals.length > 0 && (
+                            <div>
+                              <p className="text-xs font-semibold text-muted-foreground mb-1">
+                                Key Signals
+                              </p>
+                              <div className="flex flex-wrap gap-1">
+                                {post.keySignals.map((signal, i) => (
+                                  <Badge
+                                    key={i}
+                                    variant="secondary"
+                                    className="text-xs"
+                                  >
+                                    {signal}
+                                  </Badge>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+                        </div>
+
+                        <div className="space-y-2">
+                          {post.aiNotes && (
+                            <div>
+                              <p className="text-xs font-semibold text-muted-foreground mb-1 flex items-center gap-1">
+                                <Bot className="w-3 h-3" />
+                                AI Notes
+                              </p>
+                              <p className="text-xs bg-accent/50 p-2 rounded">
+                                {post.aiNotes}
+                              </p>
+                            </div>
+                          )}
+
+                          {post.suggestedResponse && (
+                            <div>
+                              <p className="text-xs font-semibold text-muted-foreground mb-1 flex items-center gap-1">
+                                <Sparkles className="w-3 h-3" />
+                                Suggested Response
+                              </p>
+                              <p className="text-xs bg-primary/5 p-2 rounded border-l-2 border-primary max-h-24 overflow-y-auto">
+                                {post.suggestedResponse}
+                              </p>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Actions */}
+                      <div className="flex items-center gap-2 pt-3 border-t">
+                        {post.status === "new" && (
+                          <>
+                            <Button
+                              size="sm"
+                              onClick={() =>
+                                updateStatusMutation.mutate({
+                                  id: post.id,
+                                  status: "reviewed",
+                                })
+                              }
+                              disabled={updateStatusMutation.isPending}
+                            >
+                              <Eye className="w-4 h-4 mr-2" />
+                              Mark Reviewed
+                            </Button>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() =>
+                                updateStatusMutation.mutate({
+                                  id: post.id,
+                                  status: "ignored",
+                                })
+                              }
+                              disabled={updateStatusMutation.isPending}
+                            >
+                              <XCircle className="w-4 h-4 mr-2" />
+                              Ignore
+                            </Button>
+                          </>
+                        )}
+                        {post.status === "reviewed" && (
+                          <Button
+                            size="sm"
+                            onClick={() =>
+                              updateStatusMutation.mutate({
+                                id: post.id,
+                                status: "responded",
+                              })
+                            }
+                            disabled={updateStatusMutation.isPending}
+                          >
+                            <Send className="w-4 h-4 mr-2" />
+                            Mark Responded
+                          </Button>
+                        )}
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="ml-auto"
+                          asChild
+                        >
+                          <a
+                            href={post.url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                          >
+                            <ExternalLink className="w-4 h-4 mr-2" />
+                            View on Reddit
+                          </a>
+                        </Button>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          )}
+        </TabsContent>
 
         {/* Overview Tab */}
         <TabsContent value="overview" className="space-y-6">
@@ -1125,312 +1477,6 @@ export default function SocialListeningPage() {
                 </CardContent>
               </Card>
             ))}
-          </div>
-        </TabsContent>
-
-        {/* AI Lead Detection Tab */}
-        <TabsContent value="leads" className="space-y-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <h2 className="text-xl font-semibold flex items-center gap-2">
-                <Bot className="w-6 h-6 text-primary" />
-                AI Lead Detection
-              </h2>
-              <p className="text-sm text-muted-foreground">
-                AI Agent tự động quét và phát hiện lead opportunities từ social
-                media
-              </p>
-            </div>
-            <div className="flex items-center gap-2">
-              <Select
-                defaultValue="all"
-                onValueChange={setSelectedLeadFilter}
-              >
-                <SelectTrigger className="w-[180px]">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Leads</SelectItem>
-                  <SelectItem value="hot">Hot Leads Only</SelectItem>
-                  <SelectItem value="warm">Warm Leads Only</SelectItem>
-                  <SelectItem value="new">New Only</SelectItem>
-                  <SelectItem value="engaging">Engaging</SelectItem>
-                </SelectContent>
-              </Select>
-              <Button
-                onClick={handleAiScan}
-                disabled={aiScanningStatus === "scanning"}
-              >
-                {aiScanningStatus === "scanning" ? (
-                  <>
-                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                    Scanning...
-                  </>
-                ) : aiScanningStatus === "complete" ? (
-                  <>
-                    <CheckCircle className="w-4 h-4 mr-2" />
-                    Scan Complete
-                  </>
-                ) : (
-                  <>
-                    <Sparkles className="w-4 h-4 mr-2" />
-                    Run AI Scan
-                  </>
-                )}
-              </Button>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
-            <Card>
-              <CardContent className="p-4">
-                <div className="flex items-center justify-between mb-2">
-                  <p className="text-sm text-muted-foreground">Total Leads</p>
-                  <Target className="w-4 h-4 text-muted-foreground" />
-                </div>
-                <p className="text-2xl font-bold">{leadStats.total}</p>
-                <p className="text-xs text-muted-foreground mt-1">
-                  Last 24 hours
-                </p>
-              </CardContent>
-            </Card>
-
-            <Card className="border-2 border-red-200">
-              <CardContent className="p-4">
-                <div className="flex items-center justify-between mb-2">
-                  <p className="text-sm text-muted-foreground">Hot Leads</p>
-                  <Zap className="w-4 h-4 text-red-500" />
-                </div>
-                <p className="text-2xl font-bold text-red-500">
-                  {leadStats.hot}
-                </p>
-                <p className="text-xs text-red-600 mt-1">
-                  Urgent attention needed
-                </p>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardContent className="p-4">
-                <div className="flex items-center justify-between mb-2">
-                  <p className="text-sm text-muted-foreground">Warm Leads</p>
-                  <Activity className="w-4 h-4 text-muted-foreground" />
-                </div>
-                <p className="text-2xl font-bold text-orange-500">
-                  {leadStats.warm}
-                </p>
-                <p className="text-xs text-muted-foreground mt-1">
-                  Ready to engage
-                </p>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardContent className="p-4">
-                <div className="flex items-center justify-between mb-2">
-                  <p className="text-sm text-muted-foreground">Est. Value</p>
-                  <DollarSign className="w-4 h-4 text-muted-foreground" />
-                </div>
-                <p className="text-lg font-bold text-primary">
-                  {leadStats.totalValue}
-                </p>
-                <p className="text-xs text-muted-foreground mt-1">
-                  Potential revenue
-                </p>
-              </CardContent>
-            </Card>
-
-            <Card className="border-2 border-green-200">
-              <CardContent className="p-4">
-                <div className="flex items-center justify-between mb-2">
-                  <p className="text-sm text-muted-foreground">
-                    Conversion Rate
-                  </p>
-                  <TrendingUp className="w-4 h-4 text-green-600" />
-                </div>
-                <p className="text-2xl font-bold text-green-600">
-                  {leadStats.conversionRate}
-                </p>
-                <p className="text-xs text-green-600 mt-1">+8% vs last month</p>
-              </CardContent>
-            </Card>
-          </div>
-
-          <div className="space-y-4">
-            {leadOpportunities
-              .filter((lead) => {
-                if (selectedLeadFilter === "all") return true;
-                if (selectedLeadFilter === "hot")
-                  return lead.priority === "hot";
-                if (selectedLeadFilter === "warm")
-                  return lead.priority === "warm";
-                if (selectedLeadFilter === "new") return lead.status === "new";
-                if (selectedLeadFilter === "engaging")
-                  return lead.status === "engaging";
-                return true;
-              })
-              .map((lead) => (
-                <Card
-                  key={lead.id}
-                  className={`${
-                    lead.priority === "hot"
-                      ? "border-l-4 border-l-red-500"
-                      : "border-l-4 border-l-orange-400"
-                  }`}
-                >
-                  <CardContent className="p-6">
-                    <div className="space-y-4">
-                      <div className="flex items-start justify-between">
-                        <div className="flex items-start gap-4">
-                          <div className="text-3xl">{lead.authorAvatar}</div>
-                          <div className="flex-1">
-                            <div className="flex items-center gap-2 mb-1">
-                              <h3 className="font-semibold">{lead.author}</h3>
-                              {getPriorityBadge(lead.priority)}
-                              <Badge variant="outline" className="text-xs">
-                                {lead.platform}
-                              </Badge>
-                            </div>
-                            <div className="flex items-center gap-3 text-sm text-muted-foreground mb-2">
-                              <span className="flex items-center gap-1">
-                                <MapPin className="w-3 h-3" />
-                                {lead.location}
-                              </span>
-                              <span>•</span>
-                              <span className="flex items-center gap-1">
-                                <Clock className="w-3 h-3" />
-                                {lead.timestamp}
-                              </span>
-                            </div>
-                            <p className="text-sm italic text-muted-foreground mb-2">
-                              {lead.groupName &&
-                                `Posted in: ${lead.groupName}`}
-                            </p>
-                          </div>
-                        </div>
-                        <div className="text-right">
-                          <div className="flex items-center gap-2 mb-1">
-                            <span className="text-xs text-muted-foreground">
-                              Lead Score
-                            </span>
-                            <div
-                              className={`text-2xl font-bold ${getLeadScoreColor(
-                                lead.leadScore
-                              )}`}
-                            >
-                              {lead.leadScore}
-                            </div>
-                          </div>
-                          <Badge variant="secondary" className="text-xs">
-                            {lead.estimatedValue}
-                          </Badge>
-                        </div>
-                      </div>
-
-                      <div className="bg-accent/50 p-4 rounded-lg">
-                        <p className="text-sm">{lead.content}</p>
-                      </div>
-
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div className="space-y-2">
-                          <div>
-                            <p className="text-xs font-semibold text-muted-foreground mb-1">
-                              Intent Detected
-                            </p>
-                            <Badge className="bg-primary/10 text-primary border-primary">
-                              <Target className="w-3 h-3 mr-1" />
-                              {lead.intent}
-                            </Badge>
-                          </div>
-
-                          <div>
-                            <p className="text-xs font-semibold text-muted-foreground mb-1">
-                              Key Signals
-                            </p>
-                            <div className="flex flex-wrap gap-1">
-                              {lead.signals.map((signal, i) => (
-                                <Badge
-                                  key={i}
-                                  variant="secondary"
-                                  className="text-xs"
-                                >
-                                  {signal}
-                                </Badge>
-                              ))}
-                            </div>
-                          </div>
-
-                          <div>
-                            <p className="text-xs font-semibold text-muted-foreground mb-1">
-                              Demographics
-                            </p>
-                            <div className="flex gap-2 text-xs">
-                              <Badge variant="outline">
-                                {lead.demographics.age}
-                              </Badge>
-                              <Badge variant="outline">
-                                {lead.demographics.income}
-                              </Badge>
-                              <Badge variant="outline">
-                                {lead.demographics.location}
-                              </Badge>
-                            </div>
-                          </div>
-                        </div>
-
-                        <div className="space-y-2">
-                          <div>
-                            <p className="text-xs font-semibold text-muted-foreground mb-1 flex items-center gap-1">
-                              <Sparkles className="w-3 h-3" />
-                              AI Recommended Action
-                            </p>
-                            <p className="text-sm bg-primary/5 p-2 rounded border-l-2 border-primary">
-                              {lead.suggestedAction}
-                            </p>
-                          </div>
-
-                          <div>
-                            <p className="text-xs font-semibold text-muted-foreground mb-1 flex items-center gap-1">
-                              <Bot className="w-3 h-3" />
-                              AI Notes
-                            </p>
-                            <p className="text-xs bg-accent/50 p-2 rounded">
-                              {lead.aiNotes}
-                            </p>
-                          </div>
-                        </div>
-                      </div>
-
-                      <div className="flex items-center gap-2 pt-3 border-t">
-                        <Button size="sm" className="gap-2">
-                          <Send className="w-4 h-4" />
-                          Quick Engage
-                        </Button>
-                        <Button variant="outline" size="sm" className="gap-2">
-                          <Phone className="w-4 h-4" />
-                          Call Lead
-                        </Button>
-                        <Button variant="outline" size="sm" className="gap-2">
-                          <Mail className="w-4 h-4" />
-                          Send Email
-                        </Button>
-                        <Button variant="outline" size="sm" className="gap-2">
-                          <UserPlus className="w-4 h-4" />
-                          Add to CRM
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="gap-2 ml-auto"
-                        >
-                          <ExternalLink className="w-4 h-4" />
-                          View Original Post
-                        </Button>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
           </div>
         </TabsContent>
 

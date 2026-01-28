@@ -10,6 +10,7 @@ import { externalRouter } from "./routers/external";
 import { performanceRouter } from "./routers/performance";
 import { libraryRouter } from "./routers/library";
 import { alertsRouter } from "./routers/alerts";
+import { redditRouter } from "./routers/reddit";
 
 export const appRouter = createTRPCRouter({
   user: userRouter,
@@ -23,6 +24,7 @@ export const appRouter = createTRPCRouter({
   performance: performanceRouter,
   library: libraryRouter,
   alerts: alertsRouter,
+  reddit: redditRouter,
 });
 
 export type AppRouter = typeof appRouter;

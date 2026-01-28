@@ -134,6 +134,7 @@ export function Header() {
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-56">
+                <DropdownMenuLabel>Tài khoản của tôi</DropdownMenuLabel>
                 <DropdownMenuLabel>
                   <div className="flex flex-col">
                     <span>{profile?.name}</span>
@@ -155,7 +156,7 @@ export function Header() {
                 <DropdownMenuItem asChild>
                   <Link href="/settings">
                     <Settings className="w-4 h-4 mr-2" />
-                    Cài đặt
+                    Cài đặt thông báo
                   </Link>
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
