@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useAuth } from "@/hooks/use-auth";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -43,18 +44,60 @@ import {
 } from "lucide-react";
 
 export default function SettingsPage() {
+  const { profile } = useAuth();
   const [darkMode, setDarkMode] = useState(false);
   const [language, setLanguage] = useState("vi");
   const [emailNotifications, setEmailNotifications] = useState(true);
   const [pushNotifications, setPushNotifications] = useState(true);
   const [twoFactorEnabled, setTwoFactorEnabled] = useState(false);
 
+  // Get user initials from name
+  const getInitials = (name: string) => {
+    return name
+      .split(" ")
+      .map((n) => n[0])
+      .join("")
+      .toUpperCase()
+      .slice(0, 2);
+  };
+
+  // Get role display name
+  const getRoleDisplay = (role: string) => {
+    const roleMap: Record<string, string> = {
+      super_admin: "Super Admin",
+      marketing_manager: "Marketing Manager",
+      content_creator: "Content Creator",
+      digital_marketing: "Digital Marketing",
+      graphic_designer: "Graphic Designer",
+      video_producer: "Video Producer",
+      sales_consultant: "Sales Consultant",
+      sales_manager: "Sales Manager",
+    };
+    return roleMap[role] || role;
+  };
+
+  // Get team display name
+  const getTeamDisplay = (team: string) => {
+    const teamMap: Record<string, string> = {
+      admin: "Administration",
+      marketing: "Marketing",
+      sales: "Sales",
+      medical: "Medical",
+    };
+    return teamMap[team] || team;
+  };
+
+  // Parse name into first and last
+  const nameParts = profile?.name?.split(" ") || ["", ""];
+  const firstName = nameParts.slice(0, -1).join(" ") || nameParts[0] || "";
+  const lastName = nameParts[nameParts.length - 1] || "";
+
   const teamMembers = [
     {
       id: 1,
-      name: "Nguyen Van A",
-      email: "vana@greenfielddental.vn",
-      role: "Admin",
+      name: "Trịnh Thu Hoài",
+      email: "hoai.tt@nhakhoagreenfield.com",
+      role: "Marketing Manager",
       department: "Marketing",
       avatar: "",
       status: "active",
@@ -62,9 +105,9 @@ export default function SettingsPage() {
     },
     {
       id: 2,
-      name: "Tran Thi B",
-      email: "thib@greenfielddental.vn",
-      role: "Marketing Manager",
+      name: "Nguyễn Hồng Đức Anh",
+      email: "ducanh.nh@nhakhoagreenfield.com",
+      role: "Digital Marketing",
       department: "Marketing",
       avatar: "",
       status: "active",
@@ -72,9 +115,9 @@ export default function SettingsPage() {
     },
     {
       id: 3,
-      name: "Le Van C",
-      email: "vanc@greenfielddental.vn",
-      role: "Content Creator",
+      name: "Phạm Thị Thu Hoài",
+      email: "hoai.ptt@nhakhoagreenfield.com",
+      role: "Graphic Designer",
       department: "Marketing",
       avatar: "",
       status: "active",
@@ -82,23 +125,13 @@ export default function SettingsPage() {
     },
     {
       id: 4,
-      name: "Pham Thi D",
-      email: "thid@greenfielddental.vn",
-      role: "Graphic Designer",
-      department: "Design",
+      name: "Nguyễn Đình Tiến",
+      email: "tien.n@nhakhoagreenfield.com",
+      role: "Video Producer",
+      department: "Marketing",
       avatar: "",
       status: "active",
       lastActive: "1 hour ago",
-    },
-    {
-      id: 5,
-      name: "Hoang Van E",
-      email: "vane@greenfielddental.vn",
-      role: "Video Producer",
-      department: "Media",
-      avatar: "",
-      status: "inactive",
-      lastActive: "3 days ago",
     },
   ];
 
@@ -278,7 +311,7 @@ export default function SettingsPage() {
               <div className="flex items-center gap-6">
                 <div className="relative">
                   <div className="w-24 h-24 rounded-full bg-gradient-to-br from-primary to-accent flex items-center justify-center text-white text-3xl">
-                    NA
+                    {profile?.name ? getInitials(profile.name) : "U"}
                   </div>
                   <Button
                     size="icon"
@@ -289,8 +322,10 @@ export default function SettingsPage() {
                   </Button>
                 </div>
                 <div>
-                  <h3 className="font-semibold mb-1">Nguyen Van A</h3>
-                  <p className="text-sm text-muted-foreground mb-2">Admin - Marketing Department</p>
+                  <h3 className="font-semibold mb-1">{profile?.name || "User"}</h3>
+                  <p className="text-sm text-muted-foreground mb-2">
+                    {profile?.role ? getRoleDisplay(profile.role) : "User"} - {profile?.team ? getTeamDisplay(profile.team) : "Team"}
+                  </p>
                   <Button variant="outline" size="sm">
                     <Upload className="w-4 h-4 mr-2" />
                     Upload New Photo
@@ -302,45 +337,47 @@ export default function SettingsPage() {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="firstName">First Name</Label>
-                  <Input id="firstName" defaultValue="Nguyen Van" />
+                  <Input id="firstName" defaultValue={firstName} />
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="lastName">Last Name</Label>
-                  <Input id="lastName" defaultValue="A" />
+                  <Input id="lastName" defaultValue={lastName} />
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="email">Email</Label>
-                  <Input id="email" type="email" defaultValue="vana@greenfielddental.vn" />
+                  <Input id="email" type="email" defaultValue={profile?.email || ""} disabled />
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="phone">Phone Number</Label>
-                  <Input id="phone" defaultValue="+84 901 234 567" />
+                  <Input id="phone" placeholder="+84 xxx xxx xxx" />
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="department">Department</Label>
-                  <Select defaultValue="marketing">
+                  <Select defaultValue={profile?.team || "marketing"} disabled>
                     <SelectTrigger>
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
+                      <SelectItem value="admin">Administration</SelectItem>
                       <SelectItem value="marketing">Marketing</SelectItem>
-                      <SelectItem value="design">Design</SelectItem>
-                      <SelectItem value="media">Media Production</SelectItem>
                       <SelectItem value="sales">Sales</SelectItem>
+                      <SelectItem value="medical">Medical</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="role">Role</Label>
-                  <Select defaultValue="admin">
+                  <Select defaultValue={profile?.role || "content_creator"} disabled>
                     <SelectTrigger>
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="admin">Admin</SelectItem>
-                      <SelectItem value="manager">Marketing Manager</SelectItem>
-                      <SelectItem value="creator">Content Creator</SelectItem>
-                      <SelectItem value="designer">Graphic Designer</SelectItem>
+                      <SelectItem value="super_admin">Super Admin</SelectItem>
+                      <SelectItem value="marketing_manager">Marketing Manager</SelectItem>
+                      <SelectItem value="content_creator">Content Creator</SelectItem>
+                      <SelectItem value="digital_marketing">Digital Marketing</SelectItem>
+                      <SelectItem value="graphic_designer">Graphic Designer</SelectItem>
+                      <SelectItem value="video_producer">Video Producer</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
