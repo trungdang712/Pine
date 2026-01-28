@@ -55,22 +55,37 @@ export function useAuth() {
 
     // Get initial session
     const getInitialSession = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
+      try {
+        const { data: { user }, error: authError } = await supabase.auth.getUser();
 
-      if (user) {
-        const { data: profile } = await supabase
-          .from("users")
-          .select("id, email, name, avatar, team, role")
-          .eq("auth_id", user.id)
-          .single();
+        if (authError) {
+          console.error("Auth error:", authError);
+          setState({ user: null, profile: null, loading: false, isDemoMode: false });
+          return;
+        }
 
-        setState({
-          user,
-          profile: profile as UserProfile | null,
-          loading: false,
-          isDemoMode: false,
-        });
-      } else {
+        if (user) {
+          const { data: profile, error: profileError } = await supabase
+            .from("users")
+            .select("id, email, name, avatar, team, role")
+            .eq("auth_id", user.id)
+            .single();
+
+          if (profileError) {
+            console.error("Profile error:", profileError);
+          }
+
+          setState({
+            user,
+            profile: profile as UserProfile | null,
+            loading: false,
+            isDemoMode: false,
+          });
+        } else {
+          setState({ user: null, profile: null, loading: false, isDemoMode: false });
+        }
+      } catch (error) {
+        console.error("Session error:", error);
         setState({ user: null, profile: null, loading: false, isDemoMode: false });
       }
     };
