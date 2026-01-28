@@ -210,7 +210,7 @@ export const calendarRouter = createTRPCRouter({
 
       if (
         item.creatorId !== ctx.session.user.id &&
-        !["admin", "marketing_manager"].includes(user?.role ?? "")
+        !["super_admin", "admin", "marketing_manager"].includes(user?.role ?? "")
       ) {
         throw new TRPCError({ code: "FORBIDDEN", message: "Not authorized to delete this item" });
       }

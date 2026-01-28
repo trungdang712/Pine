@@ -270,7 +270,7 @@ export const proposalRouter = createTRPCRouter({
 
       if (
         proposal.creatorId !== ctx.session.user.id &&
-        !["admin", "marketing_manager"].includes(user?.role ?? "")
+        !["super_admin", "admin", "marketing_manager"].includes(user?.role ?? "")
       ) {
         throw new TRPCError({ code: "FORBIDDEN", message: "Not authorized to update this proposal" });
       }

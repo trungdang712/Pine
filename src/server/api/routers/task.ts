@@ -284,7 +284,7 @@ export const taskRouter = createTRPCRouter({
         select: { role: true },
       });
 
-      if (task.creatorId !== ctx.session.user.id && !["admin", "marketing_manager"].includes(user?.role ?? "")) {
+      if (task.creatorId !== ctx.session.user.id && !["super_admin", "admin", "marketing_manager"].includes(user?.role ?? "")) {
         throw new TRPCError({ code: "FORBIDDEN", message: "Not authorized to delete this task" });
       }
 

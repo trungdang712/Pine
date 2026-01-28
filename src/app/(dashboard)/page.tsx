@@ -130,11 +130,12 @@ const statusLabels: Record<string, { label: string; variant: "default" | "second
 export default function DashboardPage() {
   const { profile, isAuthenticated } = useAuth();
   const userName = profile?.name?.split(" ")[0] ?? "User";
-  const isAdmin = profile?.role === "admin" || profile?.role === "marketing_manager";
+  const isAdmin = profile?.role === "super_admin" || profile?.role === "admin" || profile?.role === "marketing_manager";
 
   // Map user's actual role to dashboard role type
   const getUserRoleType = (): RoleType => {
     const roleMap: Record<string, RoleType> = {
+      super_admin: "Admin",
       admin: "Admin",
       marketing_manager: "Marketing Manager",
       content_creator: "Content Creator",
