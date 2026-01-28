@@ -21,54 +21,33 @@ export default function LoginPage() {
     setLoading(true);
 
     try {
-      const supabase = createClient();
-
-      const { data, error: authError } = await supabase.auth.signInWithPassword({
-        email,
-        password,
+      // Use server-side API route to avoid browser fetch issues
+      const response = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ email, password }),
       });
 
-      if (authError) {
-        setError(authError.message === "Invalid login credentials"
-          ? "Invalid email or password"
-          : authError.message);
+      const data = await response.json();
+
+      if (!response.ok) {
+        setError(data.error || 'Login failed');
         return;
       }
 
-      if (data.user) {
-        // Check if user has marketing team access
-        const { data: userData, error: userError } = await supabase
-          .from('users')
-          .select('id, team, role, name')
-          .eq('auth_id', data.user.id)
-          .single();
-
-        if (userError || !userData) {
-          setError("User profile not found. Please contact administrator.");
-          await supabase.auth.signOut();
-          return;
-        }
-
-        // Check team access
-        if (userData.team !== 'admin' && userData.team !== 'marketing') {
-          // Check additional team access using database user ID
-          const { data: teamAccess } = await supabase
-            .from('user_team_access')
-            .select('team')
-            .eq('user_id', userData.id)
-            .eq('team', 'marketing')
-            .single();
-
-          if (!teamAccess) {
-            setError("You don't have access to the Marketing Command Center.");
-            await supabase.auth.signOut();
-            return;
-          }
-        }
-
-        router.push("/");
-        router.refresh();
+      // Set the session in the browser client
+      if (data.session) {
+        const supabase = createClient();
+        await supabase.auth.setSession({
+          access_token: data.session.access_token,
+          refresh_token: data.session.refresh_token,
+        });
       }
+
+      router.push("/");
+      router.refresh();
     } catch (err) {
       console.error('Login error:', err);
       const errorMessage = err instanceof Error ? err.message : "An error occurred";
