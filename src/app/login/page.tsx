@@ -6,7 +6,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
-import { createClient } from "@/lib/supabase/client";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -21,13 +20,14 @@ export default function LoginPage() {
     setLoading(true);
 
     try {
-      // Use server-side API route to avoid browser fetch issues
+      // Use server-side API route which sets cookies
       const response = await fetch('/api/auth/login', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({ email, password }),
+        credentials: 'include', // Important: include cookies
       });
 
       const data = await response.json();
@@ -37,17 +37,8 @@ export default function LoginPage() {
         return;
       }
 
-      // Set the session in the browser client
-      if (data.session) {
-        const supabase = createClient();
-        await supabase.auth.setSession({
-          access_token: data.session.access_token,
-          refresh_token: data.session.refresh_token,
-        });
-      }
-
-      router.push("/");
-      router.refresh();
+      // Cookies are set by the API, just redirect
+      window.location.href = '/';
     } catch (err) {
       console.error('Login error:', err);
       const errorMessage = err instanceof Error ? err.message : "An error occurred";
