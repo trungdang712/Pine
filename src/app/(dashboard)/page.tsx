@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { useSession } from "next-auth/react";
+import { useAuth } from "@/hooks/use-auth";
 import { KPICard } from "@/components/dashboard/kpi-card";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -276,8 +276,8 @@ const statusLabels: Record<string, { label: string; variant: "default" | "second
 };
 
 export default function DashboardPage() {
-  const { data: session } = useSession();
-  const userName = session?.user?.name?.split(" ")[0] ?? "User";
+  const { profile } = useAuth();
+  const userName = profile?.name?.split(" ")[0] ?? "User";
   const [selectedRole, setSelectedRole] = useState<RoleType>("Content Creator");
 
   const currentDate = new Date().toLocaleDateString("vi-VN", {

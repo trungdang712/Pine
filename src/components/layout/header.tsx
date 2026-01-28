@@ -13,23 +13,23 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
-import { useSession, signOut } from "next-auth/react";
-import { trpc } from "@/lib/trpc";
+import { useAuth } from "@/hooks/use-auth";
 import { useSidebar } from "@/components/ui/sidebar";
+import Link from "next/link";
 
 export function Header() {
-  const { data: session } = useSession();
+  const { profile, signOut, isAuthenticated } = useAuth();
   const { toggleSidebar, isMobile } = useSidebar();
-  const { data: unreadCount } = trpc.alerts.getUnreadCount.useQuery(undefined, {
-    enabled: !!session,
-  });
 
-  const userName = session?.user?.name ?? "User";
+  const userName = profile?.name ?? "User";
   const userInitials = userName
     .split(" ")
     .map((n) => n[0])
     .join("")
     .toUpperCase();
+
+  // TODO: Replace with real notification count from Supabase
+  const unreadCount = 3;
 
   return (
     <header className="border-b bg-card sticky top-0 z-10">
@@ -87,7 +87,7 @@ export function Header() {
                 <DropdownMenuItem className="flex flex-col items-start p-3">
                   <div className="font-medium">New proposal pending</div>
                   <div className="text-sm text-muted-foreground">
-                    Campaign Valentine's Day 2024 - Nguyen Van A
+                    Campaign Valentine&apos;s Day 2024 - Nguyen Van A
                   </div>
                   <div className="text-xs text-muted-foreground mt-1">
                     5 minutes ago
@@ -120,46 +120,55 @@ export function Header() {
           </DropdownMenu>
 
           {/* User Menu */}
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="ghost" className="gap-2">
-                <Avatar className="w-8 h-8">
-                  <AvatarImage src={session?.user?.image ?? ""} />
-                  <AvatarFallback className="bg-primary text-primary-foreground">
-                    {userInitials}
-                  </AvatarFallback>
-                </Avatar>
-                <span className="hidden md:inline">{userName}</span>
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-56">
-              <DropdownMenuLabel>
-                <div className="flex flex-col">
-                  <span>{session?.user?.name}</span>
-                  <span className="text-xs font-normal text-muted-foreground">
-                    {session?.user?.email}
-                  </span>
-                </div>
-              </DropdownMenuLabel>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem>
-                <User className="w-4 h-4 mr-2" />
-                Hồ sơ cá nhân
-              </DropdownMenuItem>
-              <DropdownMenuItem>
-                <Settings className="w-4 h-4 mr-2" />
-                Cài đặt
-              </DropdownMenuItem>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem
-                className="text-destructive"
-                onClick={() => signOut()}
-              >
-                <LogOut className="w-4 h-4 mr-2" />
-                Đăng xuất
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
+          {isAuthenticated && (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" className="gap-2">
+                  <Avatar className="w-8 h-8">
+                    <AvatarImage src={profile?.avatar ?? ""} />
+                    <AvatarFallback className="bg-primary text-primary-foreground">
+                      {userInitials}
+                    </AvatarFallback>
+                  </Avatar>
+                  <span className="hidden md:inline">{userName}</span>
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-56">
+                <DropdownMenuLabel>
+                  <div className="flex flex-col">
+                    <span>{profile?.name}</span>
+                    <span className="text-xs font-normal text-muted-foreground">
+                      {profile?.email}
+                    </span>
+                    <span className="text-xs font-normal text-muted-foreground capitalize">
+                      {profile?.role?.replace(/_/g, ' ')} • {profile?.team}
+                    </span>
+                  </div>
+                </DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem asChild>
+                  <Link href="/settings">
+                    <User className="w-4 h-4 mr-2" />
+                    Hồ sơ cá nhân
+                  </Link>
+                </DropdownMenuItem>
+                <DropdownMenuItem asChild>
+                  <Link href="/settings">
+                    <Settings className="w-4 h-4 mr-2" />
+                    Cài đặt
+                  </Link>
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem
+                  className="text-destructive"
+                  onClick={signOut}
+                >
+                  <LogOut className="w-4 h-4 mr-2" />
+                  Đăng xuất
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          )}
         </div>
       </div>
     </header>

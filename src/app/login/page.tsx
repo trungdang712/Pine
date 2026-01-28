@@ -1,12 +1,12 @@
 "use client";
 
 import { useState } from "react";
-import { signIn } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
+import { createClient } from "@/lib/supabase/client";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -21,19 +21,56 @@ export default function LoginPage() {
     setLoading(true);
 
     try {
-      const result = await signIn("credentials", {
+      const supabase = createClient();
+
+      const { data, error: authError } = await supabase.auth.signInWithPassword({
         email,
         password,
-        redirect: false,
       });
 
-      if (result?.error) {
-        setError("Invalid email or password");
-      } else {
+      if (authError) {
+        setError(authError.message === "Invalid login credentials"
+          ? "Invalid email or password"
+          : authError.message);
+        return;
+      }
+
+      if (data.user) {
+        // Check if user has marketing team access
+        const { data: userData, error: userError } = await supabase
+          .from('users')
+          .select('team, role, name')
+          .eq('auth_id', data.user.id)
+          .single();
+
+        if (userError || !userData) {
+          setError("User profile not found. Please contact administrator.");
+          await supabase.auth.signOut();
+          return;
+        }
+
+        // Check team access
+        if (userData.team !== 'admin' && userData.team !== 'marketing') {
+          // Check additional team access
+          const { data: teamAccess } = await supabase
+            .from('user_team_access')
+            .select('team')
+            .eq('user_id', data.user.id)
+            .eq('team', 'marketing')
+            .single();
+
+          if (!teamAccess) {
+            setError("You don't have access to the Marketing Command Center.");
+            await supabase.auth.signOut();
+            return;
+          }
+        }
+
         router.push("/");
         router.refresh();
       }
-    } catch {
+    } catch (err) {
+      console.error('Login error:', err);
       setError("An error occurred. Please try again.");
     } finally {
       setLoading(false);
