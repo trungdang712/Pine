@@ -246,6 +246,25 @@ async function resolveUsers(): Promise<{
 async function main() {
   console.log("Seeding database...\n");
 
+  // 0. Fix PostgREST permissions (Prisma migrate reset revokes these)
+  console.log("Fixing PostgREST schema permissions...");
+  await prisma.$executeRawUnsafe(
+    `GRANT USAGE ON SCHEMA public TO anon, authenticated, service_role`
+  );
+  await prisma.$executeRawUnsafe(
+    `GRANT ALL ON ALL TABLES IN SCHEMA public TO anon, authenticated, service_role`
+  );
+  await prisma.$executeRawUnsafe(
+    `GRANT ALL ON ALL SEQUENCES IN SCHEMA public TO anon, authenticated, service_role`
+  );
+  await prisma.$executeRawUnsafe(
+    `ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON TABLES TO anon, authenticated, service_role`
+  );
+  await prisma.$executeRawUnsafe(
+    `ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON SEQUENCES TO anon, authenticated, service_role`
+  );
+  console.log("  Done.\n");
+
   // 1. Resolve users (real or demo)
   const {
     admin,
