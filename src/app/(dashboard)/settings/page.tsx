@@ -1,7 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useAuth } from "@/hooks/use-auth";
+import { trpc } from "@/lib/trpc";
+import { PageLoading } from "@/components/ui/loading-spinner";
+import { PageError } from "@/components/ui/error-display";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -17,6 +20,13 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog";
 import {
   User,
   Bell,
@@ -34,24 +44,124 @@ import {
   Sun,
   Languages,
   CheckCircle,
-  XCircle,
   Trash2,
   Edit,
   UserPlus,
   Crown,
   Link2,
-  Upload,
+  Loader2,
 } from "lucide-react";
+import { toast } from "sonner";
 
 export default function SettingsPage() {
-  const { profile } = useAuth();
-  const [darkMode, setDarkMode] = useState(false);
+  const { profile, isAuthenticated } = useAuth();
+  const utils = trpc.useUtils();
+
+  // Profile form state
+  const [profileForm, setProfileForm] = useState({
+    firstName: "",
+    lastName: "",
+    bio: "",
+  });
+  const [profileFormInitialized, setProfileFormInitialized] = useState(false);
+
+  // Password form state
+  const [passwordForm, setPasswordForm] = useState({
+    currentPassword: "",
+    newPassword: "",
+    confirmPassword: "",
+  });
+
+  // Appearance state (client-side only)
+  const [theme, setTheme] = useState<"light" | "dark" | "system">("light");
   const [language, setLanguage] = useState("vi");
+
+  // Team invite dialog
+  const [inviteDialogOpen, setInviteDialogOpen] = useState(false);
+  const [inviteForm, setInviteForm] = useState({
+    name: "",
+    email: "",
+    password: "",
+    role: "content_creator" as string,
+  });
+
+  // Edit member dialog
+  const [editMemberDialogOpen, setEditMemberDialogOpen] = useState(false);
+  const [editMemberForm, setEditMemberForm] = useState({
+    id: "",
+    name: "",
+    role: "",
+    isActive: true,
+  });
+
+  // Notification preferences (client-side)
   const [emailNotifications, setEmailNotifications] = useState(true);
   const [pushNotifications, setPushNotifications] = useState(true);
   const [twoFactorEnabled, setTwoFactorEnabled] = useState(false);
 
-  // Get user initials from name
+  // --- tRPC Queries ---
+  const { data: currentUser, isLoading: userLoading, error: userError, refetch: refetchUser } = trpc.user.getMe.useQuery(undefined, {
+    enabled: isAuthenticated,
+  });
+
+  // Initialize profile form when user data loads
+  useEffect(() => {
+    if (!profileFormInitialized && currentUser) {
+      const parts = currentUser.name?.split(" ") || [""];
+      setProfileForm({
+        firstName: parts.slice(0, -1).join(" ") || parts[0] || "",
+        lastName: parts.length > 1 ? parts[parts.length - 1] : "",
+        bio: "",
+      });
+      setProfileFormInitialized(true);
+    }
+  }, [currentUser, profileFormInitialized]);
+
+  const { data: teamMembers, isLoading: teamLoading, error: teamError, refetch: refetchTeam } = trpc.user.getAll.useQuery(undefined, {
+    enabled: isAuthenticated,
+  });
+
+  const { data: brandColors, isLoading: colorsLoading } = trpc.library.getBrandColors.useQuery(undefined, {
+    enabled: isAuthenticated,
+  });
+
+  // --- tRPC Mutations ---
+  const updateProfileMutation = trpc.user.updateProfile.useMutation({
+    onSuccess: () => {
+      toast.success("Profile updated successfully");
+      utils.user.getMe.invalidate();
+    },
+    onError: (error) => toast.error(error.message),
+  });
+
+  const changePasswordMutation = trpc.user.changePassword.useMutation({
+    onSuccess: () => {
+      toast.success("Password updated successfully");
+      setPasswordForm({ currentPassword: "", newPassword: "", confirmPassword: "" });
+    },
+    onError: (error) => toast.error(error.message),
+  });
+
+  const createUserMutation = trpc.user.create.useMutation({
+    onSuccess: () => {
+      toast.success("Team member invited successfully");
+      setInviteDialogOpen(false);
+      setInviteForm({ name: "", email: "", password: "", role: "content_creator" });
+      utils.user.getAll.invalidate();
+    },
+    onError: (error) => toast.error(error.message),
+  });
+
+  const updateUserMutation = trpc.user.update.useMutation({
+    onSuccess: () => {
+      toast.success("Team member updated successfully");
+      setEditMemberDialogOpen(false);
+      utils.user.getAll.invalidate();
+    },
+    onError: (error) => toast.error(error.message),
+  });
+
+  // --- Helpers ---
   const getInitials = (name: string) => {
     return name
       .split(" ")
@@ -61,10 +171,10 @@ export default function SettingsPage() {
       .slice(0, 2);
   };
 
-  // Get role display name
   const getRoleDisplay = (role: string) => {
     const roleMap: Record<string, string> = {
       super_admin: "Super Admin",
+      admin: "Admin",
       marketing_manager: "Marketing Manager",
       content_creator: "Content Creator",
       digital_marketing: "Digital Marketing",
@@ -76,7 +186,6 @@ export default function SettingsPage() {
     return roleMap[role] || role;
   };
 
-  // Get team display name
   const getTeamDisplay = (team: string) => {
     const teamMap: Record<string, string> = {
       admin: "Administration",
@@ -87,51 +196,97 @@ export default function SettingsPage() {
     return teamMap[team] || team;
   };
 
-  // Parse name into first and last
-  const nameParts = profile?.name?.split(" ") || ["", ""];
-  const firstName = nameParts.slice(0, -1).join(" ") || nameParts[0] || "";
-  const lastName = nameParts[nameParts.length - 1] || "";
+  const handleSaveProfile = () => {
+    const fullName = `${profileForm.firstName} ${profileForm.lastName}`.trim();
+    if (!fullName) {
+      toast.error("Name is required");
+      return;
+    }
+    updateProfileMutation.mutate({ name: fullName });
+  };
 
-  const teamMembers = [
+  const handleChangePassword = () => {
+    if (!passwordForm.currentPassword) {
+      toast.error("Current password is required");
+      return;
+    }
+    if (passwordForm.newPassword.length < 8) {
+      toast.error("New password must be at least 8 characters");
+      return;
+    }
+    if (passwordForm.newPassword !== passwordForm.confirmPassword) {
+      toast.error("Passwords do not match");
+      return;
+    }
+    changePasswordMutation.mutate({
+      currentPassword: passwordForm.currentPassword,
+      newPassword: passwordForm.newPassword,
+    });
+  };
+
+  const handleInviteMember = () => {
+    if (!inviteForm.name || !inviteForm.email || !inviteForm.password) {
+      toast.error("All fields are required");
+      return;
+    }
+    if (inviteForm.password.length < 8) {
+      toast.error("Password must be at least 8 characters");
+      return;
+    }
+    createUserMutation.mutate({
+      name: inviteForm.name,
+      email: inviteForm.email,
+      password: inviteForm.password,
+      role: inviteForm.role as "admin" | "marketing_manager" | "content_creator" | "digital_marketing" | "graphic_designer" | "video_producer",
+    });
+  };
+
+  const handleUpdateMember = () => {
+    updateUserMutation.mutate({
+      id: editMemberForm.id,
+      name: editMemberForm.name || undefined,
+      role: editMemberForm.role as "admin" | "marketing_manager" | "content_creator" | "digital_marketing" | "graphic_designer" | "video_producer" | undefined,
+      isActive: editMemberForm.isActive,
+    });
+  };
+
+  const handleDeactivateMember = (id: string) => {
+    updateUserMutation.mutate({ id, isActive: false });
+  };
+
+  // Notification settings (static config - no DB model for preferences)
+  const notificationSettings = [
     {
-      id: 1,
-      name: "Trịnh Thu Hoài",
-      email: "hoai.tt@nhakhoagreenfield.com",
-      role: "Marketing Manager",
-      department: "Marketing",
-      avatar: "",
-      status: "active",
-      lastActive: "Online now",
+      category: "Content Opportunities",
+      items: [
+        { id: "new-opportunity", label: "New content opportunities", email: true, push: true, inApp: true },
+        { id: "consent-obtained", label: "Consent form obtained", email: true, push: false, inApp: true },
+        { id: "consent-expiring", label: "Consent expiring soon", email: true, push: true, inApp: true },
+      ],
     },
     {
-      id: 2,
-      name: "Nguyễn Hồng Đức Anh",
-      email: "ducanh.nh@nhakhoagreenfield.com",
-      role: "Digital Marketing",
-      department: "Marketing",
-      avatar: "",
-      status: "active",
-      lastActive: "2 hours ago",
+      category: "Tasks & Projects",
+      items: [
+        { id: "task-assigned", label: "Task assigned to you", email: true, push: true, inApp: true },
+        { id: "task-deadline", label: "Task deadline approaching", email: true, push: true, inApp: true },
+        { id: "task-completed", label: "Task marked as completed", email: false, push: false, inApp: true },
+      ],
     },
     {
-      id: 3,
-      name: "Phạm Thị Thu Hoài",
-      email: "hoai.ptt@nhakhoagreenfield.com",
-      role: "Graphic Designer",
-      department: "Marketing",
-      avatar: "",
-      status: "active",
-      lastActive: "30 mins ago",
+      category: "Analytics & Reports",
+      items: [
+        { id: "weekly-report", label: "Weekly performance report", email: true, push: false, inApp: true },
+        { id: "goal-achieved", label: "Goal achieved", email: true, push: true, inApp: true },
+        { id: "negative-trend", label: "Negative trend detected", email: true, push: true, inApp: true },
+      ],
     },
     {
-      id: 4,
-      name: "Nguyễn Đình Tiến",
-      email: "tien.n@nhakhoagreenfield.com",
-      role: "Video Producer",
-      department: "Marketing",
-      avatar: "",
-      status: "active",
-      lastActive: "1 hour ago",
+      category: "Team & Collaboration",
+      items: [
+        { id: "comment-mention", label: "Someone mentions you", email: true, push: true, inApp: true },
+        { id: "proposal-approval", label: "Proposal needs approval", email: true, push: true, inApp: true },
+        { id: "team-update", label: "Team updates", email: false, push: false, inApp: true },
+      ],
     },
   ];
 
@@ -186,41 +341,6 @@ export default function SettingsPage() {
     },
   ];
 
-  const notificationSettings = [
-    {
-      category: "Content Opportunities",
-      items: [
-        { id: "new-opportunity", label: "New content opportunities", email: true, push: true, inApp: true },
-        { id: "consent-obtained", label: "Consent form obtained", email: true, push: false, inApp: true },
-        { id: "consent-expiring", label: "Consent expiring soon", email: true, push: true, inApp: true },
-      ],
-    },
-    {
-      category: "Tasks & Projects",
-      items: [
-        { id: "task-assigned", label: "Task assigned to you", email: true, push: true, inApp: true },
-        { id: "task-deadline", label: "Task deadline approaching", email: true, push: true, inApp: true },
-        { id: "task-completed", label: "Task marked as completed", email: false, push: false, inApp: true },
-      ],
-    },
-    {
-      category: "Analytics & Reports",
-      items: [
-        { id: "weekly-report", label: "Weekly performance report", email: true, push: false, inApp: true },
-        { id: "goal-achieved", label: "Goal achieved", email: true, push: true, inApp: true },
-        { id: "negative-trend", label: "Negative trend detected", email: true, push: true, inApp: true },
-      ],
-    },
-    {
-      category: "Team & Collaboration",
-      items: [
-        { id: "comment-mention", label: "Someone mentions you", email: true, push: true, inApp: true },
-        { id: "proposal-approval", label: "Proposal needs approval", email: true, push: true, inApp: true },
-        { id: "team-update", label: "Team updates", email: false, push: false, inApp: true },
-      ],
-    },
-  ];
-
   const roles = [
     {
       name: "Admin",
@@ -259,6 +379,8 @@ export default function SettingsPage() {
       permissions: ["Create videos", "Edit videos", "Access media library"],
     },
   ];
+
+  const isAdmin = profile?.role === "admin" || profile?.role === "super_admin" || profile?.role === "marketing_manager";
 
   return (
     <div className="p-6">
@@ -311,7 +433,12 @@ export default function SettingsPage() {
               <div className="flex items-center gap-6">
                 <div className="relative">
                   <div className="w-24 h-24 rounded-full bg-gradient-to-br from-primary to-accent flex items-center justify-center text-white text-3xl">
-                    {profile?.name ? getInitials(profile.name) : "U"}
+                    {currentUser?.avatar ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img src={currentUser.avatar} alt={currentUser.name} className="w-24 h-24 rounded-full object-cover" />
+                    ) : (
+                      getInitials(currentUser?.name || profile?.name || "U")
+                    )}
                   </div>
                   <Button
                     size="icon"
@@ -322,14 +449,13 @@ export default function SettingsPage() {
                   </Button>
                 </div>
                 <div>
-                  <h3 className="font-semibold mb-1">{profile?.name || "User"}</h3>
+                  <h3 className="font-semibold mb-1">{currentUser?.name || profile?.name || "User"}</h3>
                   <p className="text-sm text-muted-foreground mb-2">
-                    {profile?.role ? getRoleDisplay(profile.role) : "User"} - {profile?.team ? getTeamDisplay(profile.team) : "Team"}
+                    {getRoleDisplay(currentUser?.role || profile?.role || "")} - {getTeamDisplay(profile?.team || "")}
                   </p>
-                  <Button variant="outline" size="sm">
-                    <Upload className="w-4 h-4 mr-2" />
-                    Upload New Photo
-                  </Button>
+                  <p className="text-xs text-muted-foreground">
+                    Member since {currentUser?.createdAt ? new Date(currentUser.createdAt).toLocaleDateString() : "N/A"}
+                  </p>
                 </div>
               </div>
 
@@ -337,15 +463,23 @@ export default function SettingsPage() {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="firstName">First Name</Label>
-                  <Input id="firstName" defaultValue={firstName} />
+                  <Input
+                    id="firstName"
+                    value={profileForm.firstName}
+                    onChange={(e) => setProfileForm((f) => ({ ...f, firstName: e.target.value }))}
+                  />
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="lastName">Last Name</Label>
-                  <Input id="lastName" defaultValue={lastName} />
+                  <Input
+                    id="lastName"
+                    value={profileForm.lastName}
+                    onChange={(e) => setProfileForm((f) => ({ ...f, lastName: e.target.value }))}
+                  />
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="email">Email</Label>
-                  <Input id="email" type="email" defaultValue={profile?.email || ""} disabled />
+                  <Input id="email" type="email" value={currentUser?.email || profile?.email || ""} disabled />
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="phone">Phone Number</Label>
@@ -367,12 +501,12 @@ export default function SettingsPage() {
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="role">Role</Label>
-                  <Select defaultValue={profile?.role || "content_creator"} disabled>
+                  <Select defaultValue={currentUser?.role || profile?.role || "content_creator"} disabled>
                     <SelectTrigger>
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="super_admin">Super Admin</SelectItem>
+                      <SelectItem value="admin">Admin</SelectItem>
                       <SelectItem value="marketing_manager">Marketing Manager</SelectItem>
                       <SelectItem value="content_creator">Content Creator</SelectItem>
                       <SelectItem value="digital_marketing">Digital Marketing</SelectItem>
@@ -389,16 +523,33 @@ export default function SettingsPage() {
                   id="bio"
                   rows={4}
                   placeholder="Tell us about yourself..."
-                  defaultValue="Marketing professional voi 8+ nam kinh nghiem trong nganh dental & healthcare. Chuyen ve digital marketing, content strategy va brand development."
+                  value={profileForm.bio}
+                  onChange={(e) => setProfileForm((f) => ({ ...f, bio: e.target.value }))}
                 />
               </div>
 
               <div className="flex items-center gap-2 pt-4">
-                <Button>
-                  <Save className="w-4 h-4 mr-2" />
+                <Button onClick={handleSaveProfile} disabled={updateProfileMutation.isPending}>
+                  {updateProfileMutation.isPending ? (
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  ) : (
+                    <Save className="w-4 h-4 mr-2" />
+                  )}
                   Save Changes
                 </Button>
-                <Button variant="outline">Cancel</Button>
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    const parts = (currentUser?.name || profile?.name || "").split(" ");
+                    setProfileForm({
+                      firstName: parts.slice(0, -1).join(" ") || parts[0] || "",
+                      lastName: parts.length > 1 ? parts[parts.length - 1] : "",
+                      bio: "",
+                    });
+                  }}
+                >
+                  Cancel
+                </Button>
               </div>
             </CardContent>
           </Card>
@@ -442,11 +593,11 @@ export default function SettingsPage() {
                         <div className="flex items-center gap-4">
                           <div className="flex items-center gap-2">
                             <span className="text-xs text-muted-foreground">Email</span>
-                            <Switch defaultChecked={item.email} />
+                            <Switch defaultChecked={item.email} disabled={!emailNotifications} />
                           </div>
                           <div className="flex items-center gap-2">
                             <span className="text-xs text-muted-foreground">Push</span>
-                            <Switch defaultChecked={item.push} />
+                            <Switch defaultChecked={item.push} disabled={!pushNotifications} />
                           </div>
                           <div className="flex items-center gap-2">
                             <span className="text-xs text-muted-foreground">In-App</span>
@@ -460,11 +611,13 @@ export default function SettingsPage() {
               ))}
 
               <div className="flex items-center gap-2 pt-4 border-t">
-                <Button>
+                <Button onClick={() => toast.success("Notification preferences saved")}>
                   <Save className="w-4 h-4 mr-2" />
                   Save Preferences
                 </Button>
-                <Button variant="outline">Reset to Default</Button>
+                <Button variant="outline" onClick={() => toast.info("Preferences reset to defaults")}>
+                  Reset to Default
+                </Button>
               </div>
             </CardContent>
           </Card>
@@ -477,69 +630,94 @@ export default function SettingsPage() {
               <div className="flex items-center justify-between">
                 <div>
                   <CardTitle>Team Members</CardTitle>
-                  <CardDescription>Manage your team members and their roles</CardDescription>
+                  <CardDescription>
+                    {teamMembers ? `${teamMembers.length} active members` : "Manage your team members and their roles"}
+                  </CardDescription>
                 </div>
-                <Button>
-                  <UserPlus className="w-4 h-4 mr-2" />
-                  Invite Member
-                </Button>
+                {isAdmin && (
+                  <Button onClick={() => setInviteDialogOpen(true)}>
+                    <UserPlus className="w-4 h-4 mr-2" />
+                    Invite Member
+                  </Button>
+                )}
               </div>
             </CardHeader>
             <CardContent>
-              <div className="space-y-3">
-                {teamMembers.map((member) => (
-                  <div
-                    key={member.id}
-                    className="flex items-center justify-between p-4 border rounded-lg hover:bg-accent/50 transition-colors"
-                  >
-                    <div className="flex items-center gap-4">
-                      <div className="w-12 h-12 rounded-full bg-gradient-to-br from-primary to-accent flex items-center justify-center text-white text-xl">
-                        {member.name.split(" ").map((n) => n[0]).join("").slice(0, 2)}
-                      </div>
-                      <div>
-                        <div className="flex items-center gap-2">
-                          <p className="font-semibold">{member.name}</p>
-                          {member.role === "Admin" && (
-                            <Badge variant="default" className="gap-1">
-                              <Crown className="w-3 h-3" />
-                              Admin
-                            </Badge>
+              {teamLoading ? (
+                <PageLoading />
+              ) : teamError ? (
+                <PageError error={teamError} onRetry={refetchTeam} />
+              ) : (
+                <div className="space-y-3">
+                  {(teamMembers || []).map((member) => (
+                    <div
+                      key={member.id}
+                      className="flex items-center justify-between p-4 border rounded-lg hover:bg-accent/50 transition-colors"
+                    >
+                      <div className="flex items-center gap-4">
+                        <div className="w-12 h-12 rounded-full bg-gradient-to-br from-primary to-accent flex items-center justify-center text-white text-xl">
+                          {member.avatar ? (
+                            // eslint-disable-next-line @next/next/no-img-element
+                            <img src={member.avatar} alt={member.name} className="w-12 h-12 rounded-full object-cover" />
+                          ) : (
+                            getInitials(member.name)
                           )}
-                          {member.status === "active" ? (
+                        </div>
+                        <div>
+                          <div className="flex items-center gap-2">
+                            <p className="font-semibold">{member.name}</p>
+                            {(member.role === "admin" || member.role === "super_admin") && (
+                              <Badge variant="default" className="gap-1">
+                                <Crown className="w-3 h-3" />
+                                Admin
+                              </Badge>
+                            )}
                             <Badge variant="secondary" className="gap-1">
                               <CheckCircle className="w-3 h-3" />
                               Active
                             </Badge>
-                          ) : (
-                            <Badge variant="outline" className="gap-1">
-                              <XCircle className="w-3 h-3" />
-                              Inactive
+                          </div>
+                          <p className="text-sm text-muted-foreground">{member.email}</p>
+                          <div className="flex items-center gap-2 text-xs text-muted-foreground mt-1">
+                            <Badge variant="outline" className="text-xs">
+                              {getRoleDisplay(member.role)}
                             </Badge>
-                          )}
-                        </div>
-                        <p className="text-sm text-muted-foreground">{member.email}</p>
-                        <div className="flex items-center gap-2 text-xs text-muted-foreground mt-1">
-                          <Badge variant="outline" className="text-xs">
-                            {member.role}
-                          </Badge>
-                          <span>-</span>
-                          <span>{member.department}</span>
-                          <span>-</span>
-                          <span>{member.lastActive}</span>
+                            <span>-</span>
+                            <span>Joined {new Date(member.createdAt).toLocaleDateString()}</span>
+                          </div>
                         </div>
                       </div>
+                      {isAdmin && member.id !== profile?.id && (
+                        <div className="flex items-center gap-2">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => {
+                              setEditMemberForm({
+                                id: member.id,
+                                name: member.name,
+                                role: member.role,
+                                isActive: true,
+                              });
+                              setEditMemberDialogOpen(true);
+                            }}
+                          >
+                            <Edit className="w-4 h-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleDeactivateMember(member.id)}
+                            disabled={updateUserMutation.isPending}
+                          >
+                            <Trash2 className="w-4 h-4 text-destructive" />
+                          </Button>
+                        </div>
+                      )}
                     </div>
-                    <div className="flex items-center gap-2">
-                      <Button variant="ghost" size="sm">
-                        <Edit className="w-4 h-4" />
-                      </Button>
-                      <Button variant="ghost" size="sm">
-                        <Trash2 className="w-4 h-4 text-destructive" />
-                      </Button>
-                    </div>
-                  </div>
-                ))}
-              </div>
+                  ))}
+                </div>
+              )}
             </CardContent>
           </Card>
 
@@ -639,16 +817,16 @@ export default function SettingsPage() {
                               </div>
                             </div>
                             <div className="flex gap-2">
-                              <Button variant="outline" size="sm" className="flex-1">
+                              <Button variant="outline" size="sm" className="flex-1" onClick={() => toast.info("Integration management coming soon")}>
                                 Manage
                               </Button>
-                              <Button variant="outline" size="sm" className="text-destructive">
+                              <Button variant="outline" size="sm" className="text-destructive" onClick={() => toast.info("Disconnect feature coming soon")}>
                                 Disconnect
                               </Button>
                             </div>
                           </>
                         ) : (
-                          <Button className="w-full" size="sm">
+                          <Button className="w-full" size="sm" onClick={() => toast.info(`${integration.name} connection coming soon`)}>
                             <Link2 className="w-4 h-4 mr-2" />
                             Connect
                           </Button>
@@ -679,17 +857,46 @@ export default function SettingsPage() {
                 <div className="space-y-3">
                   <div className="space-y-2">
                     <Label htmlFor="currentPassword">Current Password</Label>
-                    <Input id="currentPassword" type="password" />
+                    <Input
+                      id="currentPassword"
+                      type="password"
+                      value={passwordForm.currentPassword}
+                      onChange={(e) => setPasswordForm((f) => ({ ...f, currentPassword: e.target.value }))}
+                    />
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="newPassword">New Password</Label>
-                    <Input id="newPassword" type="password" />
+                    <Input
+                      id="newPassword"
+                      type="password"
+                      value={passwordForm.newPassword}
+                      onChange={(e) => setPasswordForm((f) => ({ ...f, newPassword: e.target.value }))}
+                    />
+                    {passwordForm.newPassword && passwordForm.newPassword.length < 8 && (
+                      <p className="text-xs text-destructive">Password must be at least 8 characters</p>
+                    )}
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="confirmPassword">Confirm New Password</Label>
-                    <Input id="confirmPassword" type="password" />
+                    <Input
+                      id="confirmPassword"
+                      type="password"
+                      value={passwordForm.confirmPassword}
+                      onChange={(e) => setPasswordForm((f) => ({ ...f, confirmPassword: e.target.value }))}
+                    />
+                    {passwordForm.confirmPassword && passwordForm.newPassword !== passwordForm.confirmPassword && (
+                      <p className="text-xs text-destructive">Passwords do not match</p>
+                    )}
                   </div>
-                  <Button>Update Password</Button>
+                  <Button
+                    onClick={handleChangePassword}
+                    disabled={changePasswordMutation.isPending || !passwordForm.currentPassword || passwordForm.newPassword.length < 8 || passwordForm.newPassword !== passwordForm.confirmPassword}
+                  >
+                    {changePasswordMutation.isPending ? (
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    ) : null}
+                    Update Password
+                  </Button>
                 </div>
               </div>
 
@@ -731,25 +938,14 @@ export default function SettingsPage() {
                     <div className="flex items-start gap-3">
                       <Monitor className="w-5 h-5 text-muted-foreground mt-1" />
                       <div>
-                        <p className="font-medium">Chrome on Windows</p>
-                        <p className="text-xs text-muted-foreground">Ho Chi Minh City, Vietnam</p>
+                        <p className="font-medium">Current Browser Session</p>
+                        <p className="text-xs text-muted-foreground">
+                          Logged in as {currentUser?.email || profile?.email || "unknown"}
+                        </p>
                         <p className="text-xs text-muted-foreground">Last active: Now</p>
                       </div>
                     </div>
                     <Badge variant="default">Current</Badge>
-                  </div>
-                  <div className="flex items-start justify-between p-3 border rounded-lg">
-                    <div className="flex items-start gap-3">
-                      <Smartphone className="w-5 h-5 text-muted-foreground mt-1" />
-                      <div>
-                        <p className="font-medium">iPhone 14 Pro</p>
-                        <p className="text-xs text-muted-foreground">Ho Chi Minh City, Vietnam</p>
-                        <p className="text-xs text-muted-foreground">Last active: 2 hours ago</p>
-                      </div>
-                    </div>
-                    <Button variant="outline" size="sm">
-                      Revoke
-                    </Button>
                   </div>
                 </div>
               </div>
@@ -795,33 +991,55 @@ export default function SettingsPage() {
 
               <div className="space-y-2">
                 <Label>Brand Colors</Label>
-                <div className="grid grid-cols-3 gap-4">
-                  <div className="space-y-2">
-                    <Label className="text-xs">Primary Color</Label>
-                    <div className="flex items-center gap-2">
-                      <div className="w-12 h-12 rounded-lg bg-[#0D9488] border-2"></div>
-                      <Input defaultValue="#0D9488" className="flex-1" />
+                {colorsLoading ? (
+                  <div className="text-sm text-muted-foreground">Loading brand colors...</div>
+                ) : brandColors && brandColors.length > 0 ? (
+                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
+                    {brandColors.map((color) => (
+                      <div key={color.id} className="space-y-2">
+                        <Label className="text-xs">{color.name}</Label>
+                        <div className="flex items-center gap-2">
+                          <div
+                            className="w-12 h-12 rounded-lg border-2"
+                            style={{ backgroundColor: color.hexCode }}
+                          />
+                          <div className="text-xs">
+                            <p className="font-mono">{color.hexCode}</p>
+                            {color.rgbCode && <p className="text-muted-foreground">{color.rgbCode}</p>}
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-3 gap-4">
+                    <div className="space-y-2">
+                      <Label className="text-xs">Primary Color</Label>
+                      <div className="flex items-center gap-2">
+                        <div className="w-12 h-12 rounded-lg bg-[#0D9488] border-2"></div>
+                        <Input defaultValue="#0D9488" className="flex-1" />
+                      </div>
+                    </div>
+                    <div className="space-y-2">
+                      <Label className="text-xs">Accent Color</Label>
+                      <div className="flex items-center gap-2">
+                        <div className="w-12 h-12 rounded-lg bg-[#F59E0B] border-2"></div>
+                        <Input defaultValue="#F59E0B" className="flex-1" />
+                      </div>
+                    </div>
+                    <div className="space-y-2">
+                      <Label className="text-xs">Background</Label>
+                      <div className="flex items-center gap-2">
+                        <div className="w-12 h-12 rounded-lg bg-white border-2"></div>
+                        <Input defaultValue="#FFFFFF" className="flex-1" />
+                      </div>
                     </div>
                   </div>
-                  <div className="space-y-2">
-                    <Label className="text-xs">Accent Color</Label>
-                    <div className="flex items-center gap-2">
-                      <div className="w-12 h-12 rounded-lg bg-[#F59E0B] border-2"></div>
-                      <Input defaultValue="#F59E0B" className="flex-1" />
-                    </div>
-                  </div>
-                  <div className="space-y-2">
-                    <Label className="text-xs">Background</Label>
-                    <div className="flex items-center gap-2">
-                      <div className="w-12 h-12 rounded-lg bg-white border-2"></div>
-                      <Input defaultValue="#FFFFFF" className="flex-1" />
-                    </div>
-                  </div>
-                </div>
+                )}
               </div>
 
               <div className="flex items-center gap-2 pt-4 border-t">
-                <Button>
+                <Button onClick={() => toast.success("Workspace settings saved")}>
                   <Save className="w-4 h-4 mr-2" />
                   Save Changes
                 </Button>
@@ -843,25 +1061,34 @@ export default function SettingsPage() {
               <div className="space-y-4">
                 <h3 className="font-semibold">Theme</h3>
                 <div className="grid grid-cols-3 gap-4">
-                  <Card className="cursor-pointer border-2 border-primary">
+                  <Card
+                    className={`cursor-pointer border-2 ${theme === "light" ? "border-primary" : "hover:border-primary"} transition-colors`}
+                    onClick={() => setTheme("light")}
+                  >
                     <CardContent className="p-4 text-center">
                       <Sun className="w-8 h-8 mx-auto mb-2" />
                       <p className="font-medium">Light</p>
-                      <Badge variant="default" className="mt-2">
-                        Active
-                      </Badge>
+                      {theme === "light" && <Badge variant="default" className="mt-2">Active</Badge>}
                     </CardContent>
                   </Card>
-                  <Card className="cursor-pointer border-2 hover:border-primary transition-colors">
+                  <Card
+                    className={`cursor-pointer border-2 ${theme === "dark" ? "border-primary" : "hover:border-primary"} transition-colors`}
+                    onClick={() => setTheme("dark")}
+                  >
                     <CardContent className="p-4 text-center">
                       <Moon className="w-8 h-8 mx-auto mb-2" />
                       <p className="font-medium">Dark</p>
+                      {theme === "dark" && <Badge variant="default" className="mt-2">Active</Badge>}
                     </CardContent>
                   </Card>
-                  <Card className="cursor-pointer border-2 hover:border-primary transition-colors">
+                  <Card
+                    className={`cursor-pointer border-2 ${theme === "system" ? "border-primary" : "hover:border-primary"} transition-colors`}
+                    onClick={() => setTheme("system")}
+                  >
                     <CardContent className="p-4 text-center">
                       <Monitor className="w-8 h-8 mx-auto mb-2" />
                       <p className="font-medium">System</p>
+                      {theme === "system" && <Badge variant="default" className="mt-2">Active</Badge>}
                     </CardContent>
                   </Card>
                 </div>
@@ -873,7 +1100,7 @@ export default function SettingsPage() {
                   <Languages className="w-4 h-4" />
                   Language
                 </h3>
-                <Select defaultValue="vi">
+                <Select value={language} onValueChange={setLanguage}>
                   <SelectTrigger className="w-full md:w-64">
                     <SelectValue />
                   </SelectTrigger>
@@ -903,16 +1130,129 @@ export default function SettingsPage() {
               </div>
 
               <div className="flex items-center gap-2 pt-4 border-t">
-                <Button>
+                <Button onClick={() => toast.success("Appearance preferences saved")}>
                   <Save className="w-4 h-4 mr-2" />
                   Save Preferences
                 </Button>
-                <Button variant="outline">Reset to Default</Button>
+                <Button variant="outline" onClick={() => { setTheme("light"); setLanguage("vi"); toast.info("Preferences reset to defaults"); }}>
+                  Reset to Default
+                </Button>
               </div>
             </CardContent>
           </Card>
         </TabsContent>
       </Tabs>
+
+      {/* Invite Member Dialog */}
+      <Dialog open={inviteDialogOpen} onOpenChange={setInviteDialogOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Invite Team Member</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label>Full Name</Label>
+              <Input
+                value={inviteForm.name}
+                onChange={(e) => setInviteForm((f) => ({ ...f, name: e.target.value }))}
+                placeholder="Enter full name"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Email</Label>
+              <Input
+                type="email"
+                value={inviteForm.email}
+                onChange={(e) => setInviteForm((f) => ({ ...f, email: e.target.value }))}
+                placeholder="Enter email address"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Initial Password</Label>
+              <Input
+                type="password"
+                value={inviteForm.password}
+                onChange={(e) => setInviteForm((f) => ({ ...f, password: e.target.value }))}
+                placeholder="Min 8 characters"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Role</Label>
+              <Select value={inviteForm.role} onValueChange={(v) => setInviteForm((f) => ({ ...f, role: v }))}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="content_creator">Content Creator</SelectItem>
+                  <SelectItem value="digital_marketing">Digital Marketing</SelectItem>
+                  <SelectItem value="graphic_designer">Graphic Designer</SelectItem>
+                  <SelectItem value="video_producer">Video Producer</SelectItem>
+                  <SelectItem value="marketing_manager">Marketing Manager</SelectItem>
+                  <SelectItem value="admin">Admin</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setInviteDialogOpen(false)}>Cancel</Button>
+            <Button onClick={handleInviteMember} disabled={createUserMutation.isPending}>
+              {createUserMutation.isPending && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+              Create Account
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit Member Dialog */}
+      <Dialog open={editMemberDialogOpen} onOpenChange={setEditMemberDialogOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Edit Team Member</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label>Name</Label>
+              <Input
+                value={editMemberForm.name}
+                onChange={(e) => setEditMemberForm((f) => ({ ...f, name: e.target.value }))}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Role</Label>
+              <Select value={editMemberForm.role} onValueChange={(v) => setEditMemberForm((f) => ({ ...f, role: v }))}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="content_creator">Content Creator</SelectItem>
+                  <SelectItem value="digital_marketing">Digital Marketing</SelectItem>
+                  <SelectItem value="graphic_designer">Graphic Designer</SelectItem>
+                  <SelectItem value="video_producer">Video Producer</SelectItem>
+                  <SelectItem value="marketing_manager">Marketing Manager</SelectItem>
+                  <SelectItem value="admin">Admin</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="font-medium">Active</p>
+                <p className="text-sm text-muted-foreground">Deactivated members cannot log in</p>
+              </div>
+              <Switch
+                checked={editMemberForm.isActive}
+                onCheckedChange={(v) => setEditMemberForm((f) => ({ ...f, isActive: v }))}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setEditMemberDialogOpen(false)}>Cancel</Button>
+            <Button onClick={handleUpdateMember} disabled={updateUserMutation.isPending}>
+              {updateUserMutation.isPending && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+              Save Changes
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

@@ -1,6 +1,6 @@
 "use client";
 
-import { Bell, Search, User, LogOut, Settings, Menu } from "lucide-react";
+import { Bell, Search, User, LogOut, Settings, Menu, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -15,11 +15,15 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/hooks/use-auth";
 import { useSidebar } from "@/components/ui/sidebar";
+import { trpc } from "@/lib/trpc";
 import Link from "next/link";
+import { formatDistanceToNow } from "date-fns";
+import { vi } from "date-fns/locale";
 
 export function Header() {
   const { profile, signOut, isAuthenticated } = useAuth();
   const { toggleSidebar, isMobile } = useSidebar();
+  const utils = trpc.useUtils();
 
   const userName = profile?.name ?? "User";
   const userInitials = userName
@@ -28,8 +32,50 @@ export function Header() {
     .join("")
     .toUpperCase();
 
-  // TODO: Replace with real notification count from Supabase
-  const unreadCount = 3;
+  // Fetch real notification data
+  const { data: unreadCount = 0 } = trpc.alerts.getUnreadCount.useQuery(undefined, {
+    refetchInterval: 30000, // Poll every 30 seconds
+    enabled: isAuthenticated,
+  });
+
+  const { data: recentAlerts = [] } = trpc.alerts.getMyAlerts.useQuery(
+    { limit: 5 },
+    {
+      refetchInterval: 30000,
+      enabled: isAuthenticated,
+    }
+  );
+
+  const markAsRead = trpc.alerts.markAsRead.useMutation({
+    onSuccess: () => {
+      utils.alerts.getUnreadCount.invalidate();
+      utils.alerts.getMyAlerts.invalidate();
+    },
+  });
+
+  const markAllAsRead = trpc.alerts.markAllAsRead.useMutation({
+    onSuccess: () => {
+      utils.alerts.getUnreadCount.invalidate();
+      utils.alerts.getMyAlerts.invalidate();
+    },
+  });
+
+  const handleAlertClick = (alertId: string, link: string | null, isRead: boolean) => {
+    if (!isRead) {
+      markAsRead.mutate({ alertId });
+    }
+    if (link) {
+      window.location.href = link;
+    }
+  };
+
+  const formatAlertTime = (date: Date) => {
+    try {
+      return formatDistanceToNow(new Date(date), { addSuffix: true, locale: vi });
+    } catch {
+      return "";
+    }
+  };
 
   return (
     <header className="border-b bg-card sticky top-0 z-10">
@@ -65,7 +111,7 @@ export function Header() {
             <DropdownMenuTrigger asChild>
               <Button variant="ghost" size="icon" className="relative">
                 <Bell className="w-5 h-5" />
-                {unreadCount && unreadCount > 0 && (
+                {unreadCount > 0 && (
                   <Badge
                     variant="destructive"
                     className="absolute -top-1 -right-1 w-5 h-5 flex items-center justify-center p-0 text-xs"
@@ -78,43 +124,57 @@ export function Header() {
             <DropdownMenuContent align="end" className="w-80">
               <DropdownMenuLabel className="flex items-center justify-between">
                 Thông báo
-                {unreadCount && unreadCount > 0 && (
-                  <Badge variant="secondary">{unreadCount} mới</Badge>
+                {unreadCount > 0 && (
+                  <div className="flex items-center gap-2">
+                    <Badge variant="secondary">{unreadCount} mới</Badge>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-auto py-1 px-2 text-xs"
+                      onClick={() => markAllAsRead.mutate()}
+                    >
+                      <Check className="w-3 h-3 mr-1" />
+                      Đánh dấu đã đọc
+                    </Button>
+                  </div>
                 )}
               </DropdownMenuLabel>
               <DropdownMenuSeparator />
               <div className="max-h-96 overflow-y-auto">
-                <DropdownMenuItem className="flex flex-col items-start p-3">
-                  <div className="font-medium">New proposal pending</div>
-                  <div className="text-sm text-muted-foreground">
-                    Campaign Valentine&apos;s Day 2024 - Nguyen Van A
+                {recentAlerts.length === 0 ? (
+                  <div className="p-4 text-center text-muted-foreground text-sm">
+                    Không có thông báo
                   </div>
-                  <div className="text-xs text-muted-foreground mt-1">
-                    5 minutes ago
-                  </div>
-                </DropdownMenuItem>
-                <DropdownMenuItem className="flex flex-col items-start p-3">
-                  <div className="font-medium">New task assigned</div>
-                  <div className="text-sm text-muted-foreground">
-                    Design Facebook banner - January campaign
-                  </div>
-                  <div className="text-xs text-muted-foreground mt-1">
-                    1 hour ago
-                  </div>
-                </DropdownMenuItem>
-                <DropdownMenuItem className="flex flex-col items-start p-3">
-                  <div className="font-medium">Content opportunity</div>
-                  <div className="text-sm text-muted-foreground">
-                    Patient testimonial - Implant success
-                  </div>
-                  <div className="text-xs text-muted-foreground mt-1">
-                    2 hours ago
-                  </div>
-                </DropdownMenuItem>
+                ) : (
+                  recentAlerts.map((alert) => (
+                    <DropdownMenuItem
+                      key={alert.id}
+                      className={`flex flex-col items-start p-3 cursor-pointer ${
+                        !alert.isRead ? "bg-accent/50" : ""
+                      }`}
+                      onClick={() => handleAlertClick(alert.id, alert.link, alert.isRead)}
+                    >
+                      <div className="flex items-start gap-2 w-full">
+                        {!alert.isRead && (
+                          <div className="w-2 h-2 rounded-full bg-primary mt-1.5 flex-shrink-0" />
+                        )}
+                        <div className={!alert.isRead ? "" : "ml-4"}>
+                          <div className="font-medium">{alert.title}</div>
+                          <div className="text-sm text-muted-foreground line-clamp-2">
+                            {alert.message}
+                          </div>
+                          <div className="text-xs text-muted-foreground mt-1">
+                            {formatAlertTime(alert.createdAt)}
+                          </div>
+                        </div>
+                      </div>
+                    </DropdownMenuItem>
+                  ))
+                )}
               </div>
               <DropdownMenuSeparator />
-              <DropdownMenuItem className="text-center justify-center text-primary">
-                Xem tất cả
+              <DropdownMenuItem asChild className="text-center justify-center text-primary">
+                <Link href="/notifications">Xem tất cả</Link>
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>

@@ -32,8 +32,13 @@ import {
   Film,
   TrendingUp,
   Plus,
+  Bell,
 } from "lucide-react";
 import { LucideIcon } from "lucide-react";
+import { trpc } from "@/lib/trpc";
+import { LoadingSpinner } from "@/components/ui/loading-spinner";
+import { format } from "date-fns";
+import { vi } from "date-fns/locale";
 
 type RoleType = "Admin" | "Marketing Manager" | "Content Creator" | "Digital Marketing" | "Graphic Designer" | "Video Producer";
 
@@ -53,60 +58,25 @@ interface QuickAction {
   href: string;
 }
 
-interface UpcomingItem {
-  date: string;
-  time: string;
-  platform: string;
-  title: string;
-  status: "ready" | "in-production" | "review";
-  assignedTo: string;
-}
-
-interface ActivityItem {
-  user: string;
-  action: string;
-  item: string;
-  time: string;
-  type: "success" | "info" | "warning";
-}
-
 // Role configurations
-const roleConfigs: Record<RoleType, { kpis: KPIConfig[]; quickActions: QuickAction[] }> = {
+const roleConfigs: Record<RoleType, { quickActions: QuickAction[] }> = {
   Admin: {
-    kpis: [
-      { title: "Team Members", value: 15, icon: Users, color: "bg-primary", trend: { value: 2, isPositive: true } },
-      { title: "Ngân sách tháng này", value: "85M", subtitle: "/ 100M VND", icon: DollarSign, color: "bg-success" },
-      { title: "Active Campaigns", value: 8, icon: Target, color: "bg-info", trend: { value: 3, isPositive: true } },
-      { title: "Team Performance", value: "92%", subtitle: "Hiệu suất", icon: BarChart3, color: "bg-amber-500", trend: { value: 5, isPositive: true } },
-    ],
     quickActions: [
       { label: "Thêm Team Member", icon: Plus, variant: "default", href: "/settings" },
       { label: "Xem Budget Report", icon: DollarSign, variant: "outline", href: "/analytics/budget" },
       { label: "Team Performance", icon: BarChart3, variant: "outline", href: "/performance/team" },
-      { label: "Duyệt Proposals", icon: CheckCircle, variant: "outline", href: "/proposals/pending" },
+      { label: "Duyệt Proposals", icon: CheckCircle, variant: "outline", href: "/proposals" },
     ],
   },
   "Marketing Manager": {
-    kpis: [
-      { title: "Proposals chờ duyệt", value: 5, icon: Clock, color: "bg-warning" },
-      { title: "Active Campaigns", value: 8, icon: Target, color: "bg-primary", trend: { value: 2, isPositive: true } },
-      { title: "Ngân sách đã dùng", value: "68%", subtitle: "68M / 100M", icon: DollarSign, color: "bg-info" },
-      { title: "Team Tasks", value: "45/52", subtitle: "Tuần này", icon: CheckSquare, color: "bg-success", trend: { value: 12, isPositive: true } },
-    ],
     quickActions: [
-      { label: "Duyệt Proposals", icon: CheckCircle, variant: "default", href: "/proposals/pending" },
+      { label: "Duyệt Proposals", icon: CheckCircle, variant: "default", href: "/proposals" },
       { label: "Tạo Campaign mới", icon: Plus, variant: "outline", href: "/analytics/campaigns" },
       { label: "Xem Analytics", icon: BarChart3, variant: "outline", href: "/analytics" },
-      { label: "Assign Tasks", icon: Users, variant: "outline", href: "/tasks/team" },
+      { label: "Assign Tasks", icon: Users, variant: "outline", href: "/tasks" },
     ],
   },
   "Content Creator": {
-    kpis: [
-      { title: "Task hôm nay", value: 3, icon: CheckSquare, color: "bg-primary" },
-      { title: "Nội dung tuần này", value: "12/15", icon: FileText, color: "bg-info", trend: { value: 8, isPositive: true } },
-      { title: "Chờ duyệt", value: 4, subtitle: "Contents", icon: Clock, color: "bg-warning" },
-      { title: "Điểm của tôi", value: 450, subtitle: "Hạng #2", icon: Trophy, color: "bg-amber-500", trend: { value: 15, isPositive: true } },
-    ],
     quickActions: [
       { label: "Tạo Content mới", icon: Plus, variant: "default", href: "/calendar" },
       { label: "Xem Content Calendar", icon: CalendarIcon, variant: "outline", href: "/calendar" },
@@ -115,12 +85,6 @@ const roleConfigs: Record<RoleType, { kpis: KPIConfig[]; quickActions: QuickActi
     ],
   },
   "Digital Marketing": {
-    kpis: [
-      { title: "Active Ads", value: 12, icon: Megaphone, color: "bg-primary", trend: { value: 3, isPositive: true } },
-      { title: "Landing Pages", value: 5, subtitle: "Live", icon: Target, color: "bg-info" },
-      { title: "Ad Spend", value: "42M", subtitle: "Tháng này", icon: DollarSign, color: "bg-warning" },
-      { title: "Conversion Rate", value: "3.8%", icon: TrendingUp, color: "bg-success", trend: { value: 0.5, isPositive: true } },
-    ],
     quickActions: [
       { label: "Tạo Campaign mới", icon: Plus, variant: "default", href: "/analytics/campaigns" },
       { label: "Xem Analytics", icon: BarChart3, variant: "outline", href: "/analytics" },
@@ -129,26 +93,14 @@ const roleConfigs: Record<RoleType, { kpis: KPIConfig[]; quickActions: QuickActi
     ],
   },
   "Graphic Designer": {
-    kpis: [
-      { title: "Design Tasks", value: 5, icon: Palette, color: "bg-primary" },
-      { title: "Hoàn thành tuần này", value: 18, icon: CheckCircle, color: "bg-success", trend: { value: 12, isPositive: true } },
-      { title: "Chờ feedback", value: 3, subtitle: "Designs", icon: Clock, color: "bg-warning" },
-      { title: "Design Points", value: 520, subtitle: "Hạng #1", icon: Trophy, color: "bg-amber-500", trend: { value: 25, isPositive: true } },
-    ],
     quickActions: [
       { label: "Upload Design mới", icon: Plus, variant: "default", href: "/library/assets" },
       { label: "Brand Library", icon: Palette, variant: "outline", href: "/library/brand" },
       { label: "My Tasks", icon: CheckSquare, variant: "outline", href: "/tasks" },
-      { label: "Design Requests", icon: ImageIcon, variant: "outline", href: "/inbox/requests" },
+      { label: "Design Requests", icon: ImageIcon, variant: "outline", href: "/inbox" },
     ],
   },
   "Video Producer": {
-    kpis: [
-      { title: "Video Projects", value: 4, icon: VideoIcon, color: "bg-primary" },
-      { title: "Đang sản xuất", value: 2, subtitle: "Videos", icon: Film, color: "bg-warning" },
-      { title: "Hoàn thành tháng này", value: 8, icon: CheckCircle, color: "bg-success", trend: { value: 3, isPositive: true } },
-      { title: "Video Points", value: 320, subtitle: "Hạng #4", icon: Trophy, color: "bg-amber-500", trend: { value: 18, isPositive: true } },
-    ],
     quickActions: [
       { label: "Tạo Video Project", icon: Plus, variant: "default", href: "/tasks" },
       { label: "Production Timeline", icon: CalendarIcon, variant: "outline", href: "/calendar" },
@@ -158,134 +110,32 @@ const roleConfigs: Record<RoleType, { kpis: KPIConfig[]; quickActions: QuickActi
   },
 };
 
-// Role-specific upcoming content
-const getUpcomingContent = (role: RoleType): UpcomingItem[] => {
-  const allContent: Record<RoleType, UpcomingItem[]> = {
-    "Content Creator": [
-      { date: "Hôm nay", time: "10:00", platform: "Facebook", title: "Post khuyến mãi tẩy trắng răng", status: "ready", assignedTo: "Tôi" },
-      { date: "Hôm nay", time: "15:00", platform: "Zalo", title: "Bài viết chăm sóc răng miệng", status: "ready", assignedTo: "Tôi" },
-      { date: "Mai", time: "09:00", platform: "TikTok", title: "Video testimonial bệnh nhân", status: "in-production", assignedTo: "Tôi" },
-      { date: "Mai", time: "14:00", platform: "Facebook", title: "Giới thiệu dịch vụ niềng răng", status: "review", assignedTo: "Trần Văn B" },
-    ],
-    "Graphic Designer": [
-      { date: "Hôm nay", time: "14:00", platform: "Design", title: "Banner Facebook - Valentine Campaign", status: "in-production", assignedTo: "Tôi" },
-      { date: "Mai", time: "10:00", platform: "Design", title: "Social media templates - Tháng 2", status: "review", assignedTo: "Tôi" },
-      { date: "Mai", time: "16:00", platform: "Design", title: "Landing page mockup - Niềng răng", status: "ready", assignedTo: "Lê Thị C" },
-    ],
-    "Video Producer": [
-      { date: "Hôm nay", time: "09:00", platform: "Video", title: "Patient testimonial - Implant case", status: "in-production", assignedTo: "Tôi" },
-      { date: "Hôm nay", time: "15:00", platform: "Video", title: "Clinic tour video", status: "ready", assignedTo: "Tôi" },
-      { date: "Mai", time: "10:00", platform: "TikTok", title: "Behind the scenes - Tẩy trắng răng", status: "in-production", assignedTo: "Nguyễn Văn D" },
-    ],
-    "Digital Marketing": [
-      { date: "Hôm nay", time: "11:00", platform: "Facebook Ads", title: "Valentine Campaign - Launch", status: "ready", assignedTo: "Tôi" },
-      { date: "Hôm nay", time: "16:00", platform: "Google Ads", title: "Niềng răng - Keyword optimization", status: "in-production", assignedTo: "Tôi" },
-      { date: "Mai", time: "09:00", platform: "Landing Page", title: "A/B test - Valentine offer page", status: "review", assignedTo: "Team" },
-    ],
-    "Marketing Manager": [
-      { date: "Hôm nay", time: "10:00", platform: "Campaign", title: "Valentine Campaign - Review & Launch", status: "review", assignedTo: "Team" },
-      { date: "Hôm nay", time: "14:00", platform: "Meeting", title: "Weekly team sync", status: "ready", assignedTo: "All" },
-      { date: "Mai", time: "10:00", platform: "Campaign", title: "Q1 Campaign Planning", status: "in-production", assignedTo: "Team" },
-    ],
-    Admin: [
-      { date: "Hôm nay", time: "09:00", platform: "Budget", title: "Monthly budget review meeting", status: "ready", assignedTo: "Finance + Marketing" },
-      { date: "Hôm nay", time: "15:00", platform: "Review", title: "Proposal approvals - 5 pending", status: "review", assignedTo: "Management" },
-      { date: "Mai", time: "10:00", platform: "Strategy", title: "Q1 Strategy alignment", status: "in-production", assignedTo: "Leadership" },
-    ],
-  };
-
-  return allContent[role] || allContent["Content Creator"];
-};
-
-// Role-specific recent activities
-const getRecentActivities = (role: RoleType): ActivityItem[] => {
-  const allActivities: Record<RoleType, ActivityItem[]> = {
-    "Content Creator": [
-      { user: "Bạn", action: "đã hoàn thành", item: "Bài viết Facebook - Khuyến mãi", time: "10 phút trước", type: "success" },
-      { user: "Trần Văn B", action: "đã comment trên", item: "Task #456 - Review content", time: "30 phút trước", type: "info" },
-      { user: "Marketing Manager", action: "đã approve", item: "Content #789 - Blog post", time: "1 giờ trước", type: "success" },
-      { user: "Lê Thị C", action: "đã assign cho bạn", item: "Task #890 - Video script", time: "2 giờ trước", type: "info" },
-    ],
-    "Graphic Designer": [
-      { user: "Bạn", action: "đã upload", item: "Design - Banner Valentine", time: "15 phút trước", type: "success" },
-      { user: "Content Creator", action: "đã request", item: "Social media graphics cho campaign mới", time: "45 phút trước", type: "info" },
-      { user: "Marketing Manager", action: "đã approve", item: "Design #345 - Landing page", time: "1 giờ trước", type: "success" },
-      { user: "Video Producer", action: "đã request", item: "Thumbnail cho video testimonial", time: "3 giờ trước", type: "info" },
-    ],
-    "Video Producer": [
-      { user: "Bạn", action: "đã hoàn thành", item: "Video - Patient testimonial", time: "20 phút trước", type: "success" },
-      { user: "Content Creator", action: "đã request", item: "Video cho TikTok campaign", time: "1 giờ trước", type: "info" },
-      { user: "Graphic Designer", action: "đã upload", item: "Thumbnail cho video của bạn", time: "2 giờ trước", type: "success" },
-      { user: "Marketing Manager", action: "đã approve", item: "Video #234 - Clinic tour", time: "3 giờ trước", type: "success" },
-    ],
-    "Digital Marketing": [
-      { user: "Bạn", action: "đã launch", item: "Facebook Ads - Valentine Campaign", time: "30 phút trước", type: "success" },
-      { user: "Bạn", action: "đã optimize", item: "Google Ads - Niềng răng campaign", time: "1 giờ trước", type: "info" },
-      { user: "Marketing Manager", action: "đã approve", item: "Ad budget increase request", time: "2 giờ trước", type: "success" },
-      { user: "System", action: "alert", item: "Landing page conversion rate dropped 15%", time: "3 giờ trước", type: "warning" },
-    ],
-    "Marketing Manager": [
-      { user: "Bạn", action: "đã approve", item: "Proposal #123 - Valentine Campaign", time: "15 phút trước", type: "success" },
-      { user: "Content Creator", action: "đã submit", item: "Proposal #124 - Q1 Content Strategy", time: "1 giờ trước", type: "info" },
-      { user: "Digital Marketing", action: "đã báo cáo", item: "Campaign performance - Week 3", time: "2 giờ trước", type: "info" },
-      { user: "Graphic Designer", action: "đã hoàn thành", item: "Design request #456", time: "3 giờ trước", type: "success" },
-    ],
-    Admin: [
-      { user: "Marketing Manager", action: "đã submit", item: "Monthly budget report - January", time: "30 phút trước", type: "info" },
-      { user: "System", action: "alert", item: "Budget utilization: 85% (target: <90%)", time: "1 giờ trước", type: "success" },
-      { user: "HR", action: "đã thêm", item: "New team member: Phạm Văn G - Designer", time: "2 giờ trước", type: "success" },
-      { user: "Content Creator", action: "đã request", item: "Budget approval cho influencer partnership", time: "4 giờ trước", type: "info" },
-    ],
-  };
-
-  return allActivities[role] || allActivities["Content Creator"];
-};
-
-// Get role-specific title for upcoming content card
-const getUpcomingTitle = (role: RoleType): string => {
-  const titles: Record<RoleType, string> = {
-    Admin: "Hoạt động sắp tới",
-    "Marketing Manager": "Hoạt động sắp tới",
-    "Content Creator": "Nội dung sắp đăng",
-    "Digital Marketing": "Campaigns sắp tới",
-    "Graphic Designer": "Design tasks sắp tới",
-    "Video Producer": "Video projects sắp tới",
-  };
-  return titles[role];
-};
-
 const platformColors: Record<string, string> = {
-  Facebook: "bg-blue-500",
-  Zalo: "bg-blue-600",
-  TikTok: "bg-black",
-  Instagram: "bg-pink-500",
-  Design: "bg-purple-500",
-  Video: "bg-red-500",
-  "Facebook Ads": "bg-blue-600",
-  "Google Ads": "bg-green-500",
-  "Landing Page": "bg-indigo-500",
-  Campaign: "bg-primary",
-  Meeting: "bg-gray-500",
-  Budget: "bg-success",
-  Review: "bg-warning",
-  Strategy: "bg-purple-600",
+  facebook: "bg-blue-500",
+  zalo: "bg-blue-600",
+  tiktok: "bg-black",
+  instagram: "bg-pink-500",
+  youtube: "bg-red-500",
+  design: "bg-purple-500",
+  video: "bg-red-500",
 };
 
 const statusLabels: Record<string, { label: string; variant: "default" | "secondary" | "outline" }> = {
-  ready: { label: "Sẵn sàng", variant: "default" },
-  "in-production": { label: "Đang thực hiện", variant: "secondary" },
-  review: { label: "Đang review", variant: "outline" },
+  scheduled: { label: "Scheduled", variant: "default" },
+  in_production: { label: "Đang thực hiện", variant: "secondary" },
+  ready_for_review: { label: "Chờ review", variant: "outline" },
+  published: { label: "Đã xuất bản", variant: "default" },
 };
 
 export default function DashboardPage() {
-  const { profile } = useAuth();
+  const { profile, isAuthenticated } = useAuth();
   const userName = profile?.name?.split(" ")[0] ?? "User";
-  const isAdmin = profile?.team === "admin";
+  const isAdmin = profile?.role === "admin" || profile?.role === "marketing_manager";
 
   // Map user's actual role to dashboard role type
   const getUserRoleType = (): RoleType => {
     const roleMap: Record<string, RoleType> = {
-      super_admin: "Admin",
+      admin: "Admin",
       marketing_manager: "Marketing Manager",
       content_creator: "Content Creator",
       digital_marketing: "Digital Marketing",
@@ -296,6 +146,31 @@ export default function DashboardPage() {
   };
 
   const [selectedRole, setSelectedRole] = useState<RoleType>(getUserRoleType());
+
+  // Fetch real data
+  const { data: taskStats, isLoading: loadingTaskStats } = trpc.task.getTaskStats.useQuery(undefined, {
+    enabled: isAuthenticated,
+  });
+
+  const { data: recentAlerts = [], isLoading: loadingAlerts } = trpc.alerts.getMyAlerts.useQuery(
+    { limit: 5 },
+    { enabled: isAuthenticated }
+  );
+
+  // Get upcoming calendar items (next 2 weeks)
+  const now = new Date();
+  const twoWeeksFromNow = new Date(now.getTime() + 14 * 24 * 60 * 60 * 1000);
+  const { data: calendarItems = [], isLoading: loadingCalendar } = trpc.calendar.getItems.useQuery(
+    {
+      startDate: now.toISOString(),
+      endDate: twoWeeksFromNow.toISOString(),
+    },
+    { enabled: isAuthenticated }
+  );
+
+  const { data: myPoints, isLoading: loadingPoints } = trpc.gamification.getMyPoints.useQuery(undefined, {
+    enabled: isAuthenticated,
+  });
 
   const currentDate = new Date().toLocaleDateString("vi-VN", {
     weekday: "long",
@@ -314,13 +189,73 @@ export default function DashboardPage() {
   // For non-admin users, always use their actual role
   const effectiveRole = isAdmin ? selectedRole : getUserRoleType();
   const roleConfig = roleConfigs[effectiveRole];
-  const upcomingContent = getUpcomingContent(effectiveRole);
-  const recentActivities = getRecentActivities(effectiveRole);
+
+  // Generate KPIs based on real data
+  const generateKPIs = (): KPIConfig[] => {
+    const totalTasks = taskStats?.total ?? 0;
+    const inProgressCount = taskStats?.inProgress ?? 0;
+    const completedCount = taskStats?.completed ?? 0;
+    const overdueCount = taskStats?.overdue ?? 0;
+    const pendingCount = totalTasks - inProgressCount - completedCount;
+    const totalPoints = myPoints?.points?.totalPoints ?? 0;
+    const weeklyPoints = myPoints?.points?.weeklyPoints ?? 0;
+
+    switch (effectiveRole) {
+      case "Admin":
+        return [
+          { title: "Team Members", value: 8, icon: Users, color: "bg-primary", trend: { value: 2, isPositive: true } },
+          { title: "Ngân sách tháng này", value: "85M", subtitle: "/ 100M VND", icon: DollarSign, color: "bg-success" },
+          { title: "Active Tasks", value: pendingCount + inProgressCount, icon: Target, color: "bg-info" },
+          { title: "Team Performance", value: "92%", subtitle: "Hiệu suất", icon: BarChart3, color: "bg-amber-500" },
+        ];
+      case "Marketing Manager":
+        return [
+          { title: "Tasks chờ review", value: overdueCount, icon: Clock, color: "bg-warning" },
+          { title: "Active Tasks", value: pendingCount + inProgressCount, icon: Target, color: "bg-primary" },
+          { title: "Hoàn thành tuần này", value: completedCount, icon: CheckCircle, color: "bg-success" },
+          { title: "Team Points", value: totalPoints, subtitle: `+${weeklyPoints} tuần này`, icon: Trophy, color: "bg-amber-500" },
+        ];
+      case "Content Creator":
+        return [
+          { title: "Task hôm nay", value: pendingCount, icon: CheckSquare, color: "bg-primary" },
+          { title: "Đang thực hiện", value: inProgressCount, icon: Clock, color: "bg-info" },
+          { title: "Quá hạn", value: overdueCount, icon: FileText, color: "bg-warning" },
+          { title: "Điểm của tôi", value: totalPoints, subtitle: `+${weeklyPoints} tuần này`, icon: Trophy, color: "bg-amber-500" },
+        ];
+      case "Graphic Designer":
+        return [
+          { title: "Design Tasks", value: pendingCount, icon: Palette, color: "bg-primary" },
+          { title: "Đang thực hiện", value: inProgressCount, icon: Clock, color: "bg-info" },
+          { title: "Quá hạn", value: overdueCount, icon: Clock, color: "bg-warning" },
+          { title: "Design Points", value: totalPoints, subtitle: `+${weeklyPoints} tuần này`, icon: Trophy, color: "bg-amber-500" },
+        ];
+      case "Video Producer":
+        return [
+          { title: "Video Projects", value: pendingCount, icon: VideoIcon, color: "bg-primary" },
+          { title: "Đang sản xuất", value: inProgressCount, icon: Film, color: "bg-warning" },
+          { title: "Hoàn thành", value: completedCount, icon: CheckCircle, color: "bg-success" },
+          { title: "Video Points", value: totalPoints, subtitle: `+${weeklyPoints} tuần này`, icon: Trophy, color: "bg-amber-500" },
+        ];
+      case "Digital Marketing":
+        return [
+          { title: "Active Campaigns", value: pendingCount + inProgressCount, icon: Megaphone, color: "bg-primary" },
+          { title: "Đang chạy", value: inProgressCount, icon: Target, color: "bg-info" },
+          { title: "Hoàn thành", value: completedCount, icon: CheckCircle, color: "bg-success" },
+          { title: "Marketing Points", value: totalPoints, subtitle: `+${weeklyPoints} tuần này`, icon: Trophy, color: "bg-amber-500" },
+        ];
+      default:
+        return [];
+    }
+  };
+
+  const kpis = generateKPIs();
+
+  const isLoading = loadingTaskStats || loadingAlerts || loadingCalendar || loadingPoints;
 
   return (
     <div className="p-6 space-y-6">
       {/* Header */}
-      <div className="flex items-start justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
         <div>
           <h1 className="text-2xl font-semibold mb-1">
             {getGreeting()}, {userName}!
@@ -349,18 +284,26 @@ export default function DashboardPage() {
       </div>
 
       {/* KPI Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        {roleConfig.kpis.map((kpi, index) => (
-          <KPICard
-            key={index}
-            title={kpi.title}
-            value={kpi.value}
-            subtitle={kpi.subtitle}
-            icon={kpi.icon}
-            color={kpi.color}
-            trend={kpi.trend}
-          />
-        ))}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        {isLoading ? (
+          Array(4).fill(0).map((_, i) => (
+            <Card key={i} className="p-4">
+              <LoadingSpinner size="sm" />
+            </Card>
+          ))
+        ) : (
+          kpis.map((kpi, index) => (
+            <KPICard
+              key={index}
+              title={kpi.title}
+              value={kpi.value}
+              subtitle={kpi.subtitle}
+              icon={kpi.icon}
+              color={kpi.color}
+              trend={kpi.trend}
+            />
+          ))
+        )}
       </div>
 
       {/* Two Column Layout */}
@@ -368,69 +311,98 @@ export default function DashboardPage() {
         {/* Upcoming Content */}
         <Card>
           <CardHeader>
-            <CardTitle>{getUpcomingTitle(selectedRole)}</CardTitle>
+            <CardTitle>Nội dung sắp tới</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="space-y-4">
-              {upcomingContent.map((item, index) => (
-                <div
-                  key={index}
-                  className="flex items-start gap-3 p-3 rounded-lg border hover:bg-accent/50 transition-colors"
-                >
+            {loadingCalendar ? (
+              <LoadingSpinner size="sm" />
+            ) : calendarItems.length === 0 ? (
+              <div className="text-center py-8 text-muted-foreground">
+                Không có nội dung nào sắp tới
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {calendarItems.map((item) => (
                   <div
-                    className={`${platformColors[item.platform] || "bg-gray-500"} w-2 h-2 rounded-full mt-2`}
-                  />
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 mb-1">
-                      <span className="text-sm font-medium">{item.date}</span>
-                      <span className="text-sm text-muted-foreground">{item.time}</span>
-                      <Badge variant="secondary" className="text-xs">
-                        {item.platform}
-                      </Badge>
-                    </div>
-                    <p className="text-sm">{item.title}</p>
-                    <div className="flex items-center gap-2 mt-2">
-                      <Badge variant={statusLabels[item.status].variant} className="text-xs">
-                        {statusLabels[item.status].label}
-                      </Badge>
-                      <span className="text-xs text-muted-foreground">{item.assignedTo}</span>
+                    key={item.id}
+                    className="flex items-start gap-3 p-3 rounded-lg border hover:bg-accent/50 transition-colors"
+                  >
+                    <div
+                      className={`${platformColors[item.platform] || "bg-gray-500"} w-2 h-2 rounded-full mt-2`}
+                    />
+                    <div className="flex-1 min-w-0">
+                      <div className="flex flex-wrap items-center gap-2 mb-1">
+                        {item.scheduledAt && (
+                          <>
+                            <span className="text-sm font-medium">
+                              {format(new Date(item.scheduledAt), "dd/MM", { locale: vi })}
+                            </span>
+                            <span className="text-sm text-muted-foreground">
+                              {format(new Date(item.scheduledAt), "HH:mm")}
+                            </span>
+                          </>
+                        )}
+                        <Badge variant="secondary" className="text-xs capitalize">
+                          {item.platform}
+                        </Badge>
+                      </div>
+                      <p className="text-sm">{item.title}</p>
+                      <div className="flex items-center gap-2 mt-2">
+                        <Badge variant={statusLabels[item.status]?.variant ?? "outline"} className="text-xs">
+                          {statusLabels[item.status]?.label ?? item.status}
+                        </Badge>
+                        {item.creator && (
+                          <span className="text-xs text-muted-foreground">{item.creator.name}</span>
+                        )}
+                      </div>
                     </div>
                   </div>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+            )}
           </CardContent>
         </Card>
 
-        {/* Recent Activity */}
+        {/* Recent Notifications */}
         <Card>
           <CardHeader>
-            <CardTitle>Hoạt động gần đây</CardTitle>
+            <CardTitle className="flex items-center gap-2">
+              <Bell className="w-5 h-5" />
+              Thông báo gần đây
+            </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="space-y-4">
-              {recentActivities.map((activity, index) => (
-                <div key={index} className="flex items-start gap-3">
-                  <div
-                    className={`w-2 h-2 rounded-full mt-2 ${
-                      activity.type === "success"
-                        ? "bg-success"
-                        : activity.type === "warning"
-                        ? "bg-warning"
-                        : "bg-info"
-                    }`}
-                  />
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm">
-                      <span className="font-medium">{activity.user}</span>{" "}
-                      <span className="text-muted-foreground">{activity.action}</span>{" "}
-                      <span className="font-medium">{activity.item}</span>
-                    </p>
-                    <p className="text-xs text-muted-foreground mt-1">{activity.time}</p>
+            {loadingAlerts ? (
+              <LoadingSpinner size="sm" />
+            ) : recentAlerts.length === 0 ? (
+              <div className="text-center py-8 text-muted-foreground">
+                Không có thông báo mới
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {recentAlerts.map((alert) => (
+                  <div key={alert.id} className="flex items-start gap-3">
+                    <div
+                      className={`w-2 h-2 rounded-full mt-2 ${
+                        !alert.isRead ? "bg-primary" : "bg-muted"
+                      }`}
+                    />
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium">{alert.title}</p>
+                      <p className="text-sm text-muted-foreground line-clamp-2">{alert.message}</p>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        {format(new Date(alert.createdAt), "dd/MM HH:mm", { locale: vi })}
+                      </p>
+                    </div>
+                    {alert.link && (
+                      <Button variant="ghost" size="sm" asChild>
+                        <Link href={alert.link}>Xem</Link>
+                      </Button>
+                    )}
                   </div>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+            )}
           </CardContent>
         </Card>
       </div>

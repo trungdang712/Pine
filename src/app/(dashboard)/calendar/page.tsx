@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -32,192 +32,183 @@ import {
   Copy,
   BarChart3,
 } from "lucide-react";
+import { trpc } from "@/lib/trpc";
+import { LoadingSpinner, PageLoading } from "@/components/ui/loading-spinner";
+import { ErrorDisplay } from "@/components/ui/error-display";
+import { toast } from "sonner";
 
-interface ContentItem {
+type Platform = "facebook" | "instagram" | "zalo" | "tiktok" | "website";
+type ContentStatus = "planned" | "in_production" | "ready_for_review" | "approved" | "scheduled" | "published" | "needs_revision";
+
+interface CalendarItem {
   id: string;
-  platform: string;
+  platform: Platform;
   title: string;
-  description: string;
-  status: "planned" | "in-production" | "review" | "ready" | "published";
-  date: string;
-  time: string;
-  assignee: string;
-  contentType: string;
-  tags: string[];
+  description: string | null;
+  status: ContentStatus;
+  scheduledAt: Date | null;
+  publishedAt: Date | null;
+  creator: {
+    id: string;
+    name: string | null;
+    avatar: string | null;
+  };
+  _count?: {
+    comments: number;
+    attachments: number;
+    socialPosts?: number;
+  };
 }
 
-const initialContentItems: ContentItem[] = [
-  {
-    id: "c1",
-    platform: "Facebook",
-    title: "Post khuyến mãi tẩy trắng răng",
-    description: "Chương trình khuyến mãi giảm 30% dịch vụ tẩy trắng răng cho khách hàng mới",
-    status: "ready",
-    date: "2026-01-03",
-    time: "10:00",
-    assignee: "Nguyễn Văn A",
-    contentType: "Social Post",
-    tags: ["Promotion", "Facebook"],
-  },
-  {
-    id: "c2",
-    platform: "Facebook",
-    title: "Video testimonial bệnh nhân",
-    description: "Video phỏng vấn bệnh nhân sau implant thành công",
-    status: "ready",
-    date: "2026-01-03",
-    time: "15:00",
-    assignee: "Nguyễn Văn D",
-    contentType: "Video",
-    tags: ["Testimonial", "Video"],
-  },
-  {
-    id: "c3",
-    platform: "Zalo",
-    title: "Bài viết chăm sóc răng miệng",
-    description: "Tips chăm sóc răng miệng hàng ngày",
-    status: "in-production",
-    date: "2026-01-05",
-    time: "09:00",
-    assignee: "Nguyễn Văn A",
-    contentType: "Article",
-    tags: ["Education", "Zalo"],
-  },
-  {
-    id: "c4",
-    platform: "Facebook",
-    title: "Banner campaign tháng 1",
-    description: "Banner quảng cáo cho campaign tháng 1",
-    status: "in-production",
-    date: "2026-01-08",
-    time: "10:00",
-    assignee: "Trần Văn B",
-    contentType: "Graphic",
-    tags: ["Design", "Campaign"],
-  },
-  {
-    id: "c5",
-    platform: "TikTok",
-    title: "Video Before/After",
-    description: "Video so sánh before/after niềng răng",
-    status: "review",
-    date: "2026-01-08",
-    time: "14:00",
-    assignee: "Nguyễn Văn D",
-    contentType: "Video",
-    tags: ["Before-After", "TikTok"],
-  },
-  {
-    id: "c6",
-    platform: "Website",
-    title: "Blog: Hướng dẫn niềng răng",
-    description: "Bài blog chi tiết về quy trình niềng răng",
-    status: "ready",
-    date: "2026-01-10",
-    time: "08:00",
-    assignee: "Lê Thị C",
-    contentType: "Blog Post",
-    tags: ["Blog", "Education"],
-  },
-  {
-    id: "c7",
-    platform: "Facebook",
-    title: "Giới thiệu dịch vụ implant",
-    description: "Post giới thiệu dịch vụ cấy ghép implant",
-    status: "planned",
-    date: "2026-01-12",
-    time: "10:00",
-    assignee: "Nguyễn Văn A",
-    contentType: "Social Post",
-    tags: ["Service", "Implant"],
-  },
-  {
-    id: "c8",
-    platform: "Instagram",
-    title: "Carousel: Quy trình tẩy trắng",
-    description: "Carousel 5 bước quy trình tẩy trắng răng",
-    status: "in-production",
-    date: "2026-01-15",
-    time: "11:00",
-    assignee: "Trần Văn B",
-    contentType: "Carousel",
-    tags: ["Instagram", "Process"],
-  },
-  {
-    id: "c9",
-    platform: "TikTok",
-    title: "Trending sound - Dental tips",
-    description: "Video ngắn với trending sound về tips răng miệng",
-    status: "review",
-    date: "2026-01-18",
-    time: "16:00",
-    assignee: "Nguyễn Văn D",
-    contentType: "Short Video",
-    tags: ["TikTok", "Trending"],
-  },
-  {
-    id: "c10",
-    platform: "Zalo",
-    title: "Thông báo lịch nghỉ Tết",
-    description: "Thông báo lịch nghỉ và hoạt động dịp Tết",
-    status: "planned",
-    date: "2026-01-25",
-    time: "09:00",
-    assignee: "Lê Thị C",
-    contentType: "Announcement",
-    tags: ["Announcement", "Holiday"],
-  },
-  {
-    id: "c11",
-    platform: "Facebook",
-    title: "Valentine Campaign Launch",
-    description: "Khởi động chiến dịch Valentine với ưu đãi đặc biệt",
-    status: "planned",
-    date: "2026-02-01",
-    time: "09:00",
-    assignee: "Nguyễn Văn A",
-    contentType: "Campaign",
-    tags: ["Valentine", "Campaign"],
-  },
-  {
-    id: "c12",
-    platform: "Instagram",
-    title: "Valentine Stories Series",
-    description: "Chuỗi stories về chăm sóc nụ cười cho Valentine",
-    status: "planned",
-    date: "2026-02-10",
-    time: "10:00",
-    assignee: "Trần Văn B",
-    contentType: "Stories",
-    tags: ["Valentine", "Instagram"],
-  },
-];
-
 const platformColors: Record<string, string> = {
-  Facebook: "bg-blue-500",
-  Zalo: "bg-blue-600",
-  TikTok: "bg-black",
-  Instagram: "bg-pink-500",
-  Website: "bg-yellow-500",
+  facebook: "bg-blue-500",
+  zalo: "bg-blue-600",
+  tiktok: "bg-black",
+  instagram: "bg-pink-500",
+  website: "bg-yellow-500",
+};
+
+const platformDisplayNames: Record<string, string> = {
+  facebook: "Facebook",
+  zalo: "Zalo",
+  tiktok: "TikTok",
+  instagram: "Instagram",
+  website: "Website",
 };
 
 const statusColors: Record<string, string> = {
   planned: "border-gray-300",
-  "in-production": "border-yellow-500",
-  review: "border-orange-500",
-  ready: "border-green-500",
-  published: "bg-blue-50",
+  in_production: "border-yellow-500",
+  ready_for_review: "border-orange-500",
+  approved: "border-green-500",
+  scheduled: "border-blue-500",
+  published: "bg-blue-50 border-blue-300",
+  needs_revision: "border-red-500",
+};
+
+const statusDisplayNames: Record<string, string> = {
+  planned: "Planned",
+  in_production: "In Production",
+  ready_for_review: "Review",
+  approved: "Approved",
+  scheduled: "Scheduled",
+  published: "Published",
+  needs_revision: "Needs Revision",
 };
 
 export default function CalendarPage() {
-  const [currentDate, setCurrentDate] = useState(new Date(2026, 0, 1));
-  const [selectedContent, setSelectedContent] = useState<ContentItem | null>(null);
+  const [currentDate, setCurrentDate] = useState(() => new Date());
+  const [selectedContent, setSelectedContent] = useState<CalendarItem | null>(null);
   const [isContentDetailOpen, setIsContentDetailOpen] = useState(false);
   const [isNewContentOpen, setIsNewContentOpen] = useState(false);
   const [filterPlatform, setFilterPlatform] = useState<string>("all");
   const [filterStatus, setFilterStatus] = useState<string>("all");
   const [viewMode, setViewMode] = useState<"month" | "week" | "day">("month");
-  const [contentItems, setContentItems] = useState<ContentItem[]>(initialContentItems);
+
+  // Form state for new content
+  const [newContent, setNewContent] = useState({
+    title: "",
+    description: "",
+    platform: "" as Platform | "",
+    contentType: "",
+    date: "",
+    time: "10:00",
+    assignee: "",
+    status: "planned" as ContentStatus,
+    tags: "",
+  });
+
+  // Form state for editing content
+  const [editContent, setEditContent] = useState({
+    platform: "" as Platform | "",
+    status: "" as ContentStatus | "",
+    date: "",
+    time: "",
+    description: "",
+    contentType: "",
+    assignee: "",
+  });
+
+  // Calculate date range for current month view
+  const { startDate, endDate } = useMemo(() => {
+    const start = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1);
+    start.setHours(0, 0, 0, 0);
+    const end = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0);
+    end.setHours(23, 59, 59, 999);
+    return {
+      startDate: start.toISOString(),
+      endDate: end.toISOString(),
+    };
+  }, [currentDate]);
+
+  // Fetch calendar items
+  const {
+    data: calendarItems,
+    isLoading,
+    error,
+    refetch,
+  } = trpc.calendar.getItems.useQuery({
+    startDate,
+    endDate,
+    platform: filterPlatform !== "all" ? (filterPlatform as Platform) : undefined,
+    status: filterStatus !== "all" ? (filterStatus as ContentStatus) : undefined,
+  });
+
+  // Fetch stats
+  const { data: stats } = trpc.calendar.getStats.useQuery({
+    startDate,
+    endDate,
+  });
+
+  // Mutations
+  const utils = trpc.useUtils();
+
+  const createMutation = trpc.calendar.create.useMutation({
+    onSuccess: () => {
+      toast.success("Content created successfully");
+      setIsNewContentOpen(false);
+      setNewContent({
+        title: "",
+        description: "",
+        platform: "",
+        contentType: "",
+        date: "",
+        time: "10:00",
+        assignee: "",
+        status: "planned",
+        tags: "",
+      });
+      utils.calendar.getItems.invalidate();
+      utils.calendar.getStats.invalidate();
+    },
+    onError: (error) => {
+      toast.error(`Failed to create content: ${error.message}`);
+    },
+  });
+
+  const updateMutation = trpc.calendar.update.useMutation({
+    onSuccess: () => {
+      toast.success("Content updated successfully");
+      setIsContentDetailOpen(false);
+      utils.calendar.getItems.invalidate();
+      utils.calendar.getStats.invalidate();
+    },
+    onError: (error) => {
+      toast.error(`Failed to update content: ${error.message}`);
+    },
+  });
+
+  const deleteMutation = trpc.calendar.delete.useMutation({
+    onSuccess: () => {
+      toast.success("Content deleted successfully");
+      setIsContentDetailOpen(false);
+      utils.calendar.getItems.invalidate();
+      utils.calendar.getStats.invalidate();
+    },
+    onError: (error) => {
+      toast.error(`Failed to delete content: ${error.message}`);
+    },
+  });
 
   const daysInMonth = new Date(
     currentDate.getFullYear(),
@@ -248,15 +239,24 @@ export default function CalendarPage() {
     return days;
   };
 
-  const getContentForDay = (day: number) => {
-    const dateStr = `${currentDate.getFullYear()}-${String(currentDate.getMonth() + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+  const getContentForDay = (day: number): CalendarItem[] => {
+    if (!calendarItems) return [];
 
-    return contentItems.filter((item) => {
-      const matchesDate = item.date === dateStr;
-      const matchesPlatform = filterPlatform === "all" || item.platform === filterPlatform;
-      const matchesStatus = filterStatus === "all" || item.status === filterStatus;
-      return matchesDate && matchesPlatform && matchesStatus;
-    });
+    return calendarItems.filter((item) => {
+      const itemDate = item.scheduledAt
+        ? new Date(item.scheduledAt)
+        : item.publishedAt
+          ? new Date(item.publishedAt)
+          : null;
+
+      if (!itemDate) return false;
+
+      return (
+        itemDate.getDate() === day &&
+        itemDate.getMonth() === currentDate.getMonth() &&
+        itemDate.getFullYear() === currentDate.getFullYear()
+      );
+    }) as CalendarItem[];
   };
 
   const handlePreviousMonth = () => {
@@ -267,22 +267,100 @@ export default function CalendarPage() {
     setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 1));
   };
 
-  const handleContentClick = (content: ContentItem) => {
+  const handleContentClick = (content: CalendarItem) => {
     setSelectedContent(content);
+    const scheduledDate = content.scheduledAt ? new Date(content.scheduledAt) : null;
+    setEditContent({
+      platform: content.platform,
+      status: content.status,
+      date: scheduledDate ? scheduledDate.toISOString().split("T")[0] : "",
+      time: scheduledDate ? scheduledDate.toTimeString().slice(0, 5) : "",
+      description: content.description || "",
+      contentType: "",
+      assignee: content.creator?.name || "",
+    });
     setIsContentDetailOpen(true);
   };
 
-  const getStatistics = () => {
-    const total = contentItems.length;
-    const planned = contentItems.filter((c) => c.status === "planned").length;
-    const inProduction = contentItems.filter((c) => c.status === "in-production").length;
-    const ready = contentItems.filter((c) => c.status === "ready").length;
-    const published = contentItems.filter((c) => c.status === "published").length;
+  const handleCreateContent = () => {
+    if (!newContent.title || !newContent.platform || !newContent.date) {
+      toast.error("Please fill in all required fields");
+      return;
+    }
 
-    return { total, planned, inProduction, ready, published };
+    const scheduledAt = new Date(`${newContent.date}T${newContent.time || "10:00"}:00`);
+
+    createMutation.mutate({
+      title: newContent.title,
+      description: newContent.description || undefined,
+      platform: newContent.platform as Platform,
+      status: newContent.status,
+      scheduledAt: scheduledAt.toISOString(),
+    });
   };
 
-  const stats = getStatistics();
+  const handleUpdateContent = () => {
+    if (!selectedContent) return;
+
+    const scheduledAt = editContent.date && editContent.time
+      ? new Date(`${editContent.date}T${editContent.time}:00`).toISOString()
+      : null;
+
+    updateMutation.mutate({
+      id: selectedContent.id,
+      platform: editContent.platform as Platform || undefined,
+      status: editContent.status as ContentStatus || undefined,
+      description: editContent.description || undefined,
+      scheduledAt: scheduledAt,
+    });
+  };
+
+  const handleDeleteContent = () => {
+    if (!selectedContent) return;
+
+    if (confirm("Are you sure you want to delete this content?")) {
+      deleteMutation.mutate({ id: selectedContent.id });
+    }
+  };
+
+  const handleDuplicateContent = () => {
+    if (!selectedContent) return;
+
+    const scheduledDate = selectedContent.scheduledAt
+      ? new Date(selectedContent.scheduledAt)
+      : new Date();
+    scheduledDate.setDate(scheduledDate.getDate() + 1);
+
+    createMutation.mutate({
+      title: `${selectedContent.title} (Copy)`,
+      description: selectedContent.description || undefined,
+      platform: selectedContent.platform,
+      status: "planned",
+      scheduledAt: scheduledDate.toISOString(),
+    });
+  };
+
+  const getStatistics = () => {
+    if (!stats) {
+      return {
+        total: 0,
+        planned: 0,
+        inProduction: 0,
+        ready: 0,
+        published: 0,
+      };
+    }
+
+    return {
+      total: stats.total,
+      planned: stats.byStatus.planned || 0,
+      inProduction: stats.byStatus.in_production || 0,
+      ready: (stats.byStatus.ready_for_review || 0) + (stats.byStatus.approved || 0),
+      published: stats.byStatus.published || 0,
+    };
+  };
+
+  const statsData = getStatistics();
 
   const monthName = currentDate.toLocaleDateString("vi-VN", {
     month: "long",
@@ -291,17 +369,39 @@ export default function CalendarPage() {
 
   const today = new Date();
 
+  const formatTime = (date: Date | null): string => {
+    if (!date) return "";
+    const d = new Date(date);
+    return d.toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" });
+  };
+
+  if (isLoading) {
+    return <PageLoading text="Loading calendar..." />;
+  }
+
+  if (error) {
+    return (
+      <div className="p-6">
+        <ErrorDisplay
+          error={error}
+          onRetry={() => refetch()}
+          title="Failed to load calendar"
+        />
+      </div>
+    );
+  }
+
   return (
     <div className="p-6 space-y-6">
       {/* Header */}
       <div className="flex items-start justify-between">
         <div>
           <h1 className="text-2xl font-semibold mb-1">Content Calendar</h1>
-          <p className="text-muted-foreground">Lịch xuất bản nội dung trên các nền tảng</p>
+          <p className="text-muted-foreground">Lich xuat ban noi dung tren cac nen tang</p>
         </div>
         <Button className="gap-2" onClick={() => setIsNewContentOpen(true)}>
           <Plus className="w-4 h-4" />
-          Thêm nội dung
+          Them noi dung
         </Button>
       </div>
 
@@ -312,7 +412,7 @@ export default function CalendarPage() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-muted-foreground">Total Content</p>
-                <p className="text-2xl font-semibold">{stats.total}</p>
+                <p className="text-2xl font-semibold">{statsData.total}</p>
               </div>
               <BarChart3 className="w-8 h-8 text-muted-foreground" />
             </div>
@@ -323,7 +423,7 @@ export default function CalendarPage() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-muted-foreground">Planned</p>
-                <p className="text-2xl font-semibold">{stats.planned}</p>
+                <p className="text-2xl font-semibold">{statsData.planned}</p>
               </div>
               <Clock className="w-8 h-8 text-gray-500" />
             </div>
@@ -334,7 +434,7 @@ export default function CalendarPage() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-muted-foreground">In Production</p>
-                <p className="text-2xl font-semibold">{stats.inProduction}</p>
+                <p className="text-2xl font-semibold">{statsData.inProduction}</p>
               </div>
               <Clock className="w-8 h-8 text-warning" />
             </div>
@@ -345,7 +445,7 @@ export default function CalendarPage() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-muted-foreground">Ready</p>
-                <p className="text-2xl font-semibold">{stats.ready}</p>
+                <p className="text-2xl font-semibold">{statsData.ready}</p>
               </div>
               <Clock className="w-8 h-8 text-success" />
             </div>
@@ -356,7 +456,7 @@ export default function CalendarPage() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-muted-foreground">Published</p>
-                <p className="text-2xl font-semibold">{stats.published}</p>
+                <p className="text-2xl font-semibold">{statsData.published}</p>
               </div>
               <CalendarIcon className="w-8 h-8 text-info" />
             </div>
@@ -375,12 +475,12 @@ export default function CalendarPage() {
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">Tất cả platforms</SelectItem>
-                  <SelectItem value="Facebook">Facebook</SelectItem>
-                  <SelectItem value="Zalo">Zalo</SelectItem>
-                  <SelectItem value="TikTok">TikTok</SelectItem>
-                  <SelectItem value="Instagram">Instagram</SelectItem>
-                  <SelectItem value="Website">Website</SelectItem>
+                  <SelectItem value="all">Tat ca platforms</SelectItem>
+                  <SelectItem value="facebook">Facebook</SelectItem>
+                  <SelectItem value="zalo">Zalo</SelectItem>
+                  <SelectItem value="tiktok">TikTok</SelectItem>
+                  <SelectItem value="instagram">Instagram</SelectItem>
+                  <SelectItem value="website">Website</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -391,12 +491,14 @@ export default function CalendarPage() {
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">Tất cả status</SelectItem>
+                  <SelectItem value="all">Tat ca status</SelectItem>
                   <SelectItem value="planned">Planned</SelectItem>
-                  <SelectItem value="in-production">In Production</SelectItem>
-                  <SelectItem value="review">Review</SelectItem>
-                  <SelectItem value="ready">Ready</SelectItem>
+                  <SelectItem value="in_production">In Production</SelectItem>
+                  <SelectItem value="ready_for_review">Review</SelectItem>
+                  <SelectItem value="approved">Approved</SelectItem>
+                  <SelectItem value="scheduled">Scheduled</SelectItem>
                   <SelectItem value="published">Published</SelectItem>
+                  <SelectItem value="needs_revision">Needs Revision</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -424,21 +526,21 @@ export default function CalendarPage() {
               size="sm"
               onClick={() => setViewMode("month")}
             >
-              Tháng
+              Thang
             </Button>
             <Button
               variant={viewMode === "week" ? "default" : "ghost"}
               size="sm"
               onClick={() => setViewMode("week")}
             >
-              Tuần
+              Tuan
             </Button>
             <Button
               variant={viewMode === "day" ? "default" : "ghost"}
               size="sm"
               onClick={() => setViewMode("day")}
             >
-              Ngày
+              Ngay
             </Button>
           </div>
         </CardHeader>
@@ -501,7 +603,7 @@ export default function CalendarPage() {
                       <>
                         <div className={`text-sm font-medium mb-2 ${isToday ? "text-primary" : ""}`}>
                           {day}
-                          {isToday && <span className="ml-1 text-xs">(Hôm nay)</span>}
+                          {isToday && <span className="ml-1 text-xs">(Hom nay)</span>}
                         </div>
                         <div className="space-y-1">
                           {dayContent.map((item) => (
@@ -513,10 +615,10 @@ export default function CalendarPage() {
                               <div className="flex items-center gap-1 mb-0.5">
                                 <div className={`w-2 h-2 rounded-full ${platformColors[item.platform]}`} />
                                 <Badge variant="secondary" className="text-[10px] px-1 py-0 h-4">
-                                  {item.platform}
+                                  {platformDisplayNames[item.platform]}
                                 </Badge>
                                 <span className="text-[10px] text-muted-foreground ml-auto">
-                                  {item.time}
+                                  {formatTime(item.scheduledAt)}
                                 </span>
                               </div>
                               <div className="line-clamp-2 font-medium">{item.title}</div>
@@ -547,7 +649,7 @@ export default function CalendarPage() {
             </div>
             <div className="flex items-center gap-2">
               <div className="w-8 h-2 border-l-2 border-green-500 bg-white" />
-              <span>Ready</span>
+              <span>Approved</span>
             </div>
             <div className="flex items-center gap-2">
               <div className="w-8 h-2 bg-blue-50 border" />
@@ -564,7 +666,7 @@ export default function CalendarPage() {
             <>
               <DialogHeader>
                 <DialogTitle className="text-xl">{selectedContent.title}</DialogTitle>
-                <DialogDescription>Content ID: #{selectedContent.id}</DialogDescription>
+                <DialogDescription>Content ID: #{selectedContent.id.slice(0, 8)}</DialogDescription>
               </DialogHeader>
 
               <div className="space-y-4">
@@ -572,16 +674,19 @@ export default function CalendarPage() {
                   <div>
                     <Label className="text-sm text-muted-foreground">Platform</Label>
                     <div className="mt-1">
-                      <Select defaultValue={selectedContent.platform}>
+                      <Select
+                        value={editContent.platform}
+                        onValueChange={(value) => setEditContent({ ...editContent, platform: value as Platform })}
+                      >
                         <SelectTrigger>
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="Facebook">Facebook</SelectItem>
-                          <SelectItem value="Zalo">Zalo</SelectItem>
-                          <SelectItem value="TikTok">TikTok</SelectItem>
-                          <SelectItem value="Instagram">Instagram</SelectItem>
-                          <SelectItem value="Website">Website</SelectItem>
+                          <SelectItem value="facebook">Facebook</SelectItem>
+                          <SelectItem value="zalo">Zalo</SelectItem>
+                          <SelectItem value="tiktok">TikTok</SelectItem>
+                          <SelectItem value="instagram">Instagram</SelectItem>
+                          <SelectItem value="website">Website</SelectItem>
                         </SelectContent>
                       </Select>
                     </div>
@@ -589,74 +694,119 @@ export default function CalendarPage() {
                   <div>
                     <Label className="text-sm text-muted-foreground">Status</Label>
                     <div className="mt-1">
-                      <Select defaultValue={selectedContent.status}>
+                      <Select
+                        value={editContent.status}
+                        onValueChange={(value) => setEditContent({ ...editContent, status: value as ContentStatus })}
+                      >
                         <SelectTrigger>
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
                           <SelectItem value="planned">Planned</SelectItem>
-                          <SelectItem value="in-production">In Production</SelectItem>
-                          <SelectItem value="review">Review</SelectItem>
-                          <SelectItem value="ready">Ready</SelectItem>
+                          <SelectItem value="in_production">In Production</SelectItem>
+                          <SelectItem value="ready_for_review">Review</SelectItem>
+                          <SelectItem value="approved">Approved</SelectItem>
+                          <SelectItem value="scheduled">Scheduled</SelectItem>
                           <SelectItem value="published">Published</SelectItem>
+                          <SelectItem value="needs_revision">Needs Revision</SelectItem>
                         </SelectContent>
                       </Select>
                     </div>
                   </div>
                   <div>
                     <Label className="text-sm text-muted-foreground">Publish Date</Label>
-                    <Input type="date" defaultValue={selectedContent.date} className="mt-1" />
+                    <Input
+                      type="date"
+                      value={editContent.date}
+                      onChange={(e) => setEditContent({ ...editContent, date: e.target.value })}
+                      className="mt-1"
+                    />
                   </div>
                   <div>
                     <Label className="text-sm text-muted-foreground">Publish Time</Label>
-                    <Input type="time" defaultValue={selectedContent.time} className="mt-1" />
+                    <Input
+                      type="time"
+                      value={editContent.time}
+                      onChange={(e) => setEditContent({ ...editContent, time: e.target.value })}
+                      className="mt-1"
+                    />
                   </div>
                 </div>
 
                 <div>
                   <Label className="text-sm text-muted-foreground">Description</Label>
-                  <Textarea defaultValue={selectedContent.description} rows={3} className="mt-1" />
+                  <Textarea
+                    value={editContent.description}
+                    onChange={(e) => setEditContent({ ...editContent, description: e.target.value })}
+                    rows={3}
+                    className="mt-1"
+                  />
                 </div>
 
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <Label className="text-sm text-muted-foreground">Content Type</Label>
-                    <Input defaultValue={selectedContent.contentType} className="mt-1" />
+                    <Input
+                      value={editContent.contentType}
+                      onChange={(e) => setEditContent({ ...editContent, contentType: e.target.value })}
+                      className="mt-1"
+                    />
                   </div>
                   <div>
                     <Label className="text-sm text-muted-foreground">Assignee</Label>
-                    <Input defaultValue={selectedContent.assignee} className="mt-1" />
+                    <Input
+                      value={editContent.assignee}
+                      disabled
+                      className="mt-1"
+                    />
                   </div>
                 </div>
 
-                <div>
-                  <Label className="text-sm text-muted-foreground">Tags</Label>
-                  <div className="flex flex-wrap gap-2 mt-2">
-                    {selectedContent.tags?.map((tag, index) => (
-                      <Badge key={index} variant="secondary">
-                        {tag}
-                      </Badge>
-                    ))}
+                {selectedContent._count && (
+                  <div className="flex gap-4 text-sm text-muted-foreground">
+                    <span>{selectedContent._count.comments} comments</span>
+                    <span>{selectedContent._count.attachments} attachments</span>
                   </div>
-                </div>
+                )}
               </div>
 
               <DialogFooter className="flex justify-between">
                 <div className="flex gap-2">
-                  <Button variant="outline" size="sm" className="gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="gap-2"
+                    onClick={handleDuplicateContent}
+                    disabled={createMutation.isPending}
+                  >
                     <Copy className="w-4 h-4" />
                     Duplicate
                   </Button>
-                  <Button variant="destructive" size="sm" className="gap-2">
+                  <Button
+                    variant="destructive"
+                    size="sm"
+                    className="gap-2"
+                    onClick={handleDeleteContent}
+                    disabled={deleteMutation.isPending}
+                  >
                     <Trash2 className="w-4 h-4" />
                     Delete
                   </Button>
                 </div>
                 <div className="flex gap-2">
                   <Button variant="outline" onClick={() => setIsContentDetailOpen(false)}>
-                    Đóng
+                    Dong
                   </Button>
-                  <Button>Lưu thay đổi</Button>
+                  <Button onClick={handleUpdateContent} disabled={updateMutation.isPending}>
+                    {updateMutation.isPending ? (
+                      <>
+                        <LoadingSpinner size="sm" className="mr-2 p-0" />
+                        Saving...
+                      </>
+                    ) : (
+                      "Luu thay doi"
+                    )}
+                  </Button>
                 </div>
               </DialogFooter>
             </>
@@ -668,43 +818,60 @@ export default function CalendarPage() {
       <Dialog open={isNewContentOpen} onOpenChange={setIsNewContentOpen}>
         <DialogContent className="max-w-2xl">
           <DialogHeader>
-            <DialogTitle>Thêm nội dung mới</DialogTitle>
-            <DialogDescription>Tạo content mới cho Content Calendar</DialogDescription>
+            <DialogTitle>Them noi dung moi</DialogTitle>
+            <DialogDescription>Tao content moi cho Content Calendar</DialogDescription>
           </DialogHeader>
 
           <div className="space-y-4">
             <div>
-              <Label>Tiêu đề *</Label>
-              <Input placeholder="Nhập tiêu đề content..." className="mt-1" />
+              <Label>Tieu de *</Label>
+              <Input
+                placeholder="Nhap tieu de content..."
+                className="mt-1"
+                value={newContent.title}
+                onChange={(e) => setNewContent({ ...newContent, title: e.target.value })}
+              />
             </div>
 
             <div>
-              <Label>Mô tả</Label>
-              <Textarea placeholder="Mô tả chi tiết về content..." rows={3} className="mt-1" />
+              <Label>Mo ta</Label>
+              <Textarea
+                placeholder="Mo ta chi tiet ve content..."
+                rows={3}
+                className="mt-1"
+                value={newContent.description}
+                onChange={(e) => setNewContent({ ...newContent, description: e.target.value })}
+              />
             </div>
 
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <Label>Platform *</Label>
-                <Select>
+                <Select
+                  value={newContent.platform}
+                  onValueChange={(value) => setNewContent({ ...newContent, platform: value as Platform })}
+                >
                   <SelectTrigger className="mt-1">
-                    <SelectValue placeholder="Chọn platform..." />
+                    <SelectValue placeholder="Chon platform..." />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="Facebook">Facebook</SelectItem>
-                    <SelectItem value="Zalo">Zalo</SelectItem>
-                    <SelectItem value="TikTok">TikTok</SelectItem>
-                    <SelectItem value="Instagram">Instagram</SelectItem>
-                    <SelectItem value="Website">Website</SelectItem>
+                    <SelectItem value="facebook">Facebook</SelectItem>
+                    <SelectItem value="zalo">Zalo</SelectItem>
+                    <SelectItem value="tiktok">TikTok</SelectItem>
+                    <SelectItem value="instagram">Instagram</SelectItem>
+                    <SelectItem value="website">Website</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
 
               <div>
                 <Label>Content Type</Label>
-                <Select>
+                <Select
+                  value={newContent.contentType}
+                  onValueChange={(value) => setNewContent({ ...newContent, contentType: value })}
+                >
                   <SelectTrigger className="mt-1">
-                    <SelectValue placeholder="Chọn loại..." />
+                    <SelectValue placeholder="Chon loai..." />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="Social Post">Social Post</SelectItem>
@@ -721,32 +888,50 @@ export default function CalendarPage() {
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <Label>Publish Date *</Label>
-                <Input type="date" className="mt-1" />
+                <Input
+                  type="date"
+                  className="mt-1"
+                  value={newContent.date}
+                  onChange={(e) => setNewContent({ ...newContent, date: e.target.value })}
+                />
               </div>
 
               <div>
                 <Label>Publish Time</Label>
-                <Input type="time" defaultValue="10:00" className="mt-1" />
+                <Input
+                  type="time"
+                  value={newContent.time}
+                  className="mt-1"
+                  onChange={(e) => setNewContent({ ...newContent, time: e.target.value })}
+                />
               </div>
             </div>
 
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <Label>Assignee</Label>
-                <Input placeholder="Người phụ trách..." className="mt-1" />
+                <Input
+                  placeholder="Nguoi phu trach..."
+                  className="mt-1"
+                  value={newContent.assignee}
+                  onChange={(e) => setNewContent({ ...newContent, assignee: e.target.value })}
+                />
               </div>
 
               <div>
                 <Label>Status</Label>
-                <Select defaultValue="planned">
+                <Select
+                  value={newContent.status}
+                  onValueChange={(value) => setNewContent({ ...newContent, status: value as ContentStatus })}
+                >
                   <SelectTrigger className="mt-1">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="planned">Planned</SelectItem>
-                    <SelectItem value="in-production">In Production</SelectItem>
-                    <SelectItem value="review">Review</SelectItem>
-                    <SelectItem value="ready">Ready</SelectItem>
+                    <SelectItem value="in_production">In Production</SelectItem>
+                    <SelectItem value="ready_for_review">Review</SelectItem>
+                    <SelectItem value="approved">Approved</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -754,15 +939,29 @@ export default function CalendarPage() {
 
             <div>
               <Label>Tags</Label>
-              <Input placeholder="Tag1, Tag2, Tag3..." className="mt-1" />
+              <Input
+                placeholder="Tag1, Tag2, Tag3..."
+                className="mt-1"
+                value={newContent.tags}
+                onChange={(e) => setNewContent({ ...newContent, tags: e.target.value })}
+              />
             </div>
           </div>
 
           <DialogFooter>
             <Button variant="outline" onClick={() => setIsNewContentOpen(false)}>
-              Hủy
+              Huy
             </Button>
-            <Button onClick={() => setIsNewContentOpen(false)}>Tạo Content</Button>
+            <Button onClick={handleCreateContent} disabled={createMutation.isPending}>
+              {createMutation.isPending ? (
+                <>
+                  <LoadingSpinner size="sm" className="mr-2 p-0" />
+                  Creating...
+                </>
+              ) : (
+                "Tao Content"
+              )}
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

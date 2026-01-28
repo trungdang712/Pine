@@ -4,7 +4,7 @@ import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Plus, Clock, CheckCircle, XCircle, MessageSquare, ArrowRight, User, FileText, BarChart3 } from "lucide-react";
+import { Plus, Clock, CheckCircle, XCircle, MessageSquare, ArrowRight, User, FileText, BarChart3, Send, Lightbulb } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Progress } from "@/components/ui/progress";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
@@ -12,304 +12,327 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { trpc } from "@/lib/trpc";
+import { PageLoading } from "@/components/ui/loading-spinner";
+import { PageError } from "@/components/ui/error-display";
+import { PageEmpty } from "@/components/ui/empty-state";
+import { toast } from "sonner";
+import { format } from "date-fns";
+import { useAuth } from "@/hooks/use-auth";
 
-interface Proposal {
-  id: number;
-  title: string;
-  category: string;
-  priority: "High" | "Normal" | "Low";
-  submittedBy: string;
-  submittedDate: string;
-  status: "under-review" | "approved" | "rejected" | "draft";
-  currentStep: number;
-  totalSteps: number;
-  description: string;
-  budget?: string;
-  timeline?: string;
-  expectedOutcome?: string;
-  approvedDate?: string;
-  rejectedDate?: string;
-  reason?: string;
-}
+type ProposalStatus = "draft" | "submitted" | "under_review" | "approved" | "rejected" | "in_progress" | "completed";
+type ProposalCategory = "content" | "design" | "video" | "campaign" | "event" | "partnership";
+type ProposalPriority = "urgent" | "high" | "normal" | "low";
 
-interface Comment {
-  id: string;
-  user: string;
-  role: string;
-  text: string;
-  timestamp: string;
-  type: "comment" | "approval" | "rejection";
-}
+const statusConfig: Record<ProposalStatus, { label: string; variant: "default" | "secondary" | "destructive" | "outline" }> = {
+  draft: { label: "Draft", variant: "outline" },
+  submitted: { label: "Submitted", variant: "secondary" },
+  under_review: { label: "Đang review", variant: "secondary" },
+  approved: { label: "Đã duyệt", variant: "default" },
+  rejected: { label: "Từ chối", variant: "destructive" },
+  in_progress: { label: "Đang thực hiện", variant: "default" },
+  completed: { label: "Hoàn thành", variant: "default" },
+};
+
+const categoryLabels: Record<ProposalCategory, string> = {
+  content: "Content",
+  design: "Design",
+  video: "Video",
+  campaign: "Campaign",
+  event: "Event",
+  partnership: "Partnership",
+};
+
+const priorityConfig: Record<ProposalPriority, { label: string; variant: "default" | "destructive" | "secondary" }> = {
+  urgent: { label: "Khẩn cấp", variant: "destructive" },
+  high: { label: "Cao", variant: "destructive" },
+  normal: { label: "Bình thường", variant: "secondary" },
+  low: { label: "Thấp", variant: "secondary" },
+};
 
 export default function ProposalsPage() {
-  const [selectedProposal, setSelectedProposal] = useState<Proposal | null>(null);
+  const { profile } = useAuth();
+  const [selectedProposalId, setSelectedProposalId] = useState<string | null>(null);
   const [isDetailOpen, setIsDetailOpen] = useState(false);
   const [isNewProposalOpen, setIsNewProposalOpen] = useState(false);
   const [isApprovalModalOpen, setIsApprovalModalOpen] = useState(false);
-  const [approvalAction, setApprovalAction] = useState<"approve" | "reject">("approve");
+  const [isNewIdeaOpen, setIsNewIdeaOpen] = useState(false);
+  const [approvalAction, setApprovalAction] = useState<"approve" | "reject" | "revision">("approve");
   const [approvalComment, setApprovalComment] = useState("");
   const [newComment, setNewComment] = useState("");
   const [activeTab, setActiveTab] = useState("proposals");
 
-  const [proposals, setProposals] = useState<Proposal[]>([
-    {
-      id: 123,
-      title: "Campaign: Valentine's Day 2024",
-      category: "Campaign",
-      priority: "High",
-      submittedBy: "Nguyen Van A",
-      submittedDate: "Jan 3, 2024",
-      status: "under-review",
-      currentStep: 2,
-      totalSteps: 3,
-      description: "De xuat chien dich quang cao Valentine 2024 tren cac nen tang Facebook, Zalo, TikTok voi ngan sach 30,000,000 VND.",
-      budget: "30,000,000 VND",
-      timeline: "Jan 20 - Feb 14, 2024",
-      expectedOutcome: "Tang 50% engagement, 200+ leads moi"
-    },
-    {
-      id: 122,
-      title: "Content: Bai viet blog ve nieng rang",
-      category: "Content",
-      priority: "Normal",
-      submittedBy: "Tran Van B",
-      submittedDate: "Jan 2, 2024",
-      status: "approved",
-      currentStep: 3,
-      totalSteps: 3,
-      approvedDate: "Jan 4, 2024",
-      description: "Bai viet chi tiet ve cac phuong phap nieng rang hien dai, SEO-optimized de tang organic traffic.",
-      timeline: "Jan 10 - Jan 15, 2024",
-      expectedOutcome: "Tang organic traffic 20%, tao authority trong linh vuc nieng rang"
-    },
-    {
-      id: 121,
-      title: "Innovation: Su dung Reels cho testimonials",
-      category: "Innovation",
-      priority: "Normal",
-      submittedBy: "Le Thi C",
-      submittedDate: "Jan 1, 2024",
-      status: "under-review",
-      currentStep: 1,
-      totalSteps: 3,
-      description: "De xuat thu nghiem format Reels/Short-form video cho testimonial cua benh nhan de tang engagement.",
-      budget: "5,000,000 VND",
-      timeline: "Jan 8 - Jan 31, 2024",
-      expectedOutcome: "Test voi 5 videos, danh gia engagement rate"
-    },
-    {
-      id: 120,
-      title: "Campaign: Khuyen mai thang 1",
-      category: "Campaign",
-      priority: "High",
-      submittedBy: "Nguyen Van A",
-      submittedDate: "Dec 28, 2023",
-      status: "rejected",
-      currentStep: 2,
-      totalSteps: 3,
-      rejectedDate: "Jan 2, 2024",
-      reason: "Ngan sach chua phu hop voi ke hoach tai chinh Q1. De xuat giam xuong 15M hoac doi sang Q2.",
-      description: "Campaign khuyen mai thang 1 voi ngan sach 25M VND",
-      budget: "25,000,000 VND"
-    },
-    {
-      id: 119,
-      title: "Partnership: Hop tac voi KOL dia phuong",
-      category: "Partnership",
-      priority: "High",
-      submittedBy: "Pham Van D",
-      submittedDate: "Dec 25, 2023",
-      status: "approved",
-      currentStep: 3,
-      totalSteps: 3,
-      approvedDate: "Dec 30, 2023",
-      description: "Hop tac voi 3 KOL dia phuong de review dich vu va tang brand awareness",
-      budget: "20,000,000 VND",
-      timeline: "Jan 15 - Feb 15, 2024",
-      expectedOutcome: "Reach 100K+ nguoi, 50+ conversions"
-    },
-  ]);
+  // New proposal form states
+  const [newTitle, setNewTitle] = useState("");
+  const [newDescription, setNewDescription] = useState("");
+  const [newCategory, setNewCategory] = useState<ProposalCategory>("content");
+  const [newPriority, setNewPriority] = useState<ProposalPriority>("normal");
+  const [newBudget, setNewBudget] = useState("");
+  const [newDueDate, setNewDueDate] = useState("");
 
-  const innovationIdeas = [
-    {
-      id: 1,
-      title: "Try Reels format for patient testimonials",
-      category: "Content",
-      submittedBy: "Le Thi C",
-      status: "implemented",
-      impactScore: 8,
-      pointsEarned: 50,
-    },
-    {
-      id: 2,
-      title: "Weekly dental tips series on TikTok",
-      category: "Content",
-      submittedBy: "Nguyen Van A",
-      status: "reviewing",
-      impactScore: null,
-      pointsEarned: null,
-    },
-    {
-      id: 3,
-      title: "Partner with local influencers",
-      category: "Partnership",
-      submittedBy: "Tran Van B",
-      status: "approved",
-      impactScore: null,
-      pointsEarned: null,
-    },
-  ];
+  // New idea form states
+  const [ideaTitle, setIdeaTitle] = useState("");
+  const [ideaDescription, setIdeaDescription] = useState("");
+  const [ideaCategory, setIdeaCategory] = useState<"content_format" | "process_improvement" | "new_platform" | "campaign_concept" | "automation">("content_format");
 
-  // Mock comments for proposal detail
-  const mockComments: Comment[] = [
-    {
-      id: "cm1",
-      user: "Tran Van B",
-      role: "Content Lead",
-      text: "Y tuong hay! Da review noi dung va approve tu content team. Budget hop ly.",
-      timestamp: "Jan 3, 10:30 AM",
-      type: "approval"
-    },
-    {
-      id: "cm2",
-      user: "Le Thi C",
-      role: "Marketing Manager",
-      text: "Can bo sung them KPIs cu the va timeline chi tiet cho tung platform.",
-      timestamp: "Jan 3, 2:15 PM",
-      type: "comment"
-    },
-    {
-      id: "cm3",
-      user: "Nguyen Van A",
-      role: "Content Creator",
-      text: "Da update timeline va KPIs theo gop y. Moi nguoi check lai nhe!",
-      timestamp: "Jan 3, 4:00 PM",
-      type: "comment"
-    },
-  ];
+  const utils = trpc.useUtils();
 
-  // Approval workflow stages
-  const approvalStages = [
-    { step: 1, name: "Content Review", role: "Content Lead" },
-    { step: 2, name: "Manager Approval", role: "Marketing Manager" },
-    { step: 3, name: "Admin Approval", role: "Admin" },
-  ];
+  // Fetch proposals
+  const { data: proposalsData, isLoading, error, refetch } = trpc.proposal.getMyProposals.useQuery();
 
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case "under-review":
-        return "secondary";
-      case "approved":
-        return "default";
-      case "rejected":
-        return "destructive";
-      case "draft":
-        return "outline";
-      default:
-        return "outline";
-    }
+  // Fetch proposal details when selected
+  const { data: selectedProposal } = trpc.proposal.getById.useQuery(
+    { id: selectedProposalId ?? "" },
+    { enabled: !!selectedProposalId && isDetailOpen }
+  );
+
+  // Fetch innovation ideas
+  const { data: innovationIdeas = [] } = trpc.gamification.getMyIdeas.useQuery();
+
+  // Mutations
+  const createProposal = trpc.proposal.create.useMutation({
+    onSuccess: () => {
+      utils.proposal.getMyProposals.invalidate();
+      setIsNewProposalOpen(false);
+      resetNewProposalForm();
+      toast.success("Proposal đã được tạo thành công");
+    },
+    onError: (error) => toast.error(error.message),
+  });
+
+  const submitProposal = trpc.proposal.submit.useMutation({
+    onSuccess: () => {
+      utils.proposal.getMyProposals.invalidate();
+      utils.proposal.getById.invalidate();
+      toast.success("Proposal đã được gửi để duyệt");
+    },
+    onError: (error) => toast.error(error.message),
+  });
+
+  const approveProposal = trpc.proposal.approve.useMutation({
+    onSuccess: () => {
+      utils.proposal.getMyProposals.invalidate();
+      utils.proposal.getById.invalidate();
+      setIsApprovalModalOpen(false);
+      setApprovalComment("");
+      toast.success("Proposal đã được duyệt");
+    },
+    onError: (error) => toast.error(error.message),
+  });
+
+  const rejectProposal = trpc.proposal.reject.useMutation({
+    onSuccess: () => {
+      utils.proposal.getMyProposals.invalidate();
+      utils.proposal.getById.invalidate();
+      setIsApprovalModalOpen(false);
+      setApprovalComment("");
+      toast.success("Proposal đã bị từ chối");
+    },
+    onError: (error) => toast.error(error.message),
+  });
+
+  const requestRevision = trpc.proposal.requestRevision.useMutation({
+    onSuccess: () => {
+      utils.proposal.getMyProposals.invalidate();
+      utils.proposal.getById.invalidate();
+      setIsApprovalModalOpen(false);
+      setApprovalComment("");
+      toast.success("Đã yêu cầu chỉnh sửa");
+    },
+    onError: (error) => toast.error(error.message),
+  });
+
+  const addComment = trpc.proposal.addComment.useMutation({
+    onSuccess: () => {
+      utils.proposal.getById.invalidate();
+      setNewComment("");
+      toast.success("Comment đã được thêm");
+    },
+    onError: (error) => toast.error(error.message),
+  });
+
+  const submitIdea = trpc.gamification.submitIdea.useMutation({
+    onSuccess: () => {
+      utils.gamification.getMyIdeas.invalidate();
+      setIsNewIdeaOpen(false);
+      setIdeaTitle("");
+      setIdeaDescription("");
+      setIdeaCategory("content_format");
+      toast.success("Ý tưởng đã được gửi! +30 điểm");
+    },
+    onError: (error) => toast.error(error.message),
+  });
+
+  const resetNewProposalForm = () => {
+    setNewTitle("");
+    setNewDescription("");
+    setNewCategory("content");
+    setNewPriority("normal");
+    setNewBudget("");
+    setNewDueDate("");
   };
 
-  const getStatusLabel = (status: string) => {
-    switch (status) {
-      case "under-review":
-        return "Dang review";
-      case "approved":
-        return "Da duyet";
-      case "rejected":
-        return "Tu choi";
-      case "draft":
-        return "Draft";
-      default:
-        return status;
-    }
+  const proposals = proposalsData ?? [];
+
+  const stats = {
+    total: proposals.length,
+    underReview: proposals.filter(p => ["submitted", "under_review"].includes(p.status)).length,
+    approved: proposals.filter(p => p.status === "approved").length,
+    rejected: proposals.filter(p => p.status === "rejected").length,
   };
 
-  const getStatistics = () => {
-    const total = proposals.length;
-    const underReview = proposals.filter(p => p.status === "under-review").length;
-    const approved = proposals.filter(p => p.status === "approved").length;
-    const rejected = proposals.filter(p => p.status === "rejected").length;
-
-    return { total, underReview, approved, rejected };
-  };
-
-  const stats = getStatistics();
-
-  const handleProposalClick = (proposal: Proposal) => {
-    setSelectedProposal(proposal);
+  const handleProposalClick = (proposalId: string) => {
+    setSelectedProposalId(proposalId);
     setIsDetailOpen(true);
   };
 
-  const handleApprovalAction = (action: "approve" | "reject") => {
+  const handleApprovalAction = (action: "approve" | "reject" | "revision") => {
     setApprovalAction(action);
     setIsApprovalModalOpen(true);
   };
 
-  const handleConvertToTask = () => {
-    // Logic to convert proposal to task
-    console.log("Converting proposal to task:", selectedProposal);
-    // In real app, this would navigate to Task Management with pre-filled data
+  const handleSubmitApproval = () => {
+    if (!selectedProposalId) return;
+
+    if (approvalAction === "approve") {
+      approveProposal.mutate({ proposalId: selectedProposalId, comments: approvalComment || undefined });
+    } else if (approvalAction === "reject") {
+      if (!approvalComment.trim()) {
+        toast.error("Vui lòng nhập lý do từ chối");
+        return;
+      }
+      rejectProposal.mutate({ proposalId: selectedProposalId, comments: approvalComment });
+    } else if (approvalAction === "revision") {
+      if (!approvalComment.trim()) {
+        toast.error("Vui lòng nhập yêu cầu chỉnh sửa");
+        return;
+      }
+      requestRevision.mutate({ proposalId: selectedProposalId, comments: approvalComment });
+    }
   };
+
+  const handleCreateProposal = (submit: boolean) => {
+    if (!newTitle.trim() || !newDescription.trim()) {
+      toast.error("Vui lòng nhập tiêu đề và mô tả");
+      return;
+    }
+
+    createProposal.mutate(
+      {
+        title: newTitle,
+        description: newDescription,
+        category: newCategory,
+        priority: newPriority,
+        budget: newBudget ? parseFloat(newBudget.replace(/[^0-9]/g, "")) : undefined,
+        dueDate: newDueDate ? new Date(newDueDate).toISOString() : undefined,
+      },
+      {
+        onSuccess: (data) => {
+          if (submit && data.id) {
+            submitProposal.mutate({ id: data.id });
+          }
+        },
+      }
+    );
+  };
+
+  const handleAddComment = () => {
+    if (!newComment.trim() || !selectedProposalId) return;
+    addComment.mutate({ proposalId: selectedProposalId, content: newComment });
+  };
+
+  const handleSubmitIdea = () => {
+    if (!ideaTitle.trim() || !ideaDescription.trim()) {
+      toast.error("Vui lòng nhập tiêu đề và mô tả");
+      return;
+    }
+    submitIdea.mutate({
+      title: ideaTitle,
+      description: ideaDescription,
+      category: ideaCategory,
+    });
+  };
+
+  const isManager = profile?.role === "admin" || profile?.role === "marketing_manager";
+
+  // Check if current user can approve
+  const canApprove = isManager && selectedProposal?.approvals?.some(
+    a => a.approverId === profile?.id && a.status === "pending"
+  );
+
+  if (isLoading) return <PageLoading text="Đang tải proposals..." />;
+  if (error) return <PageError error={error} onRetry={refetch} />;
 
   const renderInnovationIdeas = () => (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h2 className="text-2xl font-semibold">Innovation Ideas</h2>
-          <p className="text-muted-foreground text-sm">De xuat y tuong sang tao va nhan diem thuong</p>
+          <p className="text-muted-foreground text-sm">Đề xuất ý tưởng sáng tạo và nhận điểm thưởng</p>
         </div>
-        <Button className="gap-2">
+        <Button className="gap-2" onClick={() => setIsNewIdeaOpen(true)}>
           <Plus className="w-4 h-4" />
-          De xuat y tuong moi
+          Đề xuất ý tưởng mới
         </Button>
       </div>
 
-      <Card>
-        <CardContent className="p-6">
-          <div className="space-y-4">
-            {innovationIdeas.map((idea) => (
-              <div key={idea.id} className="p-4 border rounded-lg hover:bg-accent/50 transition-colors cursor-pointer">
-                <div className="flex items-start justify-between mb-2">
-                  <div className="flex-1">
-                    <div className="flex items-center gap-2 mb-1">
-                      <h3 className="font-medium">{idea.title}</h3>
-                      {idea.status === "implemented" && (
-                        <CheckCircle className="w-5 h-5 text-green-500" />
-                      )}
+      {innovationIdeas.length === 0 ? (
+        <PageEmpty
+          icon={Lightbulb}
+          title="Chưa có ý tưởng nào"
+          description="Đề xuất ý tưởng đầu tiên để nhận điểm thưởng"
+          action={{ label: "Đề xuất ý tưởng", onClick: () => setIsNewIdeaOpen(true) }}
+        />
+      ) : (
+        <Card>
+          <CardContent className="p-6">
+            <div className="space-y-4">
+              {innovationIdeas.map((idea) => (
+                <div key={idea.id} className="p-4 border rounded-lg hover:bg-accent/50 transition-colors">
+                  <div className="flex items-start justify-between mb-2">
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2 mb-1">
+                        <h3 className="font-medium">{idea.title}</h3>
+                        {idea.status === "implemented" && (
+                          <CheckCircle className="w-5 h-5 text-green-500" />
+                        )}
+                      </div>
+                      <p className="text-sm text-muted-foreground line-clamp-2 mb-2">{idea.description}</p>
+                      <div className="flex items-center gap-3 text-sm text-muted-foreground">
+                        <Badge variant="outline">{idea.category}</Badge>
+                        <span>{format(new Date(idea.createdAt), "MMM d, yyyy")}</span>
+                      </div>
                     </div>
-                    <div className="flex items-center gap-3 text-sm text-muted-foreground">
-                      <Badge variant="outline">{idea.category}</Badge>
-                      <span>Submitted by: {idea.submittedBy}</span>
-                    </div>
+                    {idea.status === "implemented" && idea.impactScore && (
+                      <div className="text-right">
+                        <div className="text-sm font-medium">Impact: {idea.impactScore}/10</div>
+                        <div className="text-sm text-green-500">+50 points</div>
+                      </div>
+                    )}
                   </div>
-                  {idea.status === "implemented" && (
-                    <div className="text-right">
-                      <div className="text-sm font-medium">Impact Score: {idea.impactScore}/10</div>
-                      <div className="text-sm text-green-500">+{idea.pointsEarned} points earned</div>
-                    </div>
-                  )}
+                  <div className="mt-3">
+                    <Badge variant={idea.status === "implemented" ? "default" : "secondary"}>
+                      {idea.status === "implemented" ? "Implemented" :
+                       idea.status === "reviewing" ? "Reviewing" :
+                       idea.status === "approved" ? "Approved" : "Submitted"}
+                    </Badge>
+                  </div>
                 </div>
-                <div className="mt-3">
-                  <Badge variant={idea.status === "implemented" ? "default" : "secondary"}>
-                    {idea.status === "implemented" ? "Implemented" : idea.status === "reviewing" ? "Reviewing" : "Approved"}
-                  </Badge>
-                </div>
-              </div>
-            ))}
-          </div>
-        </CardContent>
-      </Card>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       <Card className="border-primary/20">
         <CardHeader>
-          <CardTitle className="text-lg">Cach thuc de xuat y tuong</CardTitle>
+          <CardTitle className="text-lg">Cách thức đề xuất ý tưởng</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="space-y-2 text-sm text-muted-foreground">
-            <p>- De xuat y tuong moi de cai thien cong viec marketing</p>
-            <p>- Cac y tuong duoc ap dung se nhan diem thuong dua tren impact score</p>
-            <p>- Impact score duoc danh gia boi team lead sau khi trien khai</p>
+            <p>- Đề xuất ý tưởng mới để cải thiện công việc marketing (+30 điểm)</p>
+            <p>- Các ý tưởng được áp dụng sẽ nhận điểm thưởng dựa trên impact score (+50 điểm)</p>
+            <p>- Impact score được đánh giá bởi team lead sau khi triển khai</p>
           </div>
         </CardContent>
       </Card>
@@ -318,19 +341,19 @@ export default function ProposalsPage() {
 
   const renderProposalsList = () => (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-semibold">Proposals</h1>
-          <p className="text-muted-foreground text-sm">Quan ly proposals va theo doi trang thai phe duyet</p>
+          <p className="text-muted-foreground text-sm">Quản lý proposals và theo dõi trạng thái phê duyệt</p>
         </div>
         <Button className="gap-2" onClick={() => setIsNewProposalOpen(true)}>
           <Plus className="w-4 h-4" />
-          Tao Proposal moi
+          Tạo Proposal mới
         </Button>
       </div>
 
       {/* Statistics */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <Card>
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
@@ -377,80 +400,97 @@ export default function ProposalsPage() {
         </Card>
       </div>
 
-      <div className="space-y-3">
-        {proposals.map((proposal) => (
-          <Card
-            key={proposal.id}
-            className="hover:shadow-md transition-shadow cursor-pointer"
-            onClick={() => handleProposalClick(proposal)}
-          >
-            <CardContent className="p-5">
-              <div className="space-y-4">
-                <div className="flex items-start justify-between">
-                  <div className="flex-1">
-                    <div className="flex items-center gap-2 mb-2">
-                      <h3 className="font-semibold">#{proposal.id} | {proposal.title}</h3>
+      {proposals.length === 0 ? (
+        <PageEmpty
+          icon={FileText}
+          title="Chưa có proposal nào"
+          description="Tạo proposal đầu tiên để bắt đầu"
+          action={{ label: "Tạo Proposal mới", onClick: () => setIsNewProposalOpen(true) }}
+        />
+      ) : (
+        <div className="space-y-3">
+          {proposals.map((proposal) => (
+            <Card
+              key={proposal.id}
+              className="hover:shadow-md transition-shadow cursor-pointer"
+              onClick={() => handleProposalClick(proposal.id)}
+            >
+              <CardContent className="p-5">
+                <div className="space-y-4">
+                  <div className="flex items-start justify-between">
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2 mb-2">
+                        <h3 className="font-semibold">#{proposal.id.slice(0, 8)} | {proposal.title}</h3>
+                      </div>
+                      <div className="flex flex-wrap items-center gap-2 mb-2">
+                        <Badge variant="outline">{categoryLabels[proposal.category as ProposalCategory]}</Badge>
+                        <Badge variant={priorityConfig[proposal.priority as ProposalPriority]?.variant ?? "secondary"}>
+                          {priorityConfig[proposal.priority as ProposalPriority]?.label ?? proposal.priority}
+                        </Badge>
+                        {proposal.budget && (
+                          <span className="text-sm text-muted-foreground">
+                            Budget: {new Intl.NumberFormat('vi-VN').format(proposal.budget)} VND
+                          </span>
+                        )}
+                      </div>
                     </div>
-                    <div className="flex items-center gap-3 mb-2">
-                      <Badge variant="outline">{proposal.category}</Badge>
-                      <Badge variant={proposal.priority === "High" ? "destructive" : "secondary"}>
-                        {proposal.priority}
-                      </Badge>
-                      <span className="text-sm text-muted-foreground">By: {proposal.submittedBy}</span>
+                    <Badge variant={statusConfig[proposal.status as ProposalStatus]?.variant ?? "outline"}>
+                      {statusConfig[proposal.status as ProposalStatus]?.label ?? proposal.status}
+                    </Badge>
+                  </div>
+
+                  {["submitted", "under_review"].includes(proposal.status) && proposal.approvals && (
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between text-sm">
+                        <span className="font-medium">Quy trình duyệt</span>
+                        <span className="text-muted-foreground">
+                          {proposal.approvals.filter(a => a.status === "approved").length}/{proposal.approvals.length}
+                        </span>
+                      </div>
+                      <Progress
+                        value={(proposal.approvals.filter(a => a.status === "approved").length / proposal.approvals.length) * 100}
+                        className="h-2"
+                      />
                     </div>
-                  </div>
-                  <Badge variant={getStatusColor(proposal.status) as "default" | "secondary" | "destructive" | "outline"}>
-                    {getStatusLabel(proposal.status)}
-                  </Badge>
-                </div>
+                  )}
 
-                {proposal.status === "under-review" && (
-                  <div className="space-y-2">
-                    <div className="flex items-center justify-between text-sm">
-                      <span className="font-medium">Quy trinh duyet</span>
-                      <span className="text-muted-foreground">
-                        Step {proposal.currentStep}/{proposal.totalSteps}
-                      </span>
+                  {proposal.status === "approved" && (
+                    <div className="flex items-center gap-2 text-green-500 text-sm">
+                      <CheckCircle className="w-4 h-4" />
+                      <span>Đã duyệt</span>
                     </div>
-                    <Progress value={(proposal.currentStep / proposal.totalSteps) * 100} className="h-2" />
-                  </div>
-                )}
+                  )}
 
-                {proposal.status === "approved" && (
-                  <div className="flex items-center gap-2 text-green-500 text-sm">
-                    <CheckCircle className="w-4 h-4" />
-                    <span>Approved on {proposal.approvedDate}</span>
-                  </div>
-                )}
-
-                {proposal.status === "rejected" && (
-                  <div className="space-y-1">
+                  {proposal.status === "rejected" && (
                     <div className="flex items-center gap-2 text-red-500 text-sm">
                       <XCircle className="w-4 h-4" />
-                      <span>Rejected on {proposal.rejectedDate}</span>
+                      <span>Từ chối</span>
                     </div>
-                    {proposal.reason && (
-                      <p className="text-sm text-muted-foreground pl-6">{proposal.reason}</p>
-                    )}
-                  </div>
-                )}
+                  )}
 
-                <p className="text-sm text-muted-foreground line-clamp-2">{proposal.description}</p>
+                  <p className="text-sm text-muted-foreground line-clamp-2">{proposal.description}</p>
 
-                <div className="flex items-center justify-between pt-2 border-t">
-                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                    <Clock className="w-4 h-4" />
-                    <span>Submitted: {proposal.submittedDate}</span>
+                  <div className="flex items-center justify-between pt-2 border-t">
+                    <div className="flex items-center gap-4 text-sm text-muted-foreground">
+                      <div className="flex items-center gap-1">
+                        <Clock className="w-4 h-4" />
+                        <span>{format(new Date(proposal.createdAt), "MMM d, yyyy")}</span>
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <MessageSquare className="w-4 h-4" />
+                        <span>{proposal._count.comments}</span>
+                      </div>
+                    </div>
+                    <Button variant="outline" size="sm" onClick={(e) => { e.stopPropagation(); handleProposalClick(proposal.id); }}>
+                      Xem chi tiết
+                    </Button>
                   </div>
-                  <Button variant="outline" size="sm" onClick={(e) => { e.stopPropagation(); handleProposalClick(proposal); }}>
-                    Xem chi tiet
-                  </Button>
                 </div>
-              </div>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      )}
     </div>
   );
 
@@ -473,47 +513,47 @@ export default function ProposalsPage() {
 
       {/* Proposal Detail Modal */}
       <Dialog open={isDetailOpen} onOpenChange={setIsDetailOpen}>
-        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="max-w-4xl w-full max-h-[90vh] md:max-h-[80vh] overflow-y-auto">
           {selectedProposal && (
             <>
               <DialogHeader>
-                <DialogTitle className="text-xl">#{selectedProposal.id} | {selectedProposal.title}</DialogTitle>
+                <DialogTitle className="text-xl">#{selectedProposal.id.slice(0, 8)} | {selectedProposal.title}</DialogTitle>
                 <DialogDescription>
-                  <Badge variant={getStatusColor(selectedProposal.status) as "default" | "secondary" | "destructive" | "outline"} className="mt-2">
-                    {getStatusLabel(selectedProposal.status)}
+                  <Badge variant={statusConfig[selectedProposal.status as ProposalStatus]?.variant ?? "outline"} className="mt-2">
+                    {statusConfig[selectedProposal.status as ProposalStatus]?.label ?? selectedProposal.status}
                   </Badge>
                 </DialogDescription>
               </DialogHeader>
 
               <div className="space-y-6">
                 {/* Proposal Info */}
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
                     <Label className="text-sm text-muted-foreground">Category</Label>
-                    <p className="mt-1">{selectedProposal.category}</p>
+                    <p className="mt-1">{categoryLabels[selectedProposal.category as ProposalCategory]}</p>
                   </div>
                   <div>
                     <Label className="text-sm text-muted-foreground">Priority</Label>
-                    <p className="mt-1">{selectedProposal.priority}</p>
+                    <p className="mt-1">{priorityConfig[selectedProposal.priority as ProposalPriority]?.label}</p>
                   </div>
                   <div>
                     <Label className="text-sm text-muted-foreground">Submitted By</Label>
-                    <p className="mt-1">{selectedProposal.submittedBy}</p>
+                    <p className="mt-1">{selectedProposal.creator.name}</p>
                   </div>
                   <div>
-                    <Label className="text-sm text-muted-foreground">Submitted Date</Label>
-                    <p className="mt-1">{selectedProposal.submittedDate}</p>
+                    <Label className="text-sm text-muted-foreground">Created Date</Label>
+                    <p className="mt-1">{format(new Date(selectedProposal.createdAt), "MMM d, yyyy")}</p>
                   </div>
                   {selectedProposal.budget && (
                     <div>
                       <Label className="text-sm text-muted-foreground">Budget</Label>
-                      <p className="mt-1 font-medium">{selectedProposal.budget}</p>
+                      <p className="mt-1 font-medium">{new Intl.NumberFormat('vi-VN').format(selectedProposal.budget)} VND</p>
                     </div>
                   )}
-                  {selectedProposal.timeline && (
+                  {selectedProposal.dueDate && (
                     <div>
-                      <Label className="text-sm text-muted-foreground">Timeline</Label>
-                      <p className="mt-1">{selectedProposal.timeline}</p>
+                      <Label className="text-sm text-muted-foreground">Due Date</Label>
+                      <p className="mt-1">{format(new Date(selectedProposal.dueDate), "MMM d, yyyy")}</p>
                     </div>
                   )}
                 </div>
@@ -521,42 +561,47 @@ export default function ProposalsPage() {
                 {/* Description */}
                 <div>
                   <Label className="text-sm text-muted-foreground">Description</Label>
-                  <p className="mt-2 text-sm">{selectedProposal.description}</p>
+                  <p className="mt-2 text-sm p-3 bg-muted/50 rounded-md">{selectedProposal.description}</p>
                 </div>
 
-                {selectedProposal.expectedOutcome && (
-                  <div>
-                    <Label className="text-sm text-muted-foreground">Expected Outcome</Label>
-                    <p className="mt-2 text-sm">{selectedProposal.expectedOutcome}</p>
-                  </div>
-                )}
-
                 {/* Approval Workflow */}
-                {selectedProposal.status === "under-review" && (
+                {selectedProposal.approvals && selectedProposal.approvals.length > 0 && (
                   <div>
                     <Label className="text-sm text-muted-foreground mb-3 block">Approval Workflow</Label>
-                    <div className="flex items-center gap-2">
-                      {approvalStages.map((stage, index) => (
-                        <div key={stage.step} className="flex items-center flex-1">
-                          <div className={`flex-1 p-3 rounded border ${
-                            selectedProposal.currentStep >= stage.step
-                              ? "border-primary bg-primary/10"
+                    <div className="flex flex-wrap items-center gap-2">
+                      {selectedProposal.approvals.map((step, index) => (
+                        <div key={step.id} className="flex items-center">
+                          <div className={`p-3 rounded border min-w-[150px] ${
+                            step.status === "approved"
+                              ? "border-green-500 bg-green-50"
+                              : step.status === "rejected"
+                              ? "border-red-500 bg-red-50"
+                              : step.status === "revision_requested"
+                              ? "border-yellow-500 bg-yellow-50"
                               : "border-border"
                           }`}>
                             <div className="flex items-center gap-2 mb-1">
                               <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs ${
-                                selectedProposal.currentStep >= stage.step
-                                  ? "bg-primary text-primary-foreground"
+                                step.status === "approved"
+                                  ? "bg-green-500 text-white"
+                                  : step.status === "rejected"
+                                  ? "bg-red-500 text-white"
+                                  : step.status === "revision_requested"
+                                  ? "bg-yellow-500 text-white"
                                   : "bg-muted"
                               }`}>
-                                {selectedProposal.currentStep > stage.step ? <CheckCircle className="w-4 h-4" /> : stage.step}
+                                {step.status === "approved" ? <CheckCircle className="w-4 h-4" /> :
+                                 step.status === "rejected" ? <XCircle className="w-4 h-4" /> : step.stepNumber}
                               </div>
-                              <span className="text-sm font-medium">{stage.name}</span>
+                              <span className="text-sm font-medium">Step {step.stepNumber}</span>
                             </div>
-                            <p className="text-xs text-muted-foreground ml-8">{stage.role}</p>
+                            <p className="text-xs text-muted-foreground">{step.approver.name}</p>
+                            {step.comments && (
+                              <p className="text-xs mt-1 italic">"{step.comments}"</p>
+                            )}
                           </div>
-                          {index < approvalStages.length - 1 && (
-                            <ArrowRight className="w-4 h-4 mx-2 text-muted-foreground" />
+                          {index < selectedProposal.approvals.length - 1 && (
+                            <ArrowRight className="w-4 h-4 mx-2 text-muted-foreground flex-shrink-0" />
                           )}
                         </div>
                       ))}
@@ -567,56 +612,73 @@ export default function ProposalsPage() {
                 {/* Comments & Feedback */}
                 <div>
                   <Label className="text-sm text-muted-foreground mb-3 block">
-                    Comments & Feedback ({mockComments.length})
+                    Comments & Feedback ({selectedProposal.comments?.length ?? 0})
                   </Label>
-                  <div className="space-y-4 mb-4">
-                    {mockComments.map((comment) => (
+                  <div className="space-y-4 mb-4 max-h-[200px] overflow-y-auto">
+                    {selectedProposal.comments?.map((comment) => (
                       <div key={comment.id} className="flex gap-3">
                         <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
                           <User className="w-4 h-4 text-primary" />
                         </div>
                         <div className="flex-1">
                           <div className="flex items-center gap-2 mb-1">
-                            <span className="text-sm font-medium">{comment.user}</span>
-                            <Badge variant="outline" className="text-xs">{comment.role}</Badge>
-                            <span className="text-xs text-muted-foreground">{comment.timestamp}</span>
-                            {comment.type === "approval" && (
-                              <CheckCircle className="w-4 h-4 text-green-500" />
-                            )}
+                            <span className="text-sm font-medium">{comment.user.name}</span>
+                            <span className="text-xs text-muted-foreground">
+                              {format(new Date(comment.createdAt), "MMM d, HH:mm")}
+                            </span>
                           </div>
-                          <p className="text-sm text-muted-foreground">{comment.text}</p>
+                          <p className="text-sm text-muted-foreground">{comment.content}</p>
                         </div>
                       </div>
                     ))}
+                    {(!selectedProposal.comments || selectedProposal.comments.length === 0) && (
+                      <p className="text-sm text-muted-foreground text-center py-4">
+                        Chưa có comment nào
+                      </p>
+                    )}
                   </div>
 
                   {/* Add Comment */}
                   <div className="flex gap-2">
                     <Input
-                      placeholder="Them comment..."
+                      placeholder="Thêm comment..."
                       value={newComment}
                       onChange={(e) => setNewComment(e.target.value)}
+                      onKeyDown={(e) => e.key === "Enter" && handleAddComment()}
                     />
-                    <Button size="sm">
-                      Gui
+                    <Button size="sm" className="gap-2" onClick={handleAddComment} disabled={addComment.isPending}>
+                      <Send className="w-4 h-4" />
+                      Gửi
                     </Button>
                   </div>
                 </div>
               </div>
 
-              <DialogFooter className="flex justify-between">
-                <div className="flex gap-2">
-                  {selectedProposal.status === "approved" && (
-                    <Button variant="outline" onClick={handleConvertToTask} className="gap-2">
-                      <FileText className="w-4 h-4" />
-                      Convert to Task
+              <DialogFooter className="flex flex-col sm:flex-row justify-between gap-2">
+                <div className="flex flex-wrap gap-2">
+                  {selectedProposal.status === "draft" && selectedProposal.creatorId === profile?.id && (
+                    <Button
+                      className="gap-2"
+                      onClick={() => submitProposal.mutate({ id: selectedProposal.id })}
+                      disabled={submitProposal.isPending}
+                    >
+                      <Send className="w-4 h-4" />
+                      Submit để duyệt
                     </Button>
                   )}
-                  {selectedProposal.status === "under-review" && (
+                  {canApprove && (
                     <>
                       <Button
                         variant="outline"
                         className="gap-2"
+                        onClick={() => handleApprovalAction("revision")}
+                      >
+                        <MessageSquare className="w-4 h-4" />
+                        Yêu cầu sửa
+                      </Button>
+                      <Button
+                        variant="outline"
+                        className="gap-2 text-red-500 hover:text-red-600"
                         onClick={() => handleApprovalAction("reject")}
                       >
                         <XCircle className="w-4 h-4" />
@@ -633,7 +695,7 @@ export default function ProposalsPage() {
                   )}
                 </div>
                 <Button variant="outline" onClick={() => setIsDetailOpen(false)}>
-                  Dong
+                  Đóng
                 </Button>
               </DialogFooter>
             </>
@@ -646,20 +708,26 @@ export default function ProposalsPage() {
         <DialogContent>
           <DialogHeader>
             <DialogTitle>
-              {approvalAction === "approve" ? "Approve Proposal" : "Reject Proposal"}
+              {approvalAction === "approve" ? "Approve Proposal" :
+               approvalAction === "reject" ? "Reject Proposal" : "Yêu cầu chỉnh sửa"}
             </DialogTitle>
             <DialogDescription>
               {approvalAction === "approve"
-                ? "Xac nhan duyet proposal nay va chuyen sang buoc tiep theo"
-                : "Tu choi proposal va cung cap ly do"}
+                ? "Xác nhận duyệt proposal này và chuyển sang bước tiếp theo"
+                : approvalAction === "reject"
+                ? "Từ chối proposal và cung cấp lý do"
+                : "Yêu cầu chỉnh sửa và cung cấp hướng dẫn"}
             </DialogDescription>
           </DialogHeader>
 
           <div className="space-y-4">
             <div>
-              <Label>Comment {approvalAction === "reject" && "*"}</Label>
+              <Label>Comment {approvalAction !== "approve" && "*"}</Label>
               <Textarea
-                placeholder={approvalAction === "approve" ? "Them comment (optional)..." : "Ly do tu choi..."}
+                placeholder={
+                  approvalAction === "approve" ? "Thêm comment (optional)..." :
+                  approvalAction === "reject" ? "Lý do từ chối..." : "Yêu cầu chỉnh sửa..."
+                }
                 value={approvalComment}
                 onChange={(e) => setApprovalComment(e.target.value)}
                 rows={4}
@@ -670,16 +738,14 @@ export default function ProposalsPage() {
 
           <DialogFooter>
             <Button variant="outline" onClick={() => setIsApprovalModalOpen(false)}>
-              Huy
+              Hủy
             </Button>
             <Button
-              variant={approvalAction === "approve" ? "default" : "destructive"}
-              onClick={() => {
-                setIsApprovalModalOpen(false);
-                setApprovalComment("");
-              }}
+              variant={approvalAction === "approve" ? "default" : approvalAction === "reject" ? "destructive" : "secondary"}
+              onClick={handleSubmitApproval}
+              disabled={approveProposal.isPending || rejectProposal.isPending || requestRevision.isPending}
             >
-              {approvalAction === "approve" ? "Approve" : "Reject"}
+              {approvalAction === "approve" ? "Approve" : approvalAction === "reject" ? "Reject" : "Gửi yêu cầu"}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -687,87 +753,155 @@ export default function ProposalsPage() {
 
       {/* New Proposal Modal */}
       <Dialog open={isNewProposalOpen} onOpenChange={setIsNewProposalOpen}>
-        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="max-w-3xl w-full max-h-[90vh] md:max-h-[80vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>Tao Proposal moi</DialogTitle>
-            <DialogDescription>Dien thong tin day du cho proposal cua ban</DialogDescription>
+            <DialogTitle>Tạo Proposal mới</DialogTitle>
+            <DialogDescription>Điền thông tin đầy đủ cho proposal của bạn</DialogDescription>
           </DialogHeader>
 
           <div className="space-y-4">
             <div>
-              <Label>Tieu de *</Label>
-              <Input placeholder="Nhap tieu de proposal..." className="mt-1" />
+              <Label>Tiêu đề *</Label>
+              <Input
+                placeholder="Nhập tiêu đề proposal..."
+                className="mt-1"
+                value={newTitle}
+                onChange={(e) => setNewTitle(e.target.value)}
+              />
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <Label>Category *</Label>
-                <Select>
+                <Select value={newCategory} onValueChange={(v) => setNewCategory(v as ProposalCategory)}>
                   <SelectTrigger className="mt-1">
-                    <SelectValue placeholder="Chon category..." />
+                    <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="Campaign">Campaign</SelectItem>
-                    <SelectItem value="Content">Content</SelectItem>
-                    <SelectItem value="Innovation">Innovation</SelectItem>
-                    <SelectItem value="Partnership">Partnership</SelectItem>
-                    <SelectItem value="Budget">Budget</SelectItem>
+                    <SelectItem value="campaign">Campaign</SelectItem>
+                    <SelectItem value="content">Content</SelectItem>
+                    <SelectItem value="design">Design</SelectItem>
+                    <SelectItem value="video">Video</SelectItem>
+                    <SelectItem value="event">Event</SelectItem>
+                    <SelectItem value="partnership">Partnership</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
 
               <div>
                 <Label>Priority</Label>
-                <Select defaultValue="Normal">
+                <Select value={newPriority} onValueChange={(v) => setNewPriority(v as ProposalPriority)}>
                   <SelectTrigger className="mt-1">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="High">High</SelectItem>
-                    <SelectItem value="Normal">Normal</SelectItem>
-                    <SelectItem value="Low">Low</SelectItem>
+                    <SelectItem value="urgent">Khẩn cấp</SelectItem>
+                    <SelectItem value="high">Cao</SelectItem>
+                    <SelectItem value="normal">Bình thường</SelectItem>
+                    <SelectItem value="low">Thấp</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
             </div>
 
             <div>
-              <Label>Mo ta *</Label>
+              <Label>Mô tả *</Label>
               <Textarea
-                placeholder="Mo ta chi tiet ve proposal..."
+                placeholder="Mô tả chi tiết về proposal..."
                 rows={4}
                 className="mt-1"
+                value={newDescription}
+                onChange={(e) => setNewDescription(e.target.value)}
               />
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
-                <Label>Budget</Label>
-                <Input placeholder="VD: 30,000,000 VND" className="mt-1" />
+                <Label>Budget (VND)</Label>
+                <Input
+                  placeholder="VD: 30,000,000"
+                  className="mt-1"
+                  value={newBudget}
+                  onChange={(e) => setNewBudget(e.target.value)}
+                />
               </div>
 
               <div>
-                <Label>Timeline</Label>
-                <Input placeholder="VD: Jan 20 - Feb 14" className="mt-1" />
+                <Label>Due Date</Label>
+                <Input
+                  type="date"
+                  className="mt-1"
+                  value={newDueDate}
+                  onChange={(e) => setNewDueDate(e.target.value)}
+                />
               </div>
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => handleCreateProposal(false)} disabled={createProposal.isPending}>
+              Lưu Draft
+            </Button>
+            <Button onClick={() => handleCreateProposal(true)} disabled={createProposal.isPending}>
+              {createProposal.isPending ? "Đang tạo..." : "Submit Proposal"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* New Idea Modal */}
+      <Dialog open={isNewIdeaOpen} onOpenChange={setIsNewIdeaOpen}>
+        <DialogContent className="max-w-2xl w-full">
+          <DialogHeader>
+            <DialogTitle>Đề xuất ý tưởng mới</DialogTitle>
+            <DialogDescription>Chia sẻ ý tưởng sáng tạo của bạn và nhận +30 điểm</DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4">
+            <div>
+              <Label>Tiêu đề *</Label>
+              <Input
+                placeholder="Tên ý tưởng..."
+                className="mt-1"
+                value={ideaTitle}
+                onChange={(e) => setIdeaTitle(e.target.value)}
+              />
             </div>
 
             <div>
-              <Label>Expected Outcome</Label>
+              <Label>Category</Label>
+              <Select value={ideaCategory} onValueChange={(v) => setIdeaCategory(v as "content_format" | "process_improvement" | "new_platform" | "campaign_concept" | "automation")}>
+                <SelectTrigger className="mt-1">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="content_format">Content Format</SelectItem>
+                  <SelectItem value="process_improvement">Process Improvement</SelectItem>
+                  <SelectItem value="new_platform">New Platform</SelectItem>
+                  <SelectItem value="campaign_concept">Campaign Concept</SelectItem>
+                  <SelectItem value="automation">Automation</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div>
+              <Label>Mô tả chi tiết *</Label>
               <Textarea
-                placeholder="Ket qua mong doi tu proposal nay..."
-                rows={3}
+                placeholder="Mô tả ý tưởng của bạn, lợi ích và cách thực hiện..."
+                rows={4}
                 className="mt-1"
+                value={ideaDescription}
+                onChange={(e) => setIdeaDescription(e.target.value)}
               />
             </div>
           </div>
 
           <DialogFooter>
-            <Button variant="outline" onClick={() => setIsNewProposalOpen(false)}>
-              Luu Draft
+            <Button variant="outline" onClick={() => setIsNewIdeaOpen(false)}>
+              Hủy
             </Button>
-            <Button onClick={() => setIsNewProposalOpen(false)}>
-              Submit Proposal
+            <Button onClick={handleSubmitIdea} disabled={submitIdea.isPending}>
+              {submitIdea.isPending ? "Đang gửi..." : "Gửi ý tưởng (+30 điểm)"}
             </Button>
           </DialogFooter>
         </DialogContent>

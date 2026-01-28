@@ -16,17 +16,48 @@ import {
 } from "@/components/ui/select";
 import { ArrowLeft, Save, Send, FileText } from "lucide-react";
 import Link from "next/link";
+import { trpc } from "@/lib/trpc";
+import { toast } from "sonner";
+
+type ProposalCategory = "content" | "design" | "video" | "campaign" | "event" | "partnership";
+type ProposalPriority = "urgent" | "high" | "normal" | "low";
 
 export default function NewProposalPage() {
   const router = useRouter();
   const [formData, setFormData] = useState({
     title: "",
-    category: "",
-    priority: "normal",
+    category: "" as string,
+    priority: "normal" as string,
     description: "",
     budget: "",
-    timeline: "",
+    dueDate: "",
     expectedOutcome: "",
+  });
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const utils = trpc.useUtils();
+
+  const createProposal = trpc.proposal.create.useMutation({
+    onSuccess: () => {
+      utils.proposal.getMyProposals.invalidate();
+    },
+    onError: (err) => {
+      toast.error(err.message);
+      setIsSubmitting(false);
+    },
+  });
+
+  const submitProposal = trpc.proposal.submit.useMutation({
+    onSuccess: () => {
+      utils.proposal.getMyProposals.invalidate();
+      utils.proposal.getPendingApprovals.invalidate();
+      toast.success("De xuat da duoc gui de duyet");
+      router.push("/proposals");
+    },
+    onError: (err) => {
+      toast.error(err.message);
+      setIsSubmitting(false);
+    },
   });
 
   const handleInputChange = (
@@ -39,14 +70,64 @@ export default function NewProposalPage() {
     setFormData({ ...formData, [name]: value });
   };
 
+  const validateForm = (): boolean => {
+    if (!formData.title.trim()) {
+      toast.error("Vui long nhap tieu de");
+      return false;
+    }
+    if (!formData.category) {
+      toast.error("Vui long chon danh muc");
+      return false;
+    }
+    if (!formData.description.trim()) {
+      toast.error("Vui long nhap mo ta");
+      return false;
+    }
+    return true;
+  };
+
+  const buildMutationInput = () => {
+    const budgetNum = formData.budget
+      ? parseFloat(formData.budget.replace(/[^0-9.]/g, ""))
+      : undefined;
+
+    return {
+      title: formData.title.trim(),
+      description: formData.description.trim() +
+        (formData.expectedOutcome.trim()
+          ? `\n\nKet qua mong doi: ${formData.expectedOutcome.trim()}`
+          : ""),
+      category: formData.category as ProposalCategory,
+      priority: formData.priority as ProposalPriority,
+      budget: budgetNum && !isNaN(budgetNum) ? budgetNum : undefined,
+      dueDate: formData.dueDate
+        ? new Date(formData.dueDate).toISOString()
+        : undefined,
+    };
+  };
+
   const handleSaveDraft = () => {
-    // Save draft logic
-    router.push("/proposals");
+    if (!validateForm()) return;
+
+    setIsSubmitting(true);
+    createProposal.mutate(buildMutationInput(), {
+      onSuccess: () => {
+        toast.success("Ban nhap da duoc luu");
+        router.push("/proposals");
+      },
+    });
   };
 
   const handleSubmit = () => {
-    // Submit logic
-    router.push("/proposals");
+    if (!validateForm()) return;
+
+    setIsSubmitting(true);
+    createProposal.mutate(buildMutationInput(), {
+      onSuccess: (data) => {
+        // After creating, submit for approval
+        submitProposal.mutate({ id: data.id });
+      },
+    });
   };
 
   return (
@@ -59,9 +140,9 @@ export default function NewProposalPage() {
           </Button>
         </Link>
         <div>
-          <h1 className="text-2xl font-bold">Tạo đề xuất mới</h1>
+          <h1 className="text-2xl font-bold">Tao de xuat moi</h1>
           <p className="text-muted-foreground">
-            Điền thông tin chi tiết để gửi đề xuất
+            Dien thong tin chi tiet de gui de xuat
           </p>
         </div>
       </div>
@@ -71,19 +152,19 @@ export default function NewProposalPage() {
         <CardHeader>
           <CardTitle className="text-lg flex items-center gap-2">
             <FileText className="h-5 w-5" />
-            Thông tin đề xuất
+            Thong tin de xuat
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-6">
           {/* Title */}
           <div className="grid gap-2">
             <Label htmlFor="title">
-              Tiêu đề <span className="text-red-500">*</span>
+              Tieu de <span className="text-red-500">*</span>
             </Label>
             <Input
               id="title"
               name="title"
-              placeholder="Nhập tiêu đề đề xuất..."
+              placeholder="Nhap tieu de de xuat..."
               value={formData.title}
               onChange={handleInputChange}
             />
@@ -93,42 +174,41 @@ export default function NewProposalPage() {
           <div className="grid grid-cols-2 gap-4">
             <div className="grid gap-2">
               <Label>
-                Danh mục <span className="text-red-500">*</span>
+                Danh muc <span className="text-red-500">*</span>
               </Label>
               <Select
                 value={formData.category}
                 onValueChange={(v) => handleSelectChange("category", v)}
               >
                 <SelectTrigger>
-                  <SelectValue placeholder="Chọn danh mục" />
+                  <SelectValue placeholder="Chon danh muc" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="marketing-campaign">Marketing Campaign</SelectItem>
+                  <SelectItem value="campaign">Campaign</SelectItem>
                   <SelectItem value="content">Content</SelectItem>
                   <SelectItem value="design">Design</SelectItem>
                   <SelectItem value="video">Video Production</SelectItem>
                   <SelectItem value="partnership">Partnership</SelectItem>
-                  <SelectItem value="equipment">Equipment</SelectItem>
-                  <SelectItem value="training">Training</SelectItem>
-                  <SelectItem value="other">Khác</SelectItem>
+                  <SelectItem value="event">Event</SelectItem>
                 </SelectContent>
               </Select>
             </div>
             <div className="grid gap-2">
               <Label>
-                Độ ưu tiên <span className="text-red-500">*</span>
+                Do uu tien <span className="text-red-500">*</span>
               </Label>
               <Select
                 value={formData.priority}
                 onValueChange={(v) => handleSelectChange("priority", v)}
               >
                 <SelectTrigger>
-                  <SelectValue placeholder="Chọn độ ưu tiên" />
+                  <SelectValue placeholder="Chon do uu tien" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="high">Cao - Cần xử lý ngay</SelectItem>
-                  <SelectItem value="normal">Bình thường</SelectItem>
-                  <SelectItem value="low">Thấp - Có thể chờ</SelectItem>
+                  <SelectItem value="urgent">Khan cap - Can xu ly ngay</SelectItem>
+                  <SelectItem value="high">Cao</SelectItem>
+                  <SelectItem value="normal">Binh thuong</SelectItem>
+                  <SelectItem value="low">Thap - Co the cho</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -137,44 +217,45 @@ export default function NewProposalPage() {
           {/* Description */}
           <div className="grid gap-2">
             <Label htmlFor="description">
-              Mô tả chi tiết <span className="text-red-500">*</span>
+              Mo ta chi tiet <span className="text-red-500">*</span>
             </Label>
             <Textarea
               id="description"
               name="description"
-              placeholder="Mô tả mục tiêu, phạm vi và các hoạt động chính của đề xuất..."
+              placeholder="Mo ta muc tieu, pham vi va cac hoat dong chinh cua de xuat..."
               rows={5}
               value={formData.description}
               onChange={handleInputChange}
             />
             <p className="text-xs text-muted-foreground">
-              Mô tả càng chi tiết, đề xuất càng dễ được phê duyệt
+              Mo ta cang chi tiet, de xuat cang de duoc phe duyet
             </p>
           </div>
 
-          {/* Budget & Timeline */}
+          {/* Budget & Due Date */}
           <div className="grid grid-cols-2 gap-4">
             <div className="grid gap-2">
               <Label htmlFor="budget">
-                Ngân sách dự kiến <span className="text-red-500">*</span>
+                Ngan sach du kien
               </Label>
               <Input
                 id="budget"
                 name="budget"
-                placeholder="VD: 50,000,000 VNĐ"
+                placeholder="VD: 50000000"
                 value={formData.budget}
                 onChange={handleInputChange}
               />
+              <p className="text-xs text-muted-foreground">Nhap so (VND)</p>
             </div>
             <div className="grid gap-2">
-              <Label htmlFor="timeline">
-                Thời gian thực hiện <span className="text-red-500">*</span>
+              <Label htmlFor="dueDate">
+                Han hoan thanh
               </Label>
               <Input
-                id="timeline"
-                name="timeline"
-                placeholder="VD: 15/01 - 15/02/2024"
-                value={formData.timeline}
+                id="dueDate"
+                name="dueDate"
+                type="date"
+                value={formData.dueDate}
                 onChange={handleInputChange}
               />
             </div>
@@ -183,12 +264,12 @@ export default function NewProposalPage() {
           {/* Expected Outcome */}
           <div className="grid gap-2">
             <Label htmlFor="expectedOutcome">
-              Kết quả mong đợi <span className="text-red-500">*</span>
+              Ket qua mong doi
             </Label>
             <Textarea
               id="expectedOutcome"
               name="expectedOutcome"
-              placeholder="Mô tả các KPI, metrics hoặc kết quả cụ thể mong đợi đạt được..."
+              placeholder="Mo ta cac KPI, metrics hoac ket qua cu the mong doi dat duoc..."
               rows={3}
               value={formData.expectedOutcome}
               onChange={handleInputChange}
@@ -197,12 +278,12 @@ export default function NewProposalPage() {
 
           {/* Tips */}
           <div className="p-4 rounded-lg bg-blue-50 border border-blue-200">
-            <h4 className="font-medium text-blue-800 mb-2">💡 Mẹo để đề xuất được duyệt nhanh</h4>
+            <h4 className="font-medium text-blue-800 mb-2">Meo de de xuat duoc duyet nhanh</h4>
             <ul className="text-sm text-blue-700 space-y-1">
-              <li>• Mô tả rõ ràng vấn đề cần giải quyết</li>
-              <li>• Đưa ra các số liệu cụ thể về kết quả mong đợi</li>
-              <li>• Giải thích tại sao ngân sách này là hợp lý</li>
-              <li>• Nêu rõ timeline và các milestone quan trọng</li>
+              <li>- Mo ta ro rang van de can giai quyet</li>
+              <li>- Dua ra cac so lieu cu the ve ket qua mong doi</li>
+              <li>- Giai thich tai sao ngan sach nay la hop ly</li>
+              <li>- Neu ro timeline va cac milestone quan trong</li>
             </ul>
           </div>
         </CardContent>
@@ -211,16 +292,27 @@ export default function NewProposalPage() {
       {/* Actions */}
       <div className="flex items-center justify-between">
         <Link href="/proposals">
-          <Button variant="outline">Hủy</Button>
+          <Button variant="outline">Huy</Button>
         </Link>
         <div className="flex items-center gap-3">
-          <Button variant="outline" onClick={handleSaveDraft}>
+          <Button
+            variant="outline"
+            onClick={handleSaveDraft}
+            disabled={isSubmitting}
+          >
             <Save className="h-4 w-4 mr-2" />
-            Lưu bản nháp
+            {createProposal.isPending && !submitProposal.isPending
+              ? "Dang luu..."
+              : "Luu ban nhap"}
           </Button>
-          <Button onClick={handleSubmit}>
+          <Button
+            onClick={handleSubmit}
+            disabled={isSubmitting}
+          >
             <Send className="h-4 w-4 mr-2" />
-            Gửi duyệt
+            {isSubmitting && submitProposal.isPending
+              ? "Dang gui..."
+              : "Gui duyet"}
           </Button>
         </div>
       </div>

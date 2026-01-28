@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -20,6 +20,7 @@ import {
   BarChart3,
   CheckCircle2,
   Clock,
+  AlertTriangle,
 } from "lucide-react";
 import {
   DndContext,
@@ -55,26 +56,28 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { trpc } from "@/lib/trpc";
+import { PageLoading } from "@/components/ui/loading-spinner";
+import { PageError } from "@/components/ui/error-display";
+import { PageEmpty } from "@/components/ui/empty-state";
+import { toast } from "sonner";
+import { format } from "date-fns";
+
+type TaskStatus = "todo" | "in_progress" | "review" | "done";
+type TaskPriority = "urgent" | "high" | "normal" | "low";
+type TaskCategory = "content" | "design" | "video" | "campaign" | "admin";
 
 interface Task {
   id: string;
   title: string;
-  description: string;
-  priority: "urgent" | "high" | "normal" | "low";
-  assignee: string;
-  dueDate: string;
-  attachments: number;
-  comments: number;
-  tags?: string[];
-  status: "todo" | "in-progress" | "review" | "done";
-}
-
-interface Comment {
-  id: string;
-  user: string;
-  text: string;
-  timestamp: string;
-  avatar?: string;
+  description: string | null;
+  priority: string;
+  status: string;
+  category: string;
+  dueDate: Date | null;
+  assignee: { id: string; name: string; avatar: string | null } | null;
+  creator: { id: string; name: string; avatar: string | null };
+  _count: { comments: number; attachments: number };
 }
 
 interface TaskCardProps {
@@ -84,69 +87,72 @@ interface TaskCardProps {
 }
 
 function TaskCard({ task, isDragging, onClick }: TaskCardProps) {
-  const priorityLabels: { [key: string]: string } = {
+  const priorityLabels: Record<string, string> = {
     urgent: "Khẩn cấp",
     high: "Cao",
     normal: "Bình thường",
     low: "Thấp",
   };
 
+  const priorityEmoji: Record<string, string> = {
+    urgent: "🔴",
+    high: "🟠",
+    normal: "🟡",
+    low: "🔵",
+  };
+
+  const isOverdue = task.dueDate && new Date(task.dueDate) < new Date() && task.status !== "done";
+
   return (
     <Card
-      className={`mb-3 cursor-pointer hover:shadow-md transition-shadow ${isDragging ? "opacity-50" : ""}`}
+      className={`mb-3 cursor-pointer hover:shadow-md transition-shadow ${isDragging ? "opacity-50" : ""} ${isOverdue ? "border-destructive" : ""}`}
       onClick={onClick}
     >
       <CardContent className="p-4">
         <div className="space-y-3">
           <div className="flex items-start gap-2">
             <Badge variant="secondary" className="text-xs">
-              {task.priority === "urgent"
-                ? "🔴 "
-                : task.priority === "high"
-                  ? "🟠 "
-                  : task.priority === "normal"
-                    ? "🟡 "
-                    : "🔵 "}
-              {priorityLabels[task.priority]}
+              {priorityEmoji[task.priority]} {priorityLabels[task.priority]}
             </Badge>
+            {isOverdue && (
+              <Badge variant="destructive" className="text-xs">
+                <AlertTriangle className="w-3 h-3 mr-1" />
+                Quá hạn
+              </Badge>
+            )}
           </div>
           <div>
             <h4 className="font-medium mb-1">{task.title}</h4>
-            <p className="text-sm text-muted-foreground line-clamp-2">
-              {task.description}
-            </p>
+            {task.description && (
+              <p className="text-sm text-muted-foreground line-clamp-2">
+                {task.description}
+              </p>
+            )}
           </div>
-          {task.tags && task.tags.length > 0 && (
-            <div className="flex flex-wrap gap-1">
-              {task.tags.map((tag, index) => (
-                <Badge key={index} variant="outline" className="text-xs">
-                  {tag}
-                </Badge>
-              ))}
-            </div>
-          )}
           <div className="flex items-center justify-between pt-2 border-t text-sm text-muted-foreground">
             <div className="flex items-center gap-3">
               <div className="flex items-center gap-1">
                 <User className="w-4 h-4" />
-                <span className="text-xs">{task.assignee}</span>
+                <span className="text-xs">{task.assignee?.name ?? "Unassigned"}</span>
               </div>
-              <div className="flex items-center gap-1">
-                <CalendarIcon className="w-4 h-4" />
-                <span className="text-xs">{task.dueDate}</span>
-              </div>
-            </div>
-            <div className="flex items-center gap-2">
-              {task.attachments > 0 && (
+              {task.dueDate && (
                 <div className="flex items-center gap-1">
-                  <Paperclip className="w-4 h-4" />
-                  <span className="text-xs">{task.attachments}</span>
+                  <CalendarIcon className="w-4 h-4" />
+                  <span className="text-xs">{format(new Date(task.dueDate), "MMM d")}</span>
                 </div>
               )}
-              {task.comments > 0 && (
+            </div>
+            <div className="flex items-center gap-2">
+              {task._count.attachments > 0 && (
+                <div className="flex items-center gap-1">
+                  <Paperclip className="w-4 h-4" />
+                  <span className="text-xs">{task._count.attachments}</span>
+                </div>
+              )}
+              {task._count.comments > 0 && (
                 <div className="flex items-center gap-1">
                   <MessageSquare className="w-4 h-4" />
-                  <span className="text-xs">{task.comments}</span>
+                  <span className="text-xs">{task._count.comments}</span>
                 </div>
               )}
             </div>
@@ -181,12 +187,12 @@ function SortableTaskCard({ task, onClick }: SortableTaskCardProps) {
 interface KanbanColumnProps {
   title: string;
   count: number;
-  status: string;
+  status: TaskStatus;
   tasks: Task[];
   onTaskClick?: (task: Task) => void;
 }
 
-function KanbanColumn({ title, count, tasks, onTaskClick }: KanbanColumnProps) {
+function KanbanColumn({ title, count, status, tasks, onTaskClick }: KanbanColumnProps) {
   return (
     <div className="flex-1 min-w-[280px]">
       <Card>
@@ -196,7 +202,7 @@ function KanbanColumn({ title, count, tasks, onTaskClick }: KanbanColumnProps) {
             <Badge variant="secondary">{count}</Badge>
           </CardTitle>
         </CardHeader>
-        <CardContent>
+        <CardContent className="min-h-[200px]">
           <SortableContext
             items={tasks.map((t) => t.id)}
             strategy={verticalListSortingStrategy}
@@ -231,7 +237,17 @@ export default function TasksPage() {
   // Filter states
   const [filterAssignee, setFilterAssignee] = useState<string>("all");
   const [filterPriority, setFilterPriority] = useState<string>("all");
-  const [filterTags, setFilterTags] = useState<string>("all");
+  const [filterCategory, setFilterCategory] = useState<string>("all");
+
+  // New task form states
+  const [newTaskTitle, setNewTaskTitle] = useState("");
+  const [newTaskDescription, setNewTaskDescription] = useState("");
+  const [newTaskPriority, setNewTaskPriority] = useState<TaskPriority>("normal");
+  const [newTaskCategory, setNewTaskCategory] = useState<TaskCategory>("content");
+  const [newTaskAssignee, setNewTaskAssignee] = useState<string>("");
+  const [newTaskDueDate, setNewTaskDueDate] = useState("");
+
+  const utils = trpc.useUtils();
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -241,152 +257,81 @@ export default function TasksPage() {
     })
   );
 
-  const [tasks, setTasks] = useState<Task[]>([
-    {
-      id: "1",
-      title: "Thiết kế banner Facebook",
-      description: "Thiết kế banner quảng cáo cho chiến dịch tháng 1",
-      priority: "urgent",
-      assignee: "Trần Văn B",
-      dueDate: "Jan 5",
-      attachments: 2,
-      comments: 3,
-      tags: ["Design", "Facebook"],
-      status: "todo",
-    },
-    {
-      id: "2",
-      title: "Viết caption bài đăng",
-      description: "Viết nội dung cho bài đăng về dịch vụ tẩy trắng răng",
-      priority: "normal",
-      assignee: "Nguyễn Văn A",
-      dueDate: "Jan 6",
-      attachments: 0,
-      comments: 1,
-      tags: ["Content", "Facebook"],
-      status: "todo",
-    },
-    {
-      id: "3",
-      title: "Design poster sự kiện",
-      description: "Thiết kế poster cho sự kiện khách hàng thân thiết",
-      priority: "high",
-      assignee: "Trần Văn B",
-      dueDate: "Jan 7",
-      attachments: 1,
-      comments: 0,
-      tags: ["Design", "Event"],
-      status: "in-progress",
-    },
-    {
-      id: "4",
-      title: "Review blog post",
-      description: "Kiểm tra và chỉnh sửa bài blog về niềng răng",
-      priority: "normal",
-      assignee: "Lê Thị C",
-      dueDate: "Jan 6",
-      attachments: 1,
-      comments: 2,
-      tags: ["Content", "Blog"],
-      status: "review",
-    },
-    {
-      id: "5",
-      title: "Export video edited",
-      description: "Export video testimonial bệnh nhân sau khi chỉnh sửa",
-      priority: "high",
-      assignee: "Nguyễn Văn D",
-      dueDate: "Jan 8",
-      attachments: 0,
-      comments: 1,
-      tags: ["Video"],
-      status: "in-progress",
-    },
-    {
-      id: "6",
-      title: "Tạo landing page",
-      description: "Thiết kế landing page cho campaign Valentine",
-      priority: "normal",
-      assignee: "Phạm Văn E",
-      dueDate: "Jan 10",
-      attachments: 3,
-      comments: 5,
-      tags: ["Development", "Campaign"],
-      status: "done",
-    },
-    {
-      id: "7",
-      title: "Chụp ảnh sản phẩm",
-      description: "Chụp ảnh sản phẩm mới cho website",
-      priority: "low",
-      assignee: "Hoàng Thị F",
-      dueDate: "Jan 12",
-      attachments: 0,
-      comments: 0,
-      tags: ["Photography"],
-      status: "todo",
-    },
-    {
-      id: "8",
-      title: "Optimize Google Ads",
-      description: "Tối ưu hóa chiến dịch Google Ads cho từ khóa niềng răng",
-      priority: "urgent",
-      assignee: "Lê Thị C",
-      dueDate: "Jan 5",
-      attachments: 2,
-      comments: 4,
-      tags: ["Digital Marketing", "Ads"],
-      status: "in-progress",
-    },
-  ]);
+  // Fetch kanban data
+  const { data: kanbanData, isLoading, error, refetch } = trpc.task.getKanbanBoard.useQuery(
+    filterAssignee !== "all" || filterCategory !== "all"
+      ? {
+          assigneeId: filterAssignee !== "all" ? filterAssignee : undefined,
+          category: filterCategory !== "all" ? (filterCategory as TaskCategory) : undefined,
+        }
+      : undefined
+  );
 
-  // Mock comments for task detail
-  const mockComments: Comment[] = [
-    {
-      id: "c1",
-      user: "Nguyễn Văn A",
-      text: "Đã upload file tham khảo vào attachments",
-      timestamp: "2 giờ trước",
-    },
-    {
-      id: "c2",
-      user: "Trần Văn B",
-      text: "Cần thêm thông tin về màu sắc và phong cách",
-      timestamp: "1 giờ trước",
-    },
-    {
-      id: "c3",
-      user: "Lê Thị C",
-      text: "Đã cập nhật brief, mọi người check lại nhé",
-      timestamp: "30 phút trước",
-    },
-  ];
+  // Fetch users for assignee filter and dropdown
+  const { data: users = [] } = trpc.user.getAll.useQuery();
 
-  // Apply filters
-  const getFilteredTasks = () => {
-    return tasks.filter((task) => {
-      if (filterAssignee !== "all" && task.assignee !== filterAssignee)
-        return false;
-      if (filterPriority !== "all" && task.priority !== filterPriority)
-        return false;
-      if (
-        filterTags !== "all" &&
-        (!task.tags || !task.tags.includes(filterTags))
-      )
-        return false;
-      return true;
-    });
+  // Mutations
+  const createTask = trpc.task.create.useMutation({
+    onSuccess: () => {
+      utils.task.getKanbanBoard.invalidate();
+      setIsNewTaskOpen(false);
+      resetNewTaskForm();
+      toast.success("Task đã được tạo thành công");
+    },
+    onError: (error) => {
+      toast.error(error.message);
+    },
+  });
+
+  const updateTask = trpc.task.update.useMutation({
+    onSuccess: () => {
+      utils.task.getKanbanBoard.invalidate();
+      toast.success("Task đã được cập nhật");
+    },
+    onError: (error) => {
+      toast.error(error.message);
+    },
+  });
+
+  const addComment = trpc.task.addComment.useMutation({
+    onSuccess: () => {
+      utils.task.getById.invalidate();
+      setNewComment("");
+      toast.success("Comment đã được thêm");
+    },
+    onError: (error) => {
+      toast.error(error.message);
+    },
+  });
+
+  // Get task details when selected
+  const { data: taskDetails } = trpc.task.getById.useQuery(
+    { id: selectedTask?.id ?? "" },
+    { enabled: !!selectedTask && isTaskDetailOpen }
+  );
+
+  const resetNewTaskForm = () => {
+    setNewTaskTitle("");
+    setNewTaskDescription("");
+    setNewTaskPriority("normal");
+    setNewTaskCategory("content");
+    setNewTaskAssignee("");
+    setNewTaskDueDate("");
   };
 
-  const filteredTasks = getFilteredTasks();
-  const todoTasks = filteredTasks.filter((t) => t.status === "todo");
-  const inProgressTasks = filteredTasks.filter((t) => t.status === "in-progress");
-  const reviewTasks = filteredTasks.filter((t) => t.status === "review");
-  const doneTasks = filteredTasks.filter((t) => t.status === "done");
+  // Apply priority filter locally
+  const filterTasks = (tasks: Task[]) => {
+    if (filterPriority === "all") return tasks;
+    return tasks.filter((task) => task.priority === filterPriority);
+  };
 
-  // Get unique assignees and tags for filters
-  const uniqueAssignees = Array.from(new Set(tasks.map((t) => t.assignee)));
-  const uniqueTags = Array.from(new Set(tasks.flatMap((t) => t.tags || [])));
+  // Get tasks for each column with filters
+  const todoTasks = useMemo(() => filterTasks(kanbanData?.todo ?? []), [kanbanData, filterPriority]);
+  const inProgressTasks = useMemo(() => filterTasks(kanbanData?.in_progress ?? []), [kanbanData, filterPriority]);
+  const reviewTasks = useMemo(() => filterTasks(kanbanData?.review ?? []), [kanbanData, filterPriority]);
+  const doneTasks = useMemo(() => filterTasks(kanbanData?.done ?? []), [kanbanData, filterPriority]);
+
+  const totalTasks = todoTasks.length + inProgressTasks.length + reviewTasks.length + doneTasks.length;
 
   const handleDragStart = (event: DragStartEvent) => {
     setActiveId(String(event.active.id));
@@ -395,16 +340,17 @@ export default function TasksPage() {
   const handleDragEnd = (event: DragEndEvent) => {
     const { active, over } = event;
 
-    if (over && String(active.id) !== String(over.id)) {
-      // Determine the new status based on the column
-      const overTask = tasks.find((t) => t.id === String(over.id));
-      if (overTask) {
-        // Update task status
-        setTasks((prevTasks) =>
-          prevTasks.map((task) =>
-            task.id === String(active.id) ? { ...task, status: overTask.status } : task
-          )
-        );
+    if (over) {
+      // Find the task and determine new status
+      const allTasks = [...todoTasks, ...inProgressTasks, ...reviewTasks, ...doneTasks];
+      const activeTask = allTasks.find((t) => t.id === String(active.id));
+      const overTask = allTasks.find((t) => t.id === String(over.id));
+
+      if (activeTask && overTask && activeTask.status !== overTask.status) {
+        updateTask.mutate({
+          id: activeTask.id,
+          status: overTask.status as TaskStatus,
+        });
       }
     }
 
@@ -416,14 +362,56 @@ export default function TasksPage() {
     setIsTaskDetailOpen(true);
   };
 
-  const activeFiltersCount = [filterAssignee, filterPriority, filterTags].filter(
+  const handleCreateTask = () => {
+    if (!newTaskTitle.trim()) {
+      toast.error("Vui lòng nhập tiêu đề task");
+      return;
+    }
+
+    createTask.mutate({
+      title: newTaskTitle,
+      description: newTaskDescription || undefined,
+      priority: newTaskPriority,
+      category: newTaskCategory,
+      assigneeId: newTaskAssignee || undefined,
+      dueDate: newTaskDueDate ? new Date(newTaskDueDate).toISOString() : undefined,
+    });
+  };
+
+  const handleAddComment = () => {
+    if (!newComment.trim() || !selectedTask) return;
+
+    addComment.mutate({
+      taskId: selectedTask.id,
+      content: newComment,
+    });
+  };
+
+  const handleStatusChange = (status: TaskStatus) => {
+    if (!selectedTask) return;
+    updateTask.mutate({ id: selectedTask.id, status });
+  };
+
+  const handlePriorityChange = (priority: TaskPriority) => {
+    if (!selectedTask) return;
+    updateTask.mutate({ id: selectedTask.id, priority });
+  };
+
+  const activeFiltersCount = [filterAssignee, filterPriority, filterCategory].filter(
     (f) => f !== "all"
   ).length;
+
+  const activeTask = activeId
+    ? [...todoTasks, ...inProgressTasks, ...reviewTasks, ...doneTasks].find((t) => t.id === activeId)
+    : null;
+
+  if (isLoading) return <PageLoading text="Đang tải tasks..." />;
+  if (error) return <PageError error={error} onRetry={refetch} />;
 
   return (
     <div className="p-6 space-y-6">
       {/* Header with Statistics */}
-      <div className="flex items-start justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
         <div>
           <h1 className="text-2xl font-semibold mb-1">My Tasks</h1>
           <p className="text-muted-foreground">Quản lý và theo dõi công việc</p>
@@ -450,13 +438,13 @@ export default function TasksPage() {
       </div>
 
       {/* Statistics Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <Card>
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-muted-foreground">Total Tasks</p>
-                <p className="text-2xl font-semibold">{filteredTasks.length}</p>
+                <p className="text-2xl font-semibold">{totalTasks}</p>
               </div>
               <BarChart3 className="w-8 h-8 text-muted-foreground" />
             </div>
@@ -469,7 +457,7 @@ export default function TasksPage() {
                 <p className="text-sm text-muted-foreground">In Progress</p>
                 <p className="text-2xl font-semibold">{inProgressTasks.length}</p>
               </div>
-              <Clock className="w-8 h-8 text-warning" />
+              <Clock className="w-8 h-8 text-yellow-500" />
             </div>
           </CardContent>
         </Card>
@@ -480,7 +468,7 @@ export default function TasksPage() {
                 <p className="text-sm text-muted-foreground">In Review</p>
                 <p className="text-2xl font-semibold">{reviewTasks.length}</p>
               </div>
-              <MessageSquare className="w-8 h-8 text-info" />
+              <MessageSquare className="w-8 h-8 text-blue-500" />
             </div>
           </CardContent>
         </Card>
@@ -491,7 +479,7 @@ export default function TasksPage() {
                 <p className="text-sm text-muted-foreground">Completed</p>
                 <p className="text-2xl font-semibold">{doneTasks.length}</p>
               </div>
-              <CheckCircle2 className="w-8 h-8 text-success" />
+              <CheckCircle2 className="w-8 h-8 text-green-500" />
             </div>
           </CardContent>
         </Card>
@@ -501,8 +489,8 @@ export default function TasksPage() {
       {showFilters && (
         <Card>
           <CardContent className="p-4">
-            <div className="flex items-center gap-4">
-              <div className="flex-1">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
+              <div className="flex-1 w-full sm:w-auto">
                 <Label className="text-sm mb-2 block">Assignee</Label>
                 <Select value={filterAssignee} onValueChange={setFilterAssignee}>
                   <SelectTrigger>
@@ -510,15 +498,15 @@ export default function TasksPage() {
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all">Tất cả</SelectItem>
-                    {uniqueAssignees.map((assignee) => (
-                      <SelectItem key={assignee} value={assignee}>
-                        {assignee}
+                    {users.map((user) => (
+                      <SelectItem key={user.id} value={user.id}>
+                        {user.name}
                       </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
               </div>
-              <div className="flex-1">
+              <div className="flex-1 w-full sm:w-auto">
                 <Label className="text-sm mb-2 block">Priority</Label>
                 <Select value={filterPriority} onValueChange={setFilterPriority}>
                   <SelectTrigger>
@@ -533,19 +521,19 @@ export default function TasksPage() {
                   </SelectContent>
                 </Select>
               </div>
-              <div className="flex-1">
-                <Label className="text-sm mb-2 block">Tags</Label>
-                <Select value={filterTags} onValueChange={setFilterTags}>
+              <div className="flex-1 w-full sm:w-auto">
+                <Label className="text-sm mb-2 block">Category</Label>
+                <Select value={filterCategory} onValueChange={setFilterCategory}>
                   <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all">Tất cả</SelectItem>
-                    {uniqueTags.map((tag) => (
-                      <SelectItem key={tag} value={tag}>
-                        {tag}
-                      </SelectItem>
-                    ))}
+                    <SelectItem value="content">Content</SelectItem>
+                    <SelectItem value="design">Design</SelectItem>
+                    <SelectItem value="video">Video</SelectItem>
+                    <SelectItem value="campaign">Campaign</SelectItem>
+                    <SelectItem value="admin">Admin</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -556,7 +544,7 @@ export default function TasksPage() {
                   onClick={() => {
                     setFilterAssignee("all");
                     setFilterPriority("all");
-                    setFilterTags("all");
+                    setFilterCategory("all");
                   }}
                 >
                   <X className="w-4 h-4 mr-2" />
@@ -568,99 +556,108 @@ export default function TasksPage() {
         </Card>
       )}
 
-      <Tabs defaultValue="kanban" className="space-y-4">
-        <TabsList>
-          <TabsTrigger value="kanban">Kanban Board</TabsTrigger>
-          <TabsTrigger value="list">Danh sách</TabsTrigger>
-        </TabsList>
+      {totalTasks === 0 ? (
+        <PageEmpty
+          title="Chưa có task nào"
+          description="Tạo task đầu tiên để bắt đầu quản lý công việc"
+          action={{ label: "Tạo Task mới", onClick: () => setIsNewTaskOpen(true) }}
+        />
+      ) : (
+        <Tabs defaultValue="kanban" className="space-y-4">
+          <TabsList>
+            <TabsTrigger value="kanban">Kanban Board</TabsTrigger>
+            <TabsTrigger value="list">Danh sách</TabsTrigger>
+          </TabsList>
 
-        <TabsContent value="kanban" className="space-y-4">
-          <DndContext
-            sensors={sensors}
-            collisionDetection={closestCorners}
-            onDragStart={handleDragStart}
-            onDragEnd={handleDragEnd}
-          >
-            <div className="flex gap-4 overflow-x-auto pb-4">
-              <KanbanColumn
-                title="TO DO"
-                count={todoTasks.length}
-                status="todo"
-                tasks={todoTasks}
-                onTaskClick={handleTaskClick}
-              />
-              <KanbanColumn
-                title="IN PROGRESS"
-                count={inProgressTasks.length}
-                status="in-progress"
-                tasks={inProgressTasks}
-                onTaskClick={handleTaskClick}
-              />
-              <KanbanColumn
-                title="REVIEW"
-                count={reviewTasks.length}
-                status="review"
-                tasks={reviewTasks}
-                onTaskClick={handleTaskClick}
-              />
-              <KanbanColumn
-                title="DONE"
-                count={doneTasks.length}
-                status="done"
-                tasks={doneTasks}
-                onTaskClick={handleTaskClick}
-              />
-            </div>
-
-            <DragOverlay>
-              {activeId ? (
-                <TaskCard task={tasks.find((t) => t.id === activeId)!} />
-              ) : null}
-            </DragOverlay>
-          </DndContext>
-        </TabsContent>
-
-        <TabsContent value="list" className="space-y-4">
-          <Card>
-            <CardContent className="p-6">
-              <div className="space-y-3">
-                {filteredTasks.map((task) => (
-                  <div
-                    key={task.id}
-                    className="border-b last:border-0 pb-3 last:pb-0"
-                  >
-                    <TaskCard task={task} onClick={() => handleTaskClick(task)} />
-                  </div>
-                ))}
+          <TabsContent value="kanban" className="space-y-4">
+            <DndContext
+              sensors={sensors}
+              collisionDetection={closestCorners}
+              onDragStart={handleDragStart}
+              onDragEnd={handleDragEnd}
+            >
+              <div className="flex gap-4 overflow-x-auto pb-4">
+                <KanbanColumn
+                  title="TO DO"
+                  count={todoTasks.length}
+                  status="todo"
+                  tasks={todoTasks}
+                  onTaskClick={handleTaskClick}
+                />
+                <KanbanColumn
+                  title="IN PROGRESS"
+                  count={inProgressTasks.length}
+                  status="in_progress"
+                  tasks={inProgressTasks}
+                  onTaskClick={handleTaskClick}
+                />
+                <KanbanColumn
+                  title="REVIEW"
+                  count={reviewTasks.length}
+                  status="review"
+                  tasks={reviewTasks}
+                  onTaskClick={handleTaskClick}
+                />
+                <KanbanColumn
+                  title="DONE"
+                  count={doneTasks.length}
+                  status="done"
+                  tasks={doneTasks}
+                  onTaskClick={handleTaskClick}
+                />
               </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-      </Tabs>
+
+              <DragOverlay>
+                {activeTask ? <TaskCard task={activeTask} /> : null}
+              </DragOverlay>
+            </DndContext>
+          </TabsContent>
+
+          <TabsContent value="list" className="space-y-4">
+            <Card>
+              <CardContent className="p-6">
+                <div className="space-y-3">
+                  {[...todoTasks, ...inProgressTasks, ...reviewTasks, ...doneTasks].map((task) => (
+                    <div
+                      key={task.id}
+                      className="border-b last:border-0 pb-3 last:pb-0"
+                    >
+                      <TaskCard task={task} onClick={() => handleTaskClick(task)} />
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+        </Tabs>
+      )}
 
       {/* Task Detail Modal */}
       <Dialog open={isTaskDetailOpen} onOpenChange={setIsTaskDetailOpen}>
-        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="max-w-3xl w-full max-h-[90vh] md:max-h-[80vh] overflow-y-auto">
           {selectedTask && (
             <>
               <DialogHeader>
                 <DialogTitle className="text-xl">{selectedTask.title}</DialogTitle>
-                <DialogDescription>Task ID: #{selectedTask.id}</DialogDescription>
+                <DialogDescription>Task ID: #{selectedTask.id.slice(0, 8)}</DialogDescription>
               </DialogHeader>
 
               <div className="space-y-6">
                 {/* Task Info */}
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
                     <Label className="text-sm text-muted-foreground">Status</Label>
                     <div className="mt-1">
-                      <Select defaultValue={selectedTask.status}>
+                      <Select
+                        value={taskDetails?.status ?? selectedTask.status}
+                        onValueChange={(v) => handleStatusChange(v as TaskStatus)}
+                      >
                         <SelectTrigger>
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
                           <SelectItem value="todo">TO DO</SelectItem>
-                          <SelectItem value="in-progress">IN PROGRESS</SelectItem>
+                          <SelectItem value="in_progress">IN PROGRESS</SelectItem>
                           <SelectItem value="review">REVIEW</SelectItem>
                           <SelectItem value="done">DONE</SelectItem>
                         </SelectContent>
@@ -670,7 +667,10 @@ export default function TasksPage() {
                   <div>
                     <Label className="text-sm text-muted-foreground">Priority</Label>
                     <div className="mt-1">
-                      <Select defaultValue={selectedTask.priority}>
+                      <Select
+                        value={taskDetails?.priority ?? selectedTask.priority}
+                        onValueChange={(v) => handlePriorityChange(v as TaskPriority)}
+                      >
                         <SelectTrigger>
                           <SelectValue />
                         </SelectTrigger>
@@ -685,119 +685,83 @@ export default function TasksPage() {
                   </div>
                   <div>
                     <Label className="text-sm text-muted-foreground">Assignee</Label>
-                    <div className="mt-1">
-                      <Select defaultValue={selectedTask.assignee}>
-                        <SelectTrigger>
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {uniqueAssignees.map((assignee) => (
-                            <SelectItem key={assignee} value={assignee}>
-                              {assignee}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
+                    <div className="mt-1 p-2 border rounded-md bg-muted/50">
+                      {selectedTask.assignee?.name ?? "Unassigned"}
                     </div>
                   </div>
                   <div>
                     <Label className="text-sm text-muted-foreground">Due Date</Label>
-                    <Input
-                      type="text"
-                      defaultValue={selectedTask.dueDate}
-                      className="mt-1"
-                    />
+                    <div className="mt-1 p-2 border rounded-md bg-muted/50">
+                      {selectedTask.dueDate
+                        ? format(new Date(selectedTask.dueDate), "MMM d, yyyy")
+                        : "No due date"}
+                    </div>
                   </div>
                 </div>
 
                 {/* Description */}
                 <div>
                   <Label className="text-sm text-muted-foreground">Description</Label>
-                  <Textarea
-                    defaultValue={selectedTask.description}
-                    rows={3}
-                    className="mt-1"
-                  />
-                </div>
-
-                {/* Tags */}
-                <div>
-                  <Label className="text-sm text-muted-foreground">Tags</Label>
-                  <div className="flex flex-wrap gap-2 mt-2">
-                    {selectedTask.tags?.map((tag, index) => (
-                      <Badge key={index} variant="secondary">
-                        {tag}
-                        <button className="ml-2 hover:text-destructive">
-                          <X className="w-3 h-3" />
-                        </button>
-                      </Badge>
-                    ))}
-                    <Button variant="outline" size="sm">
-                      <Plus className="w-3 h-3 mr-1" />
-                      Add Tag
-                    </Button>
+                  <div className="mt-2 p-3 border rounded-md bg-muted/50 min-h-[80px]">
+                    {taskDetails?.description ?? selectedTask.description ?? "No description"}
                   </div>
                 </div>
 
                 {/* Attachments */}
-                <div>
-                  <Label className="text-sm text-muted-foreground mb-2 block">
-                    Attachments ({selectedTask.attachments})
-                  </Label>
-                  <div className="space-y-2">
-                    <div className="flex items-center gap-3 p-2 rounded border hover:bg-accent/50">
-                      <FileText className="w-8 h-8 text-muted-foreground" />
-                      <div className="flex-1">
-                        <p className="text-sm font-medium">Design_Brief_v2.pdf</p>
-                        <p className="text-xs text-muted-foreground">
-                          2.4 MB - Uploaded 2 hours ago
-                        </p>
-                      </div>
-                      <Button variant="ghost" size="sm">
-                        <Download className="w-4 h-4" />
-                      </Button>
+                {taskDetails?.attachments && taskDetails.attachments.length > 0 && (
+                  <div>
+                    <Label className="text-sm text-muted-foreground mb-2 block">
+                      Attachments ({taskDetails.attachments.length})
+                    </Label>
+                    <div className="space-y-2">
+                      {taskDetails.attachments.map((attachment) => (
+                        <div
+                          key={attachment.id}
+                          className="flex items-center gap-3 p-2 rounded border hover:bg-accent/50"
+                        >
+                          <FileText className="w-8 h-8 text-muted-foreground" />
+                          <div className="flex-1">
+                            <p className="text-sm font-medium">{attachment.fileName}</p>
+                            <p className="text-xs text-muted-foreground">
+                              {((attachment.fileSize ?? 0) / 1024).toFixed(1)} KB
+                            </p>
+                          </div>
+                          <Button variant="ghost" size="sm">
+                            <Download className="w-4 h-4" />
+                          </Button>
+                        </div>
+                      ))}
                     </div>
-                    <div className="flex items-center gap-3 p-2 rounded border hover:bg-accent/50">
-                      <ImageIcon className="w-8 h-8 text-muted-foreground" />
-                      <div className="flex-1">
-                        <p className="text-sm font-medium">Reference_Image.jpg</p>
-                        <p className="text-xs text-muted-foreground">
-                          1.8 MB - Uploaded 1 hour ago
-                        </p>
-                      </div>
-                      <Button variant="ghost" size="sm">
-                        <Download className="w-4 h-4" />
-                      </Button>
-                    </div>
-                    <Button variant="outline" size="sm" className="w-full">
-                      <Plus className="w-4 h-4 mr-2" />
-                      Upload File
-                    </Button>
                   </div>
-                </div>
+                )}
 
                 {/* Comments */}
                 <div>
                   <Label className="text-sm text-muted-foreground mb-3 block">
-                    Comments ({mockComments.length})
+                    Comments ({taskDetails?.comments?.length ?? 0})
                   </Label>
-                  <div className="space-y-4 mb-4">
-                    {mockComments.map((comment) => (
+                  <div className="space-y-4 mb-4 max-h-[200px] overflow-y-auto">
+                    {taskDetails?.comments?.map((comment) => (
                       <div key={comment.id} className="flex gap-3">
                         <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
                           <User className="w-4 h-4 text-primary" />
                         </div>
                         <div className="flex-1">
                           <div className="flex items-center gap-2 mb-1">
-                            <span className="text-sm font-medium">{comment.user}</span>
+                            <span className="text-sm font-medium">{comment.user.name}</span>
                             <span className="text-xs text-muted-foreground">
-                              {comment.timestamp}
+                              {format(new Date(comment.createdAt), "MMM d, HH:mm")}
                             </span>
                           </div>
-                          <p className="text-sm text-muted-foreground">{comment.text}</p>
+                          <p className="text-sm text-muted-foreground">{comment.content}</p>
                         </div>
                       </div>
                     ))}
+                    {(!taskDetails?.comments || taskDetails.comments.length === 0) && (
+                      <p className="text-sm text-muted-foreground text-center py-4">
+                        Chưa có comment nào
+                      </p>
+                    )}
                   </div>
 
                   {/* Add Comment */}
@@ -806,8 +770,14 @@ export default function TasksPage() {
                       placeholder="Viết comment..."
                       value={newComment}
                       onChange={(e) => setNewComment(e.target.value)}
+                      onKeyDown={(e) => e.key === "Enter" && handleAddComment()}
                     />
-                    <Button size="sm" className="gap-2">
+                    <Button
+                      size="sm"
+                      className="gap-2"
+                      onClick={handleAddComment}
+                      disabled={addComment.isPending}
+                    >
                       <Send className="w-4 h-4" />
                       Gửi
                     </Button>
@@ -819,7 +789,6 @@ export default function TasksPage() {
                 <Button variant="outline" onClick={() => setIsTaskDetailOpen(false)}>
                   Đóng
                 </Button>
-                <Button>Lưu thay đổi</Button>
               </DialogFooter>
             </>
           )}
@@ -828,7 +797,7 @@ export default function TasksPage() {
 
       {/* New Task Modal */}
       <Dialog open={isNewTaskOpen} onOpenChange={setIsNewTaskOpen}>
-        <DialogContent className="max-w-2xl">
+        <DialogContent className="max-w-2xl w-full max-h-[90vh] md:max-h-[80vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Tạo Task mới</DialogTitle>
             <DialogDescription>
@@ -839,7 +808,12 @@ export default function TasksPage() {
           <div className="space-y-4">
             <div>
               <Label>Tiêu đề *</Label>
-              <Input placeholder="Nhập tiêu đề task..." className="mt-1" />
+              <Input
+                placeholder="Nhập tiêu đề task..."
+                className="mt-1"
+                value={newTaskTitle}
+                onChange={(e) => setNewTaskTitle(e.target.value)}
+              />
             </div>
 
             <div>
@@ -848,13 +822,15 @@ export default function TasksPage() {
                 placeholder="Mô tả chi tiết về task..."
                 rows={4}
                 className="mt-1"
+                value={newTaskDescription}
+                onChange={(e) => setNewTaskDescription(e.target.value)}
               />
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <Label>Priority</Label>
-                <Select defaultValue="normal">
+                <Select value={newTaskPriority} onValueChange={(v) => setNewTaskPriority(v as TaskPriority)}>
                   <SelectTrigger className="mt-1">
                     <SelectValue />
                   </SelectTrigger>
@@ -868,31 +844,47 @@ export default function TasksPage() {
               </div>
 
               <div>
-                <Label>Assignee</Label>
-                <Select>
+                <Label>Category</Label>
+                <Select value={newTaskCategory} onValueChange={(v) => setNewTaskCategory(v as TaskCategory)}>
                   <SelectTrigger className="mt-1">
-                    <SelectValue placeholder="Chọn người làm..." />
+                    <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    {uniqueAssignees.map((assignee) => (
-                      <SelectItem key={assignee} value={assignee}>
-                        {assignee}
-                      </SelectItem>
-                    ))}
+                    <SelectItem value="content">Content</SelectItem>
+                    <SelectItem value="design">Design</SelectItem>
+                    <SelectItem value="video">Video</SelectItem>
+                    <SelectItem value="campaign">Campaign</SelectItem>
+                    <SelectItem value="admin">Admin</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
-                <Label>Due Date</Label>
-                <Input type="date" className="mt-1" />
+                <Label>Assignee</Label>
+                <Select value={newTaskAssignee} onValueChange={setNewTaskAssignee}>
+                  <SelectTrigger className="mt-1">
+                    <SelectValue placeholder="Chọn người làm..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {users.map((user) => (
+                      <SelectItem key={user.id} value={user.id}>
+                        {user.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
 
               <div>
-                <Label>Tags</Label>
-                <Input placeholder="Design, Content..." className="mt-1" />
+                <Label>Due Date</Label>
+                <Input
+                  type="date"
+                  className="mt-1"
+                  value={newTaskDueDate}
+                  onChange={(e) => setNewTaskDueDate(e.target.value)}
+                />
               </div>
             </div>
           </div>
@@ -901,7 +893,9 @@ export default function TasksPage() {
             <Button variant="outline" onClick={() => setIsNewTaskOpen(false)}>
               Hủy
             </Button>
-            <Button onClick={() => setIsNewTaskOpen(false)}>Tạo Task</Button>
+            <Button onClick={handleCreateTask} disabled={createTask.isPending}>
+              {createTask.isPending ? "Đang tạo..." : "Tạo Task"}
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

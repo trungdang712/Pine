@@ -1,155 +1,52 @@
 "use client";
 
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Progress } from "@/components/ui/progress";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Award, Trophy, Star, Zap, Target, Users, Lightbulb, Flame } from "lucide-react";
 
-const achievements = [
-  // Performance Category
-  {
-    id: 1,
-    icon: "🏆",
-    name: "Task Master",
-    description: "Hoàn thành 50 tasks",
-    earned: true,
-    earnedDate: "05/01/2024",
-    rarity: "rare",
-    category: "performance",
-    points: 100,
-  },
-  {
-    id: 2,
-    icon: "⚡",
-    name: "Speed Demon",
-    description: "Hoàn thành 10 tasks trước deadline",
-    earned: true,
-    earnedDate: "15/12/2023",
-    rarity: "rare",
-    category: "performance",
-    points: 75,
-  },
-  {
-    id: 3,
-    icon: "🔥",
-    name: "Streak Master",
-    description: "Hoàn thành tasks đúng hạn 30 ngày liên tiếp",
-    earned: false,
-    progress: 23,
-    total: 30,
-    rarity: "legendary",
-    category: "performance",
-    points: 200,
-  },
-  {
-    id: 4,
-    icon: "🎯",
-    name: "On-Time Pro",
-    description: "Duy trì tỷ lệ đúng hạn 90% trong 3 tháng",
-    earned: true,
-    earnedDate: "20/12/2023",
-    rarity: "epic",
-    category: "performance",
-    points: 150,
-  },
-  // Innovation Category
-  {
-    id: 5,
-    icon: "💡",
-    name: "Idea Machine",
-    description: "Có 3 ý tưởng được triển khai",
-    earned: true,
-    earnedDate: "10/10/2023",
-    rarity: "legendary",
-    category: "innovation",
-    points: 250,
-  },
-  {
-    id: 6,
-    icon: "🎨",
-    name: "Creative Master",
-    description: "Tạo content có engagement gấp 2x mức trung bình 5 lần",
-    earned: false,
-    progress: 4,
-    total: 5,
-    rarity: "epic",
-    category: "innovation",
-    points: 175,
-  },
-  {
-    id: 7,
-    icon: "🚀",
-    name: "Trendsetter",
-    description: "Tạo ra format content mới được team áp dụng",
-    earned: false,
-    progress: 0,
-    total: 1,
-    rarity: "legendary",
-    category: "innovation",
-    points: 300,
-  },
-  // Collaboration Category
-  {
-    id: 8,
-    icon: "🌟",
-    name: "Team Player",
-    description: "Nhận đánh giá 5 sao từ 10 thành viên khác nhau",
-    earned: false,
-    progress: 7,
-    total: 10,
-    rarity: "epic",
-    category: "collaboration",
-    points: 150,
-  },
-  {
-    id: 9,
-    icon: "🤝",
-    name: "Bridge Builder",
-    description: "Hoàn thành 5 dự án collab giữa các team",
-    earned: true,
-    earnedDate: "01/11/2023",
-    rarity: "rare",
-    category: "collaboration",
-    points: 100,
-  },
-  {
-    id: 10,
-    icon: "💬",
-    name: "Mentor",
-    description: "Review và feedback cho 20 tasks của team members",
-    earned: false,
-    progress: 14,
-    total: 20,
-    rarity: "epic",
-    category: "collaboration",
-    points: 125,
-  },
-  // Content Category
-  {
-    id: 11,
-    icon: "🎬",
-    name: "Video Star",
-    description: "Tạo video đạt 10K views",
-    earned: true,
-    earnedDate: "10/01/2024",
-    rarity: "epic",
-    category: "content",
-    points: 150,
-  },
-  {
-    id: 12,
-    icon: "📱",
-    name: "Social Master",
-    description: "Tạo 100 bài post trên social media",
-    earned: false,
-    progress: 78,
-    total: 100,
-    rarity: "rare",
-    category: "content",
-    points: 100,
-  },
-];
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Award, Trophy, Star, Zap, Target, Users, Lightbulb } from "lucide-react";
+import { trpc } from "@/lib/trpc";
+import { PageLoading } from "@/components/ui/loading-spinner";
+import { PageError } from "@/components/ui/error-display";
+
+// Icon mapping based on achievement category or iconUrl
+const getIconDisplay = (iconUrl: string | null | undefined, category: string) => {
+  if (iconUrl) {
+    const iconMap: Record<string, string> = {
+      trophy: "🏆",
+      zap: "⚡",
+      fire: "🔥",
+      flame: "🔥",
+      target: "🎯",
+      lightbulb: "💡",
+      palette: "🎨",
+      rocket: "🚀",
+      star: "🌟",
+      handshake: "🤝",
+      chat: "💬",
+      video: "🎬",
+      phone: "📱",
+      coffee: "☕",
+    };
+    return iconMap[iconUrl] || iconUrl;
+  }
+  // Fallback based on category
+  const categoryIcons: Record<string, string> = {
+    performance: "🏆",
+    innovation: "💡",
+    collaboration: "🌟",
+    content: "🎬",
+  };
+  return categoryIcons[category] || "⭐";
+};
+
+// Derive rarity from points (since the DB model has no rarity field)
+const getRarityFromPoints = (points: number): string => {
+  if (points >= 200) return "legendary";
+  if (points >= 125) return "epic";
+  if (points >= 50) return "rare";
+  return "common";
+};
 
 const getRarityConfig = (rarity: string) => {
   switch (rarity) {
@@ -184,18 +81,67 @@ const getRarityConfig = (rarity: string) => {
   }
 };
 
-const categoryIcons = {
-  performance: Target,
-  innovation: Lightbulb,
-  collaboration: Users,
-  content: Star,
-};
 
 export default function AchievementsPage() {
-  const earnedCount = achievements.filter((a) => a.earned).length;
-  const totalPoints = achievements
-    .filter((a) => a.earned)
-    .reduce((sum, a) => sum + a.points, 0);
+  // Fetch achievements from tRPC
+  const myAchievementsQuery = trpc.gamification.getMyAchievements.useQuery();
+  const allAchievementsQuery = trpc.gamification.getAllAchievements.useQuery();
+
+  const isLoading = myAchievementsQuery.isLoading || allAchievementsQuery.isLoading;
+  const error = myAchievementsQuery.error || allAchievementsQuery.error;
+
+  if (isLoading) return <PageLoading text="Loading achievements..." />;
+  if (error) {
+    return (
+      <PageError
+        error={error}
+        onRetry={() => {
+          myAchievementsQuery.refetch();
+          allAchievementsQuery.refetch();
+        }}
+      />
+    );
+  }
+
+  const { earned = [], available = [] } = myAchievementsQuery.data || {};
+  const allAchievements = allAchievementsQuery.data || [];
+
+  const totalCount = allAchievements.length;
+  const earnedCount = earned.length;
+  const totalPoints = earned.reduce((sum, a) => sum + a.points, 0);
+
+  // Combine earned + available for tab display
+  const combinedAchievements = [
+    ...earned.map((a) => ({
+      id: a.id,
+      icon: getIconDisplay(a.iconUrl, a.category),
+      name: a.name,
+      description: a.description,
+      earned: true as const,
+      earnedAt: a.earnedAt,
+      rarity: getRarityFromPoints(a.points),
+      category: a.category,
+      points: a.points,
+    })),
+    ...available.map((a) => ({
+      id: a.id,
+      icon: getIconDisplay(a.iconUrl, a.category),
+      name: a.name,
+      description: a.description,
+      earned: false as const,
+      earnedAt: null,
+      rarity: getRarityFromPoints(a.points),
+      category: a.category,
+      points: a.points,
+    })),
+  ];
+
+  const legendaryEarnedCount = combinedAchievements.filter(
+    (a) => a.earned && a.rarity === "legendary"
+  ).length;
+  const inProgressCount = combinedAchievements.filter((a) => !a.earned).length;
+
+  const categories = ["all", "performance", "innovation", "collaboration", "content"];
 
   return (
     <div className="space-y-6">
@@ -203,7 +149,7 @@ export default function AchievementsPage() {
       <div>
         <h1 className="text-2xl font-bold">Achievements</h1>
         <p className="text-muted-foreground">
-          Các thành tích đã đạt được và đang tiến tới
+          Cac thanh tich da dat duoc va dang tien toi
         </p>
       </div>
 
@@ -216,9 +162,9 @@ export default function AchievementsPage() {
             </div>
             <div>
               <p className="text-2xl font-bold">
-                {earnedCount}/{achievements.length}
+                {earnedCount}/{totalCount}
               </p>
-              <p className="text-sm text-muted-foreground">Đã đạt</p>
+              <p className="text-sm text-muted-foreground">Da dat</p>
             </div>
           </CardContent>
         </Card>
@@ -229,7 +175,7 @@ export default function AchievementsPage() {
             </div>
             <div>
               <p className="text-2xl font-bold">{totalPoints}</p>
-              <p className="text-sm text-muted-foreground">Điểm từ achievements</p>
+              <p className="text-sm text-muted-foreground">Diem tu achievements</p>
             </div>
           </CardContent>
         </Card>
@@ -239,9 +185,7 @@ export default function AchievementsPage() {
               <Trophy className="h-5 w-5 text-yellow-600" />
             </div>
             <div>
-              <p className="text-2xl font-bold">
-                {achievements.filter((a) => a.earned && a.rarity === "legendary").length}
-              </p>
+              <p className="text-2xl font-bold">{legendaryEarnedCount}</p>
               <p className="text-sm text-muted-foreground">Legendary</p>
             </div>
           </CardContent>
@@ -252,10 +196,8 @@ export default function AchievementsPage() {
               <Zap className="h-5 w-5 text-blue-600" />
             </div>
             <div>
-              <p className="text-2xl font-bold">
-                {achievements.filter((a) => !a.earned).length}
-              </p>
-              <p className="text-sm text-muted-foreground">Đang tiến tới</p>
+              <p className="text-2xl font-bold">{inProgressCount}</p>
+              <p className="text-sm text-muted-foreground">Dang tien toi</p>
             </div>
           </CardContent>
         </Card>
@@ -266,7 +208,7 @@ export default function AchievementsPage() {
         <TabsList>
           <TabsTrigger value="all">
             <Award className="h-4 w-4 mr-2" />
-            Tất cả
+            Tat ca
           </TabsTrigger>
           <TabsTrigger value="performance">
             <Target className="h-4 w-4 mr-2" />
@@ -286,13 +228,13 @@ export default function AchievementsPage() {
           </TabsTrigger>
         </TabsList>
 
-        {["all", "performance", "innovation", "collaboration", "content"].map((category) => (
+        {categories.map((category) => (
           <TabsContent key={category} value={category} className="space-y-6">
             {/* Earned Achievements */}
             <div>
-              <h3 className="text-lg font-semibold mb-4">Đã đạt được</h3>
+              <h3 className="text-lg font-semibold mb-4">Da dat duoc</h3>
               <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                {achievements
+                {combinedAchievements
                   .filter(
                     (a) =>
                       a.earned && (category === "all" || a.category === category)
@@ -320,29 +262,37 @@ export default function AchievementsPage() {
                           <p className="text-sm text-muted-foreground mb-2">
                             {achievement.description}
                           </p>
-                          <p className="text-xs text-green-600">
-                            ✓ Đạt được ngày {achievement.earnedDate}
-                          </p>
+                          {achievement.earnedAt && (
+                            <p className="text-xs text-green-600">
+                              {"\u2713"} Dat duoc ngay{" "}
+                              {new Date(achievement.earnedAt).toLocaleDateString()}
+                            </p>
+                          )}
                         </CardContent>
                       </Card>
                     );
                   })}
+                {combinedAchievements.filter(
+                  (a) => a.earned && (category === "all" || a.category === category)
+                ).length === 0 && (
+                  <p className="text-sm text-muted-foreground col-span-full">
+                    Chua co thanh tich nao trong danh muc nay.
+                  </p>
+                )}
               </div>
             </div>
 
-            {/* In Progress Achievements */}
+            {/* In Progress / Available Achievements */}
             <div>
-              <h3 className="text-lg font-semibold mb-4">Đang tiến tới</h3>
+              <h3 className="text-lg font-semibold mb-4">Dang tien toi</h3>
               <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                {achievements
+                {combinedAchievements
                   .filter(
                     (a) =>
                       !a.earned && (category === "all" || a.category === category)
                   )
                   .map((achievement) => {
                     const rarityConfig = getRarityConfig(achievement.rarity);
-                    const progressPercent =
-                      ((achievement.progress ?? 0) / (achievement.total ?? 1)) * 100;
                     return (
                       <Card key={achievement.id} className="opacity-80">
                         <CardContent className="p-4">
@@ -354,22 +304,20 @@ export default function AchievementsPage() {
                           <p className="text-sm text-muted-foreground mb-3">
                             {achievement.description}
                           </p>
-                          <div className="space-y-1">
-                            <div className="flex items-center justify-between text-sm">
-                              <span>Tiến độ</span>
-                              <span>
-                                {achievement.progress}/{achievement.total}
-                              </span>
-                            </div>
-                            <Progress value={progressPercent} className="h-2" />
-                          </div>
                           <div className="mt-2 text-xs text-muted-foreground">
-                            Phần thưởng: +{achievement.points} pts
+                            Phan thuong: +{achievement.points} pts
                           </div>
                         </CardContent>
                       </Card>
                     );
                   })}
+                {combinedAchievements.filter(
+                  (a) => !a.earned && (category === "all" || a.category === category)
+                ).length === 0 && (
+                  <p className="text-sm text-muted-foreground col-span-full">
+                    Da dat tat ca thanh tich trong danh muc nay!
+                  </p>
+                )}
               </div>
             </div>
           </TabsContent>

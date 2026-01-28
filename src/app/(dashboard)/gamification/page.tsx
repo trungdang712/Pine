@@ -2,116 +2,67 @@
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Progress } from "@/components/ui/progress";
-import { TrendingUp, TrendingDown, Trophy, Star } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Trophy, Star } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useState } from "react";
+import { trpc } from "@/lib/trpc";
+import { LoadingSpinner, PageLoading } from "@/components/ui/loading-spinner";
+import { ErrorDisplay, PageError } from "@/components/ui/error-display";
+import { toast } from "sonner";
+
+type LeaderboardPeriod = "weekly" | "monthly" | "allTime";
 
 export default function GamificationPage() {
   const [activeTab, setActiveTab] = useState("leaderboard");
+  const [leaderboardPeriod, setLeaderboardPeriod] = useState<LeaderboardPeriod>("monthly");
 
-  const leaderboard = [
-    { rank: 1, name: "Tran Van B", role: "Design", points: 520, change: 2, badges: ["trophy", "target", "zap"] },
-    { rank: 2, name: "Nguyen Van A", role: "Content", points: 450, change: 0, badges: ["trophy", "target"] },
-    { rank: 3, name: "Le Thi C", role: "Digital", points: 380, change: -1, badges: ["target"] },
-    { rank: 4, name: "Pham Van D", role: "Video", points: 320, change: 1, badges: ["video"] },
-    { rank: 5, name: "Hoang Thi E", role: "Content", points: 280, change: 0, badges: ["edit"] },
-    { rank: 6, name: "Dang Van F", role: "Design", points: 250, change: -2, badges: ["palette"] },
-  ];
+  // Fetch user points
+  const myPointsQuery = trpc.gamification.getMyPoints.useQuery();
 
-  const achievements = [
-    {
-      id: 1,
-      icon: "trophy",
-      name: "Task Master",
-      description: "Complete 50 tasks",
-      earned: true,
-      earnedDate: "January 5, 2024",
-      rarity: "rare",
-    },
-    {
-      id: 2,
-      icon: "target",
-      name: "On-Time Pro",
-      description: "Maintain 90% on-time rate for 3 months",
-      earned: true,
-      earnedDate: "December 20, 2023",
-      rarity: "epic",
-    },
-    {
-      id: 3,
-      icon: "zap",
-      name: "Speed Demon",
-      description: "Complete 10 tasks ahead of deadline",
-      earned: true,
-      earnedDate: "November 15, 2023",
-      rarity: "rare",
-    },
-    {
-      id: 4,
-      icon: "lightbulb",
-      name: "Idea Machine",
-      description: "Have 3 innovation ideas implemented",
-      earned: true,
-      earnedDate: "October 10, 2023",
-      rarity: "legendary",
-    },
-    {
-      id: 5,
-      icon: "palette",
-      name: "Creative Master",
-      description: "Create content with 2x average engagement 5 times",
-      earned: false,
-      progress: 4,
-      total: 5,
-      rarity: "epic",
-    },
-    {
-      id: 6,
-      icon: "star",
-      name: "Team Player",
-      description: "Receive 5-star rating from 10 different team members",
-      earned: false,
-      progress: 7,
-      total: 10,
-      rarity: "legendary",
-    },
-  ];
+  // Fetch leaderboards
+  const weeklyLeaderboardQuery = trpc.gamification.getWeeklyLeaderboard.useQuery(undefined, {
+    enabled: leaderboardPeriod === "weekly",
+  });
+  const monthlyLeaderboardQuery = trpc.gamification.getMonthlyLeaderboard.useQuery(undefined, {
+    enabled: leaderboardPeriod === "monthly",
+  });
+  const allTimeLeaderboardQuery = trpc.gamification.getAllTimeLeaderboard.useQuery(undefined, {
+    enabled: leaderboardPeriod === "allTime",
+  });
 
-  const rewards = [
-    {
-      id: 1,
-      name: "Coffee Voucher",
-      pointsCost: 100,
-      available: true,
-      icon: "coffee",
-      description: "Free coffee at clinic cafe",
+  // Fetch achievements
+  const myAchievementsQuery = trpc.gamification.getMyAchievements.useQuery();
+  const allAchievementsQuery = trpc.gamification.getAllAchievements.useQuery();
+
+  // Fetch rewards
+  const rewardsQuery = trpc.gamification.getAvailableRewards.useQuery();
+
+  // Redeem reward mutation
+  const redeemMutation = trpc.gamification.redeemReward.useMutation({
+    onSuccess: () => {
+      toast.success("Reward redeemed successfully!");
+      rewardsQuery.refetch();
+      myPointsQuery.refetch();
     },
-    {
-      id: 2,
-      name: "Extra Day Off",
-      pointsCost: 500,
-      available: true,
-      icon: "palmtree",
-      description: "One extra day of paid leave",
+    onError: (error) => {
+      toast.error(error.message || "Failed to redeem reward");
     },
-    {
-      id: 3,
-      name: "Team Lunch",
-      pointsCost: 300,
-      available: true,
-      icon: "utensils",
-      description: "Lunch treat for your team",
-    },
-    {
-      id: 4,
-      name: "Tech Gadget",
-      pointsCost: 1000,
-      available: false,
-      icon: "headphones",
-      description: "Premium headphones or accessories",
-    },
-  ];
+  });
+
+  // Get active leaderboard data based on selected period
+  const getActiveLeaderboard = () => {
+    switch (leaderboardPeriod) {
+      case "weekly":
+        return weeklyLeaderboardQuery;
+      case "monthly":
+        return monthlyLeaderboardQuery;
+      case "allTime":
+        return allTimeLeaderboardQuery;
+    }
+  };
+
+  const activeLeaderboardQuery = getActiveLeaderboard();
 
   const getRarityColor = (rarity: string) => {
     switch (rarity) {
@@ -139,7 +90,7 @@ export default function GamificationPage() {
     }
   };
 
-  const getIconDisplay = (iconName: string) => {
+  const getIconDisplay = (iconName: string | null | undefined) => {
     const iconMap: Record<string, string> = {
       trophy: "🏆",
       target: "🎯",
@@ -153,290 +104,425 @@ export default function GamificationPage() {
       palmtree: "🏖️",
       utensils: "🍽️",
       headphones: "🎧",
+      performance: "📈",
+      innovation: "💡",
+      collaboration: "🤝",
+      content: "📝",
     };
-    return iconMap[iconName] || "⭐";
+    return iconMap[iconName || ""] || "⭐";
   };
 
-  const renderLeaderboard = () => (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h2 className="text-xl font-semibold">Leaderboard</h2>
-        <Tabs defaultValue="this-month">
-          <TabsList>
-            <TabsTrigger value="this-week">This Week</TabsTrigger>
-            <TabsTrigger value="this-month">This Month</TabsTrigger>
-            <TabsTrigger value="all-time">All Time</TabsTrigger>
-          </TabsList>
-        </Tabs>
-      </div>
+  const getPointsForPeriod = (entry: { weeklyPoints: number; monthlyPoints: number; totalPoints: number }) => {
+    switch (leaderboardPeriod) {
+      case "weekly":
+        return entry.weeklyPoints;
+      case "monthly":
+        return entry.monthlyPoints;
+      case "allTime":
+        return entry.totalPoints;
+    }
+  };
 
-      {/* Top 3 Podium */}
-      <Card className="bg-gradient-to-br from-primary/5 to-accent/5">
-        <CardContent className="p-8">
-          <div className="flex items-end justify-center gap-4">
-            {/* 2nd Place */}
-            <div className="flex flex-col items-center">
-              <div className="text-4xl mb-2">🥈</div>
-              <div className="w-24 h-24 bg-gradient-to-br from-gray-300 to-gray-400 rounded-full flex items-center justify-center mb-2">
-                <span className="text-2xl font-bold text-white">{leaderboard[1].name.split(" ")[0]}</span>
-              </div>
-              <div className="text-center">
-                <div className="font-semibold">{leaderboard[1].name}</div>
-                <div className="text-2xl font-bold text-primary">{leaderboard[1].points}</div>
-                <div className="text-sm text-muted-foreground">points</div>
-              </div>
-            </div>
+  const handleRedeemReward = (rewardId: string) => {
+    redeemMutation.mutate({ rewardId });
+  };
 
-            {/* 1st Place */}
-            <div className="flex flex-col items-center -mt-8">
-              <div className="text-5xl mb-2">🥇</div>
-              <div className="w-32 h-32 bg-gradient-to-br from-yellow-400 to-yellow-600 rounded-full flex items-center justify-center mb-2 shadow-lg">
-                <span className="text-3xl font-bold text-white">{leaderboard[0].name.split(" ")[0]}</span>
-              </div>
-              <div className="text-center">
-                <div className="font-semibold text-lg">{leaderboard[0].name}</div>
-                <div className="text-3xl font-bold text-primary">{leaderboard[0].points}</div>
-                <div className="text-sm text-muted-foreground">points</div>
-              </div>
-            </div>
+  const renderLeaderboard = () => {
+    if (activeLeaderboardQuery.isLoading || myPointsQuery.isLoading) {
+      return <PageLoading text="Loading leaderboard..." />;
+    }
 
-            {/* 3rd Place */}
-            <div className="flex flex-col items-center">
-              <div className="text-4xl mb-2">🥉</div>
-              <div className="w-24 h-24 bg-gradient-to-br from-amber-600 to-amber-800 rounded-full flex items-center justify-center mb-2">
-                <span className="text-2xl font-bold text-white">{leaderboard[2].name.split(" ")[0]}</span>
-              </div>
-              <div className="text-center">
-                <div className="font-semibold">{leaderboard[2].name}</div>
-                <div className="text-2xl font-bold text-primary">{leaderboard[2].points}</div>
-                <div className="text-sm text-muted-foreground">points</div>
-              </div>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
+    if (activeLeaderboardQuery.error) {
+      return (
+        <PageError
+          error={activeLeaderboardQuery.error}
+          onRetry={() => activeLeaderboardQuery.refetch()}
+        />
+      );
+    }
 
-      {/* Full Rankings */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Full Rankings</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead>
-                <tr className="border-b">
-                  <th className="text-left p-3 font-medium">Rank</th>
-                  <th className="text-left p-3 font-medium">Name</th>
-                  <th className="text-left p-3 font-medium">Role</th>
-                  <th className="text-center p-3 font-medium">Points</th>
-                  <th className="text-center p-3 font-medium">Change</th>
-                  <th className="text-left p-3 font-medium">Badges</th>
-                </tr>
-              </thead>
-              <tbody>
-                {leaderboard.map((person, index) => (
-                  <tr key={index} className={`border-b hover:bg-accent/50 ${person.rank === 3 ? "bg-accent/20" : ""}`}>
-                    <td className="p-3">
-                      <div className="flex items-center gap-2">
-                        {person.rank <= 3 && <Trophy className="w-5 h-5 text-yellow-500" />}
-                        <span className="font-semibold">#{person.rank}</span>
-                      </div>
-                    </td>
-                    <td className="p-3">
-                      <div className="font-medium">{person.name}</div>
-                    </td>
-                    <td className="p-3">
-                      <Badge variant="outline">{person.role}</Badge>
-                    </td>
-                    <td className="p-3 text-center">
-                      <span className="font-semibold text-primary">{person.points}</span>
-                    </td>
-                    <td className="p-3 text-center">
-                      {person.change !== 0 && (
-                        <div className={`flex items-center justify-center gap-1 ${person.change > 0 ? "text-green-500" : "text-red-500"}`}>
-                          {person.change > 0 ? <TrendingUp className="w-4 h-4" /> : <TrendingDown className="w-4 h-4" />}
-                          <span>{Math.abs(person.change)}</span>
-                        </div>
-                      )}
-                      {person.change === 0 && <span className="text-muted-foreground">-</span>}
-                    </td>
-                    <td className="p-3">
-                      <div className="flex items-center gap-1">
-                        {person.badges.map((badge, i) => (
-                          <span key={i} className="text-xl">{getIconDisplay(badge)}</span>
-                        ))}
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </CardContent>
-      </Card>
+    const leaderboard = activeLeaderboardQuery.data || [];
+    const myPoints = myPointsQuery.data?.points;
+    const currentUserPoints = myPoints
+      ? getPointsForPeriod({
+          weeklyPoints: myPoints.weeklyPoints,
+          monthlyPoints: myPoints.monthlyPoints,
+          totalPoints: myPoints.totalPoints,
+        })
+      : 0;
 
-      {/* Your Position Card */}
-      <Card className="border-2 border-primary">
-        <CardContent className="p-5">
-          <div className="flex items-center gap-3">
-            <Trophy className="w-8 h-8 text-primary" />
-            <div>
-              <p className="font-semibold">Your Position: Rank #3</p>
-              <p className="text-sm text-muted-foreground">You earned 380 points this month</p>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-    </div>
-  );
+    // Find user's rank in leaderboard - the userId exists on the actual data object (not the fallback)
+    const userIdFromPoints = myPointsQuery.data?.points && 'userId' in myPointsQuery.data.points
+      ? myPointsQuery.data.points.userId
+      : undefined;
+    const userRank = userIdFromPoints
+      ? leaderboard.findIndex((entry) => entry.user?.id === userIdFromPoints) + 1
+      : 0;
 
-  const renderAchievements = () => (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h2 className="text-xl font-semibold">Achievements</h2>
-        <Tabs defaultValue="my">
-          <TabsList>
-            <TabsTrigger value="my">My Achievements</TabsTrigger>
-            <TabsTrigger value="all">All Badges</TabsTrigger>
-          </TabsList>
-        </Tabs>
-      </div>
-
-      {/* Recent Achievement */}
-      {achievements.filter((a) => a.earned).length > 0 && (
-        <Card className="border-2 border-primary/50 bg-gradient-to-br from-primary/5 to-accent/5">
-          <CardContent className="p-5">
-            <div className="flex items-center gap-3">
-              <span className="text-4xl">{getIconDisplay(achievements[0].icon)}</span>
-              <div className="flex-1">
-                <div className="flex items-center gap-2 mb-1">
-                  <h3 className="font-semibold text-lg">NEW! {achievements[0].name}</h3>
-                  <Badge className={getRarityColor(achievements[0].rarity)}>
-                    {getRarityLabel(achievements[0].rarity)}
-                  </Badge>
-                </div>
-                <p className="text-sm text-muted-foreground">{achievements[0].description}</p>
-                {achievements[0].earned && (
-                  <p className="text-xs text-muted-foreground mt-1">Earned: {achievements[0].earnedDate}</p>
-                )}
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Your Badges */}
-      <div>
-        <h3 className="font-semibold mb-3">Your Badges</h3>
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-          {achievements
-            .filter((a) => a.earned)
-            .map((achievement) => (
-              <Card key={achievement.id} className="hover:shadow-lg transition-shadow cursor-pointer">
-                <CardContent className="p-4 text-center">
-                  <div className="text-5xl mb-2">{getIconDisplay(achievement.icon)}</div>
-                  <Badge className={`${getRarityColor(achievement.rarity)} mb-2 text-xs`}>
-                    {getRarityLabel(achievement.rarity)}
-                  </Badge>
-                  <h4 className="font-semibold mb-1">{achievement.name}</h4>
-                  <p className="text-xs text-muted-foreground mb-2">{achievement.description}</p>
-                  {achievement.earned && (
-                    <p className="text-xs text-muted-foreground">Earned</p>
-                  )}
-                </CardContent>
-              </Card>
-            ))}
+    return (
+      <div className="space-y-6">
+        <div className="flex items-center justify-between">
+          <h2 className="text-xl font-semibold">Leaderboard</h2>
+          <Tabs
+            value={leaderboardPeriod}
+            onValueChange={(value) => setLeaderboardPeriod(value as LeaderboardPeriod)}
+          >
+            <TabsList>
+              <TabsTrigger value="weekly">This Week</TabsTrigger>
+              <TabsTrigger value="monthly">This Month</TabsTrigger>
+              <TabsTrigger value="allTime">All Time</TabsTrigger>
+            </TabsList>
+          </Tabs>
         </div>
-      </div>
 
-      {/* Progress to Next Badge */}
-      <div>
-        <h3 className="font-semibold mb-3">Progress to Next Badge</h3>
-        <div className="space-y-4">
-          {achievements
-            .filter((a) => !a.earned && a.progress !== undefined)
-            .map((achievement) => (
-              <Card key={achievement.id}>
-                <CardContent className="p-5">
-                  <div className="flex items-start gap-4">
-                    <div className="text-4xl opacity-50">{getIconDisplay(achievement.icon)}</div>
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2 mb-2">
-                        <h4 className="font-semibold">{achievement.name}</h4>
-                        <Badge variant="outline" className="text-xs">
-                          {getRarityLabel(achievement.rarity)}
-                        </Badge>
-                      </div>
-                      <p className="text-sm text-muted-foreground mb-3">{achievement.description}</p>
-                      <div className="space-y-1">
-                        <div className="flex items-center justify-between text-sm">
-                          <span>Progress</span>
-                          <span className="font-medium">
-                            {achievement.progress}/{achievement.total}
-                          </span>
-                        </div>
-                        <Progress value={(achievement.progress! / achievement.total!) * 100} className="h-2" />
-                        <p className="text-xs text-muted-foreground">
-                          {achievement.total! - achievement.progress!} more to unlock
-                        </p>
-                      </div>
-                    </div>
+        {/* Top 3 Podium */}
+        {leaderboard.length >= 3 && (
+          <Card className="bg-gradient-to-br from-primary/5 to-accent/5">
+            <CardContent className="p-8">
+              <div className="flex items-end justify-center gap-4">
+                {/* 2nd Place */}
+                <div className="flex flex-col items-center">
+                  <div className="text-4xl mb-2">🥈</div>
+                  <div className="w-24 h-24 bg-gradient-to-br from-gray-300 to-gray-400 rounded-full flex items-center justify-center mb-2">
+                    <span className="text-2xl font-bold text-white">
+                      {leaderboard[1]?.user?.name?.split(" ")[0]?.charAt(0) || "?"}
+                    </span>
                   </div>
-                </CardContent>
-              </Card>
-            ))}
-        </div>
-      </div>
-    </div>
-  );
-
-  const renderRewards = () => (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-xl font-semibold">Rewards</h2>
-          <p className="text-sm text-muted-foreground">Exchange your points for rewards</p>
-        </div>
-        <Card className="border-2 border-primary">
-          <CardContent className="p-4">
-            <div className="text-center">
-              <p className="text-sm text-muted-foreground">Your Points</p>
-              <p className="text-3xl font-bold text-primary">450</p>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {rewards.map((reward) => (
-          <Card key={reward.id} className={reward.available ? "" : "opacity-50"}>
-            <CardContent className="p-5">
-              <div className="text-center">
-                <div className="text-5xl mb-3">{getIconDisplay(reward.icon)}</div>
-                <h3 className="font-semibold mb-1">{reward.name}</h3>
-                <p className="text-sm text-muted-foreground mb-3">{reward.description}</p>
-                <div className="flex items-center justify-center gap-2 mb-3">
-                  <Star className="w-5 h-5 text-yellow-500" />
-                  <span className="text-xl font-bold text-primary">{reward.pointsCost}</span>
-                  <span className="text-sm text-muted-foreground">points</span>
+                  <div className="text-center">
+                    <div className="font-semibold">{leaderboard[1]?.user?.name || "Unknown"}</div>
+                    <div className="text-2xl font-bold text-primary">
+                      {getPointsForPeriod(leaderboard[1])}
+                    </div>
+                    <div className="text-sm text-muted-foreground">points</div>
+                  </div>
                 </div>
-                {reward.available ? (
-                  <Badge variant="default" className="w-full justify-center py-2">
-                    Redeem
-                  </Badge>
-                ) : (
-                  <Badge variant="secondary" className="w-full justify-center py-2">
-                    Not Enough Points
-                  </Badge>
-                )}
+
+                {/* 1st Place */}
+                <div className="flex flex-col items-center -mt-8">
+                  <div className="text-5xl mb-2">🥇</div>
+                  <div className="w-32 h-32 bg-gradient-to-br from-yellow-400 to-yellow-600 rounded-full flex items-center justify-center mb-2 shadow-lg">
+                    <span className="text-3xl font-bold text-white">
+                      {leaderboard[0]?.user?.name?.split(" ")[0]?.charAt(0) || "?"}
+                    </span>
+                  </div>
+                  <div className="text-center">
+                    <div className="font-semibold text-lg">{leaderboard[0]?.user?.name || "Unknown"}</div>
+                    <div className="text-3xl font-bold text-primary">
+                      {getPointsForPeriod(leaderboard[0])}
+                    </div>
+                    <div className="text-sm text-muted-foreground">points</div>
+                  </div>
+                </div>
+
+                {/* 3rd Place */}
+                <div className="flex flex-col items-center">
+                  <div className="text-4xl mb-2">🥉</div>
+                  <div className="w-24 h-24 bg-gradient-to-br from-amber-600 to-amber-800 rounded-full flex items-center justify-center mb-2">
+                    <span className="text-2xl font-bold text-white">
+                      {leaderboard[2]?.user?.name?.split(" ")[0]?.charAt(0) || "?"}
+                    </span>
+                  </div>
+                  <div className="text-center">
+                    <div className="font-semibold">{leaderboard[2]?.user?.name || "Unknown"}</div>
+                    <div className="text-2xl font-bold text-primary">
+                      {getPointsForPeriod(leaderboard[2])}
+                    </div>
+                    <div className="text-sm text-muted-foreground">points</div>
+                  </div>
+                </div>
               </div>
             </CardContent>
           </Card>
-        ))}
+        )}
+
+        {/* Full Rankings */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Full Rankings</CardTitle>
+          </CardHeader>
+          <CardContent>
+            {leaderboard.length === 0 ? (
+              <div className="text-center py-8 text-muted-foreground">
+                No leaderboard data available yet.
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full">
+                  <thead>
+                    <tr className="border-b">
+                      <th className="text-left p-3 font-medium">Rank</th>
+                      <th className="text-left p-3 font-medium">Name</th>
+                      <th className="text-left p-3 font-medium">Role</th>
+                      <th className="text-center p-3 font-medium">Points</th>
+                      <th className="text-center p-3 font-medium">Level</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {leaderboard.map((entry, index) => (
+                      <tr
+                        key={entry.userId}
+                        className={`border-b hover:bg-accent/50 ${
+                          userRank === index + 1 ? "bg-accent/20" : ""
+                        }`}
+                      >
+                        <td className="p-3">
+                          <div className="flex items-center gap-2">
+                            {index < 3 && <Trophy className="w-5 h-5 text-yellow-500" />}
+                            <span className="font-semibold">#{index + 1}</span>
+                          </div>
+                        </td>
+                        <td className="p-3">
+                          <div className="font-medium">{entry.user?.name || "Unknown"}</div>
+                        </td>
+                        <td className="p-3">
+                          <Badge variant="outline">{entry.user?.role || "Member"}</Badge>
+                        </td>
+                        <td className="p-3 text-center">
+                          <span className="font-semibold text-primary">
+                            {getPointsForPeriod(entry)}
+                          </span>
+                        </td>
+                        <td className="p-3 text-center">
+                          <Badge variant="secondary">Lvl {entry.level}</Badge>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Your Position Card */}
+        <Card className="border-2 border-primary">
+          <CardContent className="p-5">
+            <div className="flex items-center gap-3">
+              <Trophy className="w-8 h-8 text-primary" />
+              <div>
+                <p className="font-semibold">
+                  Your Position: {userRank > 0 ? `Rank #${userRank}` : "Not ranked yet"}
+                </p>
+                <p className="text-sm text-muted-foreground">
+                  You earned {currentUserPoints} points{" "}
+                  {leaderboardPeriod === "weekly"
+                    ? "this week"
+                    : leaderboardPeriod === "monthly"
+                    ? "this month"
+                    : "total"}
+                </p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
       </div>
-    </div>
-  );
+    );
+  };
+
+  const renderAchievements = () => {
+    if (myAchievementsQuery.isLoading) {
+      return <PageLoading text="Loading achievements..." />;
+    }
+
+    if (myAchievementsQuery.error) {
+      return (
+        <PageError
+          error={myAchievementsQuery.error}
+          onRetry={() => myAchievementsQuery.refetch()}
+        />
+      );
+    }
+
+    const { earned = [], available = [] } = myAchievementsQuery.data || {};
+    const recentEarned = earned[0];
+
+    return (
+      <div className="space-y-6">
+        <div className="flex items-center justify-between">
+          <h2 className="text-xl font-semibold">Achievements</h2>
+          <div className="text-sm text-muted-foreground">
+            {earned.length} earned / {earned.length + available.length} total
+          </div>
+        </div>
+
+        {/* Recent Achievement */}
+        {recentEarned && (
+          <Card className="border-2 border-primary/50 bg-gradient-to-br from-primary/5 to-accent/5">
+            <CardContent className="p-5">
+              <div className="flex items-center gap-3">
+                <span className="text-4xl">{getIconDisplay(recentEarned.category)}</span>
+                <div className="flex-1">
+                  <div className="flex items-center gap-2 mb-1">
+                    <h3 className="font-semibold text-lg">NEW! {recentEarned.name}</h3>
+                    <Badge className={getRarityColor(recentEarned.category || "common")}>
+                      {getRarityLabel(recentEarned.category || "common")}
+                    </Badge>
+                  </div>
+                  <p className="text-sm text-muted-foreground">{recentEarned.description}</p>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Earned: {new Date(recentEarned.earnedAt).toLocaleDateString()}
+                  </p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Your Badges */}
+        <div>
+          <h3 className="font-semibold mb-3">Your Badges ({earned.length})</h3>
+          {earned.length === 0 ? (
+            <Card>
+              <CardContent className="p-8 text-center text-muted-foreground">
+                You haven&apos;t earned any achievements yet. Keep working to unlock badges!
+              </CardContent>
+            </Card>
+          ) : (
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+              {earned.map((achievement) => (
+                <Card
+                  key={achievement.id}
+                  className="hover:shadow-lg transition-shadow cursor-pointer"
+                >
+                  <CardContent className="p-4 text-center">
+                    <div className="text-5xl mb-2">{getIconDisplay(achievement.category)}</div>
+                    <Badge className={`${getRarityColor(achievement.category || "common")} mb-2 text-xs`}>
+                      {getRarityLabel(achievement.category || "common")}
+                    </Badge>
+                    <h4 className="font-semibold mb-1">{achievement.name}</h4>
+                    <p className="text-xs text-muted-foreground mb-2">{achievement.description}</p>
+                    <p className="text-xs text-muted-foreground">
+                      Earned {new Date(achievement.earnedAt).toLocaleDateString()}
+                    </p>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Available Achievements */}
+        {available.length > 0 && (
+          <div>
+            <h3 className="font-semibold mb-3">Available to Unlock ({available.length})</h3>
+            <div className="space-y-4">
+              {available.slice(0, 5).map((achievement) => (
+                <Card key={achievement.id}>
+                  <CardContent className="p-5">
+                    <div className="flex items-start gap-4">
+                      <div className="text-4xl opacity-50">{getIconDisplay(achievement.category)}</div>
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2 mb-2">
+                          <h4 className="font-semibold">{achievement.name}</h4>
+                          <Badge variant="outline" className="text-xs">
+                            {getRarityLabel(achievement.category || "common")}
+                          </Badge>
+                          {achievement.points > 0 && (
+                            <Badge variant="secondary" className="text-xs">
+                              +{achievement.points} pts
+                            </Badge>
+                          )}
+                        </div>
+                        <p className="text-sm text-muted-foreground">{achievement.description}</p>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+              {available.length > 5 && (
+                <p className="text-center text-sm text-muted-foreground">
+                  And {available.length - 5} more achievements to unlock...
+                </p>
+              )}
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  };
+
+  const renderRewards = () => {
+    if (rewardsQuery.isLoading || myPointsQuery.isLoading) {
+      return <PageLoading text="Loading rewards..." />;
+    }
+
+    if (rewardsQuery.error) {
+      return (
+        <PageError
+          error={rewardsQuery.error}
+          onRetry={() => rewardsQuery.refetch()}
+        />
+      );
+    }
+
+    const { rewards = [], currentPoints = 0 } = rewardsQuery.data || {};
+
+    return (
+      <div className="space-y-6">
+        <div className="flex items-center justify-between">
+          <div>
+            <h2 className="text-xl font-semibold">Rewards</h2>
+            <p className="text-sm text-muted-foreground">Exchange your points for rewards</p>
+          </div>
+          <Card className="border-2 border-primary">
+            <CardContent className="p-4">
+              <div className="text-center">
+                <p className="text-sm text-muted-foreground">Your Points</p>
+                <p className="text-3xl font-bold text-primary">{currentPoints}</p>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+
+        {rewards.length === 0 ? (
+          <Card>
+            <CardContent className="p-8 text-center text-muted-foreground">
+              No rewards available at the moment. Check back later!
+            </CardContent>
+          </Card>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {rewards.map((reward) => {
+              const canAfford = currentPoints >= reward.pointsCost;
+              return (
+                <Card key={reward.id} className={canAfford ? "" : "opacity-50"}>
+                  <CardContent className="p-5">
+                    <div className="text-center">
+                      <div className="text-5xl mb-3">{getIconDisplay(reward.name?.toLowerCase())}</div>
+                      <h3 className="font-semibold mb-1">{reward.name}</h3>
+                      <p className="text-sm text-muted-foreground mb-3">{reward.description}</p>
+                      <div className="flex items-center justify-center gap-2 mb-3">
+                        <Star className="w-5 h-5 text-yellow-500" />
+                        <span className="text-xl font-bold text-primary">{reward.pointsCost}</span>
+                        <span className="text-sm text-muted-foreground">points</span>
+                      </div>
+                      {canAfford ? (
+                        <Button
+                          className="w-full"
+                          onClick={() => handleRedeemReward(reward.id)}
+                          disabled={redeemMutation.isPending}
+                        >
+                          {redeemMutation.isPending ? (
+                            <LoadingSpinner size="sm" className="p-0" />
+                          ) : (
+                            "Redeem"
+                          )}
+                        </Button>
+                      ) : (
+                        <Badge variant="secondary" className="w-full justify-center py-2">
+                          Need {reward.pointsCost - currentPoints} more points
+                        </Badge>
+                      )}
+                    </div>
+                  </CardContent>
+                </Card>
+              );
+            })}
+          </div>
+        )}
+      </div>
+    );
+  };
 
   return (
     <div className="p-6">
@@ -447,17 +533,11 @@ export default function GamificationPage() {
           <TabsTrigger value="rewards">Rewards</TabsTrigger>
         </TabsList>
 
-        <TabsContent value="leaderboard">
-          {renderLeaderboard()}
-        </TabsContent>
+        <TabsContent value="leaderboard">{renderLeaderboard()}</TabsContent>
 
-        <TabsContent value="achievements">
-          {renderAchievements()}
-        </TabsContent>
+        <TabsContent value="achievements">{renderAchievements()}</TabsContent>
 
-        <TabsContent value="rewards">
-          {renderRewards()}
-        </TabsContent>
+        <TabsContent value="rewards">{renderRewards()}</TabsContent>
       </Tabs>
     </div>
   );

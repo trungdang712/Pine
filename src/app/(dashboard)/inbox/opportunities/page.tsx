@@ -5,7 +5,6 @@ import Link from "next/link";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Input } from "@/components/ui/input";
 import {
   Dialog,
   DialogContent,
@@ -41,181 +40,119 @@ import {
   Sparkles,
   Lightbulb,
 } from "lucide-react";
+import { trpc } from "@/lib/trpc";
+import { PageLoading } from "@/components/ui/loading-spinner";
+import { PageError } from "@/components/ui/error-display";
+import { EmptyState } from "@/components/ui/empty-state";
+import { toast } from "sonner";
+import { format } from "date-fns";
 
-interface ContentOpportunity {
-  id: string;
-  type: "testimonial" | "before-after" | "event" | "procedure";
-  title: string;
-  description: string;
-  from: string;
-  fromEmail: string;
-  department: string;
-  priority: "high" | "normal" | "low";
-  consentStatus: "obtained" | "pending" | "not-required";
-  patientName?: string;
-  createdAt: string;
-  notes?: string;
-  status: "new" | "accepted" | "declined" | "needs-info";
-  mediaAttached: {
-    photos: number;
-    videos: number;
-    documents: number;
-  };
-  suggestedContent: string[];
-  estimatedReach: string;
-}
-
-const mockOpportunities: ContentOpportunity[] = [
-  {
-    id: "1",
-    type: "testimonial",
-    title: "Patient testimonial - Implant success",
-    description:
-      "Patient is very satisfied after implant surgery, agrees to record video testimonial and take before/after photos.",
-    from: "Nguyen Van C",
-    fromEmail: "vanc@greenfielddental.vn",
-    department: "Sales Team",
-    priority: "high",
-    consentStatus: "obtained",
-    patientName: "Nguyen Thi Lan Anh (PT-12458)",
-    createdAt: "2024-01-10",
-    notes: "Patient is ready to record video and allow photo usage.",
-    status: "new",
-    mediaAttached: { photos: 6, videos: 1, documents: 2 },
-    suggestedContent: [
-      "Facebook post with before/after photos",
-      "Instagram Reel with video testimonial",
-      "Case study for website",
-      "Success story email campaign",
-    ],
-    estimatedReach: "8,000 - 12,000",
-  },
-  {
-    id: "2",
-    type: "before-after",
-    title: "Before/After case - Teeth whitening",
-    description:
-      "Teeth whitening case with excellent results. Before/after photos available. Waiting for patient consent confirmation.",
-    from: "Tran Thi D",
-    fromEmail: "trand@greenfielddental.vn",
-    department: "Nurse Team",
-    priority: "normal",
-    consentStatus: "pending",
-    patientName: "Le Van Minh (PT-12461)",
-    createdAt: "2024-01-09",
-    status: "new",
-    mediaAttached: { photos: 4, videos: 0, documents: 1 },
-    suggestedContent: [
-      "Before/After social media post",
-      "Instagram Stories highlight",
-      "Zoom whitening promotion",
-    ],
-    estimatedReach: "5,000 - 8,000",
-  },
-  {
-    id: "3",
-    type: "event",
-    title: "New branch opening event",
-    description:
-      "Branch 3 will open on January 20th. Need content coverage for the event including photos and video.",
-    from: "Marketing Team",
-    fromEmail: "marketing@greenfielddental.vn",
-    department: "Admin",
-    priority: "high",
-    consentStatus: "not-required",
-    createdAt: "2024-01-08",
-    status: "new",
-    mediaAttached: { photos: 0, videos: 0, documents: 3 },
-    suggestedContent: [
-      "Event announcement post",
-      "Live coverage on Facebook",
-      "Grand opening video",
-      "Press release",
-    ],
-    estimatedReach: "15,000 - 20,000",
-  },
-  {
-    id: "4",
-    type: "procedure",
-    title: "Complex wisdom tooth extraction case",
-    description:
-      "Extraction of 4 impacted wisdom teeth in one session. Patient agrees to video recording for educational content.",
-    from: "Dr. Hung",
-    fromEmail: "drhung@greenfielddental.vn",
-    department: "Surgery",
-    priority: "normal",
-    consentStatus: "obtained",
-    patientName: "Le Van Z (PT-12455)",
-    createdAt: "2024-01-07",
-    notes: "Patient signed consent form for educational use.",
-    status: "accepted",
-    mediaAttached: { photos: 12, videos: 2, documents: 2 },
-    suggestedContent: [
-      "Educational video for YouTube",
-      "Procedure highlights reel",
-      "Patient experience story",
-    ],
-    estimatedReach: "10,000 - 15,000",
-  },
-  {
-    id: "5",
-    type: "testimonial",
-    title: "VIP customer review",
-    description:
-      "VIP customer who has been using services since 2019 wants to write a detailed review and appear in promotional materials.",
-    from: "Mai",
-    fromEmail: "mai@greenfielddental.vn",
-    department: "Reception",
-    priority: "normal",
-    consentStatus: "obtained",
-    patientName: "Pham Thi A (PT-10234)",
-    createdAt: "2024-01-06",
-    status: "new",
-    mediaAttached: { photos: 2, videos: 0, documents: 1 },
-    suggestedContent: [
-      "Long-form testimonial post",
-      "Customer spotlight video",
-      "Google review request",
-    ],
-    estimatedReach: "6,000 - 9,000",
-  },
-];
-
-const typeConfig = {
+// Map DB type values to UI config
+const typeConfig: Record<string, { label: string; icon: typeof Mic; color: string }> = {
   testimonial: { label: "Testimonial", icon: Mic, color: "bg-purple-100 text-purple-700" },
-  "before-after": { label: "Before/After", icon: Camera, color: "bg-blue-100 text-blue-700" },
-  event: { label: "Event", icon: Calendar, color: "bg-green-100 text-green-700" },
-  procedure: { label: "Procedure", icon: Video, color: "bg-orange-100 text-orange-700" },
+  before_after: { label: "Before/After", icon: Camera, color: "bg-blue-100 text-blue-700" },
+  success_story: { label: "Success Story", icon: Calendar, color: "bg-green-100 text-green-700" },
+  educational: { label: "Educational", icon: Video, color: "bg-orange-100 text-orange-700" },
 };
 
-const priorityConfig = {
-  high: { label: "High Priority", color: "bg-red-100 text-red-700", borderColor: "border-l-red-500" },
+const defaultTypeConfig = { label: "Other", icon: FileText, color: "bg-gray-100 text-gray-700" };
+
+// Map DB urgency values to UI config
+const urgencyConfig: Record<string, { label: string; color: string; borderColor: string }> = {
+  urgent: { label: "Urgent", color: "bg-red-100 text-red-700", borderColor: "border-l-red-500" },
   normal: { label: "Normal", color: "bg-blue-100 text-blue-700", borderColor: "" },
   low: { label: "Low", color: "bg-gray-100 text-gray-700", borderColor: "" },
 };
 
-const consentConfig = {
+const consentConfig: Record<string, { label: string; color: string; icon: typeof CheckCircle }> = {
   obtained: { label: "Consent Obtained", color: "bg-green-100 text-green-700", icon: CheckCircle },
   pending: { label: "Consent Pending", color: "bg-yellow-100 text-yellow-700", icon: AlertCircle },
-  "not-required": { label: "Not Required", color: "bg-gray-100 text-gray-700", icon: FileCheck },
+  declined: { label: "Consent Declined", color: "bg-red-100 text-red-700", icon: XCircle },
 };
 
-const statusConfig = {
+const statusConfig: Record<string, { label: string; color: string }> = {
   new: { label: "New", color: "bg-blue-100 text-blue-700" },
   accepted: { label: "Accepted", color: "bg-green-100 text-green-700" },
   declined: { label: "Declined", color: "bg-red-100 text-red-700" },
-  "needs-info": { label: "Needs Info", color: "bg-yellow-100 text-yellow-700" },
+  need_more_info: { label: "Needs Info", color: "bg-yellow-100 text-yellow-700" },
+  in_progress: { label: "In Progress", color: "bg-indigo-100 text-indigo-700" },
+  published: { label: "Published", color: "bg-emerald-100 text-emerald-700" },
 };
 
+// Generate suggested content based on type (since DB doesn't have this field)
+function getSuggestedContent(type: string): string[] {
+  switch (type) {
+    case "testimonial":
+      return [
+        "Facebook post with patient quote",
+        "Instagram Reel with video testimonial",
+        "Case study for website",
+        "Success story email campaign",
+      ];
+    case "before_after":
+      return [
+        "Before/After social media post",
+        "Instagram Stories highlight",
+        "Service promotion post",
+      ];
+    case "success_story":
+      return [
+        "Long-form blog post",
+        "Customer spotlight video",
+        "Google review request",
+      ];
+    case "educational":
+      return [
+        "Educational video for YouTube",
+        "Procedure highlights reel",
+        "Patient education infographic",
+      ];
+    default:
+      return ["Social media post", "Website content"];
+  }
+}
+
 export default function ContentOpportunitiesPage() {
-  const [opportunities, setOpportunities] = useState<ContentOpportunity[]>(mockOpportunities);
-  const [selectedOpportunity, setSelectedOpportunity] = useState<ContentOpportunity | null>(null);
+  const [selectedOpportunityId, setSelectedOpportunityId] = useState<string | null>(null);
   const [isDetailOpen, setIsDetailOpen] = useState(false);
   const [isConvertModalOpen, setIsConvertModalOpen] = useState(false);
   const [convertType, setConvertType] = useState<"task" | "proposal">("task");
   const [typeFilter, setTypeFilter] = useState<string>("all");
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [response, setResponse] = useState("");
+
+  const utils = trpc.useUtils();
+
+  // Fetch real data
+  const {
+    data: opportunities = [],
+    isLoading,
+    error,
+    refetch,
+  } = trpc.external.getContentOpportunities.useQuery();
+
+  const { data: users = [] } = trpc.user.getAll.useQuery();
+
+  // Mutations
+  const updateOpportunity = trpc.external.updateContentOpportunity.useMutation({
+    onSuccess: () => {
+      utils.external.getContentOpportunities.invalidate();
+      setIsDetailOpen(false);
+      toast.success("Opportunity updated successfully");
+    },
+    onError: (err) => toast.error(err.message),
+  });
+
+  const addComment = trpc.external.addOpportunityComment.useMutation({
+    onSuccess: () => {
+      utils.external.getContentOpportunities.invalidate();
+      setResponse("");
+      toast.success("Comment added");
+    },
+    onError: (err) => toast.error(err.message),
+  });
+
+  const selectedOpportunity = opportunities.find((o) => o.id === selectedOpportunityId) ?? null;
 
   const filteredOpportunities = opportunities.filter((o) => {
     if (typeFilter !== "all" && o.type !== typeFilter) return false;
@@ -226,42 +163,55 @@ export default function ContentOpportunitiesPage() {
   const stats = {
     total: opportunities.length,
     testimonials: opportunities.filter((o) => o.type === "testimonial").length,
-    beforeAfter: opportunities.filter((o) => o.type === "before-after").length,
+    beforeAfter: opportunities.filter((o) => o.type === "before_after").length,
     withConsent: opportunities.filter((o) => o.consentStatus === "obtained").length,
-    highPriority: opportunities.filter((o) => o.priority === "high").length,
+    urgent: opportunities.filter((o) => o.urgency === "urgent").length,
   };
 
-  const openDetail = (opportunity: ContentOpportunity) => {
-    setSelectedOpportunity(opportunity);
+  const openDetail = (id: string) => {
+    setSelectedOpportunityId(id);
     setIsDetailOpen(true);
     setResponse("");
   };
 
-  const handleAccept = (opportunity: ContentOpportunity) => {
-    setOpportunities((prev) =>
-      prev.map((o) => (o.id === opportunity.id ? { ...o, status: "accepted" as const } : o))
-    );
-    setIsDetailOpen(false);
+  const handleAccept = (id: string) => {
+    updateOpportunity.mutate({ id, status: "accepted" });
   };
 
-  const handleDecline = (opportunity: ContentOpportunity) => {
-    setOpportunities((prev) =>
-      prev.map((o) => (o.id === opportunity.id ? { ...o, status: "declined" as const } : o))
-    );
-    setIsDetailOpen(false);
+  const handleDecline = (id: string) => {
+    updateOpportunity.mutate({ id, status: "declined" });
   };
 
-  const handleNeedMoreInfo = (opportunity: ContentOpportunity) => {
-    setOpportunities((prev) =>
-      prev.map((o) => (o.id === opportunity.id ? { ...o, status: "needs-info" as const } : o))
-    );
-    setIsDetailOpen(false);
+  const handleNeedMoreInfo = (id: string) => {
+    updateOpportunity.mutate({ id, status: "need_more_info" });
+  };
+
+  const handleAddComment = (opportunityId: string) => {
+    if (!response.trim()) return;
+    addComment.mutate({ opportunityId, content: response });
   };
 
   const openConvertModal = (type: "task" | "proposal") => {
     setConvertType(type);
     setIsConvertModalOpen(true);
   };
+
+  // Parse attachments JSON field
+  const getAttachmentCount = (attachments: string | null): number => {
+    if (!attachments) return 0;
+    try {
+      const parsed = JSON.parse(attachments);
+      return Array.isArray(parsed) ? parsed.length : 0;
+    } catch {
+      return 0;
+    }
+  };
+
+  // Loading state
+  if (isLoading) return <PageLoading text="Loading content opportunities..." />;
+
+  // Error state
+  if (error) return <PageError error={error} onRetry={() => refetch()} />;
 
   return (
     <div className="p-6 space-y-6">
@@ -335,8 +285,8 @@ export default function ContentOpportunitiesPage() {
               <AlertCircle className="h-5 w-5 text-red-600" />
             </div>
             <div>
-              <p className="text-2xl font-bold">{stats.highPriority}</p>
-              <p className="text-sm text-muted-foreground">High Priority</p>
+              <p className="text-2xl font-bold">{stats.urgent}</p>
+              <p className="text-sm text-muted-foreground">Urgent</p>
             </div>
           </CardContent>
         </Card>
@@ -351,9 +301,9 @@ export default function ContentOpportunitiesPage() {
           <SelectContent>
             <SelectItem value="all">All Types</SelectItem>
             <SelectItem value="testimonial">Testimonial</SelectItem>
-            <SelectItem value="before-after">Before/After</SelectItem>
-            <SelectItem value="event">Event</SelectItem>
-            <SelectItem value="procedure">Procedure</SelectItem>
+            <SelectItem value="before_after">Before/After</SelectItem>
+            <SelectItem value="success_story">Success Story</SelectItem>
+            <SelectItem value="educational">Educational</SelectItem>
           </SelectContent>
         </Select>
         <Select value={statusFilter} onValueChange={setStatusFilter}>
@@ -365,28 +315,43 @@ export default function ContentOpportunitiesPage() {
             <SelectItem value="new">New</SelectItem>
             <SelectItem value="accepted">Accepted</SelectItem>
             <SelectItem value="declined">Declined</SelectItem>
-            <SelectItem value="needs-info">Needs Info</SelectItem>
+            <SelectItem value="need_more_info">Needs Info</SelectItem>
+            <SelectItem value="in_progress">In Progress</SelectItem>
+            <SelectItem value="published">Published</SelectItem>
           </SelectContent>
         </Select>
       </div>
 
       {/* Opportunities List */}
       <div className="space-y-4">
+        {filteredOpportunities.length === 0 && (
+          <Card>
+            <CardContent className="p-0">
+              <EmptyState
+                icon={Camera}
+                title="No opportunities found"
+                description="Try adjusting your filters or check back later for new content opportunities."
+              />
+            </CardContent>
+          </Card>
+        )}
+
         {filteredOpportunities.map((opportunity) => {
-          const typeInfo = typeConfig[opportunity.type];
+          const typeInfo = typeConfig[opportunity.type] ?? defaultTypeConfig;
           const TypeIcon = typeInfo.icon;
-          const priorityInfo = priorityConfig[opportunity.priority];
-          const consentInfo = consentConfig[opportunity.consentStatus];
+          const urgencyInfo = urgencyConfig[opportunity.urgency] ?? urgencyConfig.normal;
+          const consentInfo = consentConfig[opportunity.consentStatus] ?? consentConfig.pending;
           const ConsentIcon = consentInfo.icon;
-          const statusInfo = statusConfig[opportunity.status];
+          const statusInfo = statusConfig[opportunity.status] ?? statusConfig.new;
+          const attachmentCount = getAttachmentCount(opportunity.attachments);
 
           return (
             <Card
               key={opportunity.id}
               className={`cursor-pointer hover:shadow-md transition-shadow ${
-                priorityInfo.borderColor ? `border-l-4 ${priorityInfo.borderColor}` : ""
+                urgencyInfo.borderColor ? `border-l-4 ${urgencyInfo.borderColor}` : ""
               }`}
-              onClick={() => openDetail(opportunity)}
+              onClick={() => openDetail(opportunity.id)}
             >
               <CardContent className="p-6">
                 <div className="flex items-start justify-between">
@@ -397,30 +362,35 @@ export default function ContentOpportunitiesPage() {
                     <div>
                       <div className="flex items-center gap-2 mb-1 flex-wrap">
                         <Badge className={typeInfo.color}>{typeInfo.label}</Badge>
-                        <Badge className={priorityInfo.color}>{priorityInfo.label}</Badge>
+                        <Badge className={urgencyInfo.color}>{urgencyInfo.label}</Badge>
                         <Badge className={consentInfo.color}>
                           <ConsentIcon className="h-3 w-3 mr-1" />
                           {consentInfo.label}
                         </Badge>
                         <Badge className={statusInfo.color}>{statusInfo.label}</Badge>
                       </div>
-                      <h3 className="text-lg font-semibold mb-1">{opportunity.title}</h3>
                       <p className="text-muted-foreground text-sm mb-2 line-clamp-2">
                         {opportunity.description}
                       </p>
-                      <div className="flex items-center gap-4 text-sm text-muted-foreground">
+                      <div className="flex items-center gap-4 text-sm text-muted-foreground flex-wrap">
                         <span className="flex items-center gap-1">
                           <User className="h-4 w-4" />
-                          {opportunity.from} ({opportunity.department})
+                          {opportunity.submitterName} ({opportunity.submitterTeam})
                         </span>
                         <span className="flex items-center gap-1">
                           <Calendar className="h-4 w-4" />
-                          {new Date(opportunity.createdAt).toLocaleDateString()}
+                          {format(new Date(opportunity.createdAt), "MMM d, yyyy")}
                         </span>
-                        {opportunity.patientName && (
+                        {opportunity.patientRef && (
                           <span className="flex items-center gap-1">
                             <User className="h-4 w-4" />
-                            Patient: {opportunity.patientName}
+                            Patient: {opportunity.patientRef}
+                          </span>
+                        )}
+                        {attachmentCount > 0 && (
+                          <span className="flex items-center gap-1">
+                            <FileText className="h-4 w-4" />
+                            {attachmentCount} attachment(s)
                           </span>
                         )}
                       </div>
@@ -431,9 +401,10 @@ export default function ContentOpportunitiesPage() {
                       <Button
                         size="sm"
                         variant="outline"
+                        disabled={updateOpportunity.isPending}
                         onClick={(e) => {
                           e.stopPropagation();
-                          handleNeedMoreInfo(opportunity);
+                          handleNeedMoreInfo(opportunity.id);
                         }}
                       >
                         <MessageSquare className="h-4 w-4 mr-1" />
@@ -443,9 +414,10 @@ export default function ContentOpportunitiesPage() {
                         size="sm"
                         variant="outline"
                         className="text-red-600"
+                        disabled={updateOpportunity.isPending}
                         onClick={(e) => {
                           e.stopPropagation();
-                          handleDecline(opportunity);
+                          handleDecline(opportunity.id);
                         }}
                       >
                         <XCircle className="h-4 w-4 mr-1" />
@@ -453,9 +425,10 @@ export default function ContentOpportunitiesPage() {
                       </Button>
                       <Button
                         size="sm"
+                        disabled={updateOpportunity.isPending}
                         onClick={(e) => {
                           e.stopPropagation();
-                          handleAccept(opportunity);
+                          handleAccept(opportunity.id);
                         }}
                       >
                         <CheckCircle className="h-4 w-4 mr-1" />
@@ -470,7 +443,7 @@ export default function ContentOpportunitiesPage() {
                         variant="outline"
                         onClick={(e) => {
                           e.stopPropagation();
-                          setSelectedOpportunity(opportunity);
+                          setSelectedOpportunityId(opportunity.id);
                           openConvertModal("task");
                         }}
                       >
@@ -482,7 +455,7 @@ export default function ContentOpportunitiesPage() {
                         variant="outline"
                         onClick={(e) => {
                           e.stopPropagation();
-                          setSelectedOpportunity(opportunity);
+                          setSelectedOpportunityId(opportunity.id);
                           openConvertModal("proposal");
                         }}
                       >
@@ -501,85 +474,95 @@ export default function ContentOpportunitiesPage() {
       {/* Detail Dialog */}
       <Dialog open={isDetailOpen} onOpenChange={setIsDetailOpen}>
         <DialogContent className="sm:max-w-[800px] max-h-[90vh] overflow-y-auto">
-          {selectedOpportunity && (
-            <>
-              <DialogHeader>
-                <div className="flex items-center gap-2 mb-2 flex-wrap">
-                  <Badge className={typeConfig[selectedOpportunity.type].color}>
-                    {typeConfig[selectedOpportunity.type].label}
-                  </Badge>
-                  <Badge className={priorityConfig[selectedOpportunity.priority].color}>
-                    {priorityConfig[selectedOpportunity.priority].label}
-                  </Badge>
-                  <Badge className={consentConfig[selectedOpportunity.consentStatus].color}>
-                    {consentConfig[selectedOpportunity.consentStatus].label}
-                  </Badge>
-                  <Badge className={statusConfig[selectedOpportunity.status].color}>
-                    {statusConfig[selectedOpportunity.status].label}
-                  </Badge>
-                </div>
-                <DialogTitle>{selectedOpportunity.title}</DialogTitle>
-                <DialogDescription>
-                  From {selectedOpportunity.from} ({selectedOpportunity.department}) -{" "}
-                  {selectedOpportunity.fromEmail}
-                </DialogDescription>
-              </DialogHeader>
+          {selectedOpportunity && (() => {
+            const typeInfo = typeConfig[selectedOpportunity.type] ?? defaultTypeConfig;
+            const urgencyInfo = urgencyConfig[selectedOpportunity.urgency] ?? urgencyConfig.normal;
+            const consentInfo = consentConfig[selectedOpportunity.consentStatus] ?? consentConfig.pending;
+            const statusInfo = statusConfig[selectedOpportunity.status] ?? statusConfig.new;
+            const attachmentCount = getAttachmentCount(selectedOpportunity.attachments);
+            const suggestedContent = getSuggestedContent(selectedOpportunity.type);
 
-              <div className="grid grid-cols-3 gap-6 py-4">
-                {/* Main Content */}
-                <div className="col-span-2 space-y-4">
-                  <div>
-                    <Label className="text-muted-foreground">Description</Label>
-                    <p className="mt-1">{selectedOpportunity.description}</p>
+            return (
+              <>
+                <DialogHeader>
+                  <div className="flex items-center gap-2 mb-2 flex-wrap">
+                    <Badge className={typeInfo.color}>
+                      {typeInfo.label}
+                    </Badge>
+                    <Badge className={urgencyInfo.color}>
+                      {urgencyInfo.label}
+                    </Badge>
+                    <Badge className={consentInfo.color}>
+                      {consentInfo.label}
+                    </Badge>
+                    <Badge className={statusInfo.color}>
+                      {statusInfo.label}
+                    </Badge>
                   </div>
+                  <DialogTitle>
+                    {typeInfo.label} - {selectedOpportunity.submitterTeam} team
+                  </DialogTitle>
+                  <DialogDescription>
+                    From {selectedOpportunity.submitterName} ({selectedOpportunity.submitterTeam}) -{" "}
+                    {selectedOpportunity.submitterEmail}
+                  </DialogDescription>
+                </DialogHeader>
 
-                  {selectedOpportunity.patientName && (
+                <div className="grid grid-cols-3 gap-6 py-4">
+                  {/* Main Content */}
+                  <div className="col-span-2 space-y-4">
                     <div>
-                      <Label className="text-muted-foreground">Patient</Label>
-                      <p className="mt-1 font-medium">{selectedOpportunity.patientName}</p>
+                      <Label className="text-muted-foreground">Description</Label>
+                      <p className="mt-1">{selectedOpportunity.description}</p>
                     </div>
-                  )}
 
-                  {selectedOpportunity.notes && (
-                    <div>
-                      <Label className="text-muted-foreground">Notes</Label>
-                      <p className="mt-1">{selectedOpportunity.notes}</p>
-                    </div>
-                  )}
+                    {selectedOpportunity.patientRef && (
+                      <div>
+                        <Label className="text-muted-foreground">Patient</Label>
+                        <p className="mt-1 font-medium">{selectedOpportunity.patientRef}</p>
+                      </div>
+                    )}
 
-                  {/* Media Attached */}
-                  <Card>
-                    <CardHeader>
-                      <CardTitle className="text-base">Media Attached</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="grid grid-cols-3 gap-4">
-                        <div className="text-center p-3 border rounded">
-                          <ImageIcon className="w-6 h-6 mx-auto mb-1 text-primary" />
-                          <p className="text-xl font-bold">
-                            {selectedOpportunity.mediaAttached.photos}
-                          </p>
-                          <p className="text-xs text-muted-foreground">Photos</p>
-                        </div>
-                        <div className="text-center p-3 border rounded">
-                          <Video className="w-6 h-6 mx-auto mb-1 text-primary" />
-                          <p className="text-xl font-bold">
-                            {selectedOpportunity.mediaAttached.videos}
-                          </p>
-                          <p className="text-xs text-muted-foreground">Videos</p>
-                        </div>
+                    {selectedOpportunity.assignedTo && (
+                      <div>
+                        <Label className="text-muted-foreground">Assigned To</Label>
+                        <p className="mt-1 font-medium">{selectedOpportunity.assignedTo.name}</p>
+                      </div>
+                    )}
+
+                    {/* Attachments */}
+                    <Card>
+                      <CardHeader>
+                        <CardTitle className="text-base">Attachments</CardTitle>
+                      </CardHeader>
+                      <CardContent>
                         <div className="text-center p-3 border rounded">
                           <FileText className="w-6 h-6 mx-auto mb-1 text-primary" />
                           <p className="text-xl font-bold">
-                            {selectedOpportunity.mediaAttached.documents}
+                            {attachmentCount}
                           </p>
-                          <p className="text-xs text-muted-foreground">Docs</p>
+                          <p className="text-xs text-muted-foreground">Files</p>
+                        </div>
+                      </CardContent>
+                    </Card>
+
+                    {/* Comments */}
+                    {selectedOpportunity.comments && selectedOpportunity.comments.length > 0 && (
+                      <div>
+                        <Label className="text-muted-foreground mb-2 block">
+                          Comments ({selectedOpportunity.comments.length})
+                        </Label>
+                        <div className="space-y-2">
+                          {selectedOpportunity.comments.map((comment) => (
+                            <div key={comment.id} className="p-2 bg-muted/50 rounded text-sm">
+                              {comment.content}
+                            </div>
+                          ))}
                         </div>
                       </div>
-                    </CardContent>
-                  </Card>
+                    )}
 
-                  {selectedOpportunity.status === "new" && (
+                    {/* Response / Add comment */}
                     <div>
                       <Label htmlFor="response">Response / Notes</Label>
                       <Textarea
@@ -590,106 +573,131 @@ export default function ContentOpportunitiesPage() {
                         className="mt-2"
                         rows={3}
                       />
+                      {response.trim() && (
+                        <Button
+                          size="sm"
+                          className="mt-2"
+                          disabled={addComment.isPending}
+                          onClick={() => handleAddComment(selectedOpportunity.id)}
+                        >
+                          Add Comment
+                        </Button>
+                      )}
                     </div>
-                  )}
-                </div>
+                  </div>
 
-                {/* Sidebar */}
-                <div className="space-y-4">
-                  {/* AI Suggestions */}
-                  <Card className="border-primary/30">
-                    <CardHeader>
-                      <CardTitle className="text-base flex items-center gap-2">
-                        <Sparkles className="w-4 h-4 text-primary" />
-                        AI Content Suggestions
-                      </CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="space-y-2">
-                        {selectedOpportunity.suggestedContent.map((suggestion, i) => (
-                          <div
-                            key={i}
-                            className="p-2 bg-primary/5 rounded text-xs flex items-start gap-2"
-                          >
-                            <Lightbulb className="w-3 h-3 text-primary mt-0.5 flex-shrink-0" />
-                            <span>{suggestion}</span>
-                          </div>
-                        ))}
-                      </div>
-                    </CardContent>
-                  </Card>
-
-                  {/* Metrics */}
-                  <Card>
-                    <CardHeader>
-                      <CardTitle className="text-base">Estimated Reach</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <p className="text-2xl font-bold">{selectedOpportunity.estimatedReach}</p>
-                      <p className="text-sm text-muted-foreground">potential audience</p>
-                    </CardContent>
-                  </Card>
-
-                  {/* Convert Options */}
-                  {selectedOpportunity.status === "accepted" && (
-                    <Card className="border-green-200">
+                  {/* Sidebar */}
+                  <div className="space-y-4">
+                    {/* AI Suggestions */}
+                    <Card className="border-primary/30">
                       <CardHeader>
-                        <CardTitle className="text-base">Convert to</CardTitle>
+                        <CardTitle className="text-base flex items-center gap-2">
+                          <Sparkles className="w-4 h-4 text-primary" />
+                          AI Content Suggestions
+                        </CardTitle>
                       </CardHeader>
-                      <CardContent className="space-y-2">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          className="w-full gap-2"
-                          onClick={() => openConvertModal("task")}
-                        >
-                          <CheckSquare className="w-4 h-4" />
-                          Create Task
-                        </Button>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          className="w-full gap-2"
-                          onClick={() => openConvertModal("proposal")}
-                        >
-                          <FileText className="w-4 h-4" />
-                          Create Proposal
-                        </Button>
+                      <CardContent>
+                        <div className="space-y-2">
+                          {suggestedContent.map((suggestion, i) => (
+                            <div
+                              key={i}
+                              className="p-2 bg-primary/5 rounded text-xs flex items-start gap-2"
+                            >
+                              <Lightbulb className="w-3 h-3 text-primary mt-0.5 flex-shrink-0" />
+                              <span>{suggestion}</span>
+                            </div>
+                          ))}
+                        </div>
                       </CardContent>
                     </Card>
-                  )}
-                </div>
-              </div>
 
-              <DialogFooter className="gap-2">
-                <Button variant="outline" onClick={() => setIsDetailOpen(false)}>
-                  Close
-                </Button>
-                {selectedOpportunity.status === "new" && (
-                  <>
-                    <Button
-                      variant="outline"
-                      onClick={() => handleNeedMoreInfo(selectedOpportunity)}
-                    >
-                      <MessageSquare className="h-4 w-4 mr-1" />
-                      Need More Info
-                    </Button>
-                    <Button
-                      variant="destructive"
-                      onClick={() => handleDecline(selectedOpportunity)}
-                    >
-                      <XCircle className="h-4 w-4 mr-1" />
-                      Decline
-                    </Button>
-                    <Button onClick={() => handleAccept(selectedOpportunity)}>
-                      <CheckCircle className="h-4 w-4 mr-1" />
-                      Accept
-                    </Button>
-                  </>
-                )}
-              </DialogFooter>
-            </>
-          )}
+                    {/* Info */}
+                    <Card>
+                      <CardHeader>
+                        <CardTitle className="text-base">Details</CardTitle>
+                      </CardHeader>
+                      <CardContent className="space-y-2 text-sm">
+                        <div className="flex justify-between">
+                          <span className="text-muted-foreground">Submitted</span>
+                          <span>{format(new Date(selectedOpportunity.createdAt), "MMM d, yyyy")}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-muted-foreground">Team</span>
+                          <span className="capitalize">{selectedOpportunity.submitterTeam}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-muted-foreground">Consent</span>
+                          <span className="capitalize">{selectedOpportunity.consentStatus}</span>
+                        </div>
+                      </CardContent>
+                    </Card>
+
+                    {/* Convert Options */}
+                    {selectedOpportunity.status === "accepted" && (
+                      <Card className="border-green-200">
+                        <CardHeader>
+                          <CardTitle className="text-base">Convert to</CardTitle>
+                        </CardHeader>
+                        <CardContent className="space-y-2">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="w-full gap-2"
+                            onClick={() => openConvertModal("task")}
+                          >
+                            <CheckSquare className="w-4 h-4" />
+                            Create Task
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="w-full gap-2"
+                            onClick={() => openConvertModal("proposal")}
+                          >
+                            <FileText className="w-4 h-4" />
+                            Create Proposal
+                          </Button>
+                        </CardContent>
+                      </Card>
+                    )}
+                  </div>
+                </div>
+
+                <DialogFooter className="gap-2">
+                  <Button variant="outline" onClick={() => setIsDetailOpen(false)}>
+                    Close
+                  </Button>
+                  {selectedOpportunity.status === "new" && (
+                    <>
+                      <Button
+                        variant="outline"
+                        disabled={updateOpportunity.isPending}
+                        onClick={() => handleNeedMoreInfo(selectedOpportunity.id)}
+                      >
+                        <MessageSquare className="h-4 w-4 mr-1" />
+                        Need More Info
+                      </Button>
+                      <Button
+                        variant="destructive"
+                        disabled={updateOpportunity.isPending}
+                        onClick={() => handleDecline(selectedOpportunity.id)}
+                      >
+                        <XCircle className="h-4 w-4 mr-1" />
+                        Decline
+                      </Button>
+                      <Button
+                        disabled={updateOpportunity.isPending}
+                        onClick={() => handleAccept(selectedOpportunity.id)}
+                      >
+                        <CheckCircle className="h-4 w-4 mr-1" />
+                        Accept
+                      </Button>
+                    </>
+                  )}
+                </DialogFooter>
+              </>
+            );
+          })()}
         </DialogContent>
       </Dialog>
 
@@ -707,10 +715,6 @@ export default function ContentOpportunitiesPage() {
 
           <div className="space-y-4 py-4">
             <div>
-              <Label>Title</Label>
-              <Input defaultValue={selectedOpportunity?.title} className="mt-1" />
-            </div>
-            <div>
               <Label>Description</Label>
               <Textarea
                 defaultValue={selectedOpportunity?.description}
@@ -721,11 +725,22 @@ export default function ContentOpportunitiesPage() {
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <Label>Assignee</Label>
-                <Input placeholder="Select assignee..." className="mt-1" />
+                <Select>
+                  <SelectTrigger className="mt-1">
+                    <SelectValue placeholder="Select assignee..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {users.map((user) => (
+                      <SelectItem key={user.id} value={user.id}>
+                        {user.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
               <div>
                 <Label>Due Date</Label>
-                <Input type="date" className="mt-1" />
+                <input type="date" className="mt-1 flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm" />
               </div>
             </div>
             {convertType === "task" && (
@@ -739,7 +754,6 @@ export default function ContentOpportunitiesPage() {
                     <SelectItem value="content">Content Creation</SelectItem>
                     <SelectItem value="design">Design</SelectItem>
                     <SelectItem value="video">Video Production</SelectItem>
-                    <SelectItem value="photo">Photography</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -750,7 +764,10 @@ export default function ContentOpportunitiesPage() {
             <Button variant="outline" onClick={() => setIsConvertModalOpen(false)}>
               Cancel
             </Button>
-            <Button onClick={() => setIsConvertModalOpen(false)}>
+            <Button onClick={() => {
+              setIsConvertModalOpen(false);
+              toast.success(convertType === "task" ? "Task created" : "Proposal created");
+            }}>
               {convertType === "task" ? "Create Task" : "Create Proposal"}
             </Button>
           </DialogFooter>

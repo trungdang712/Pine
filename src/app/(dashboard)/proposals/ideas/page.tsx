@@ -34,109 +34,93 @@ import {
   Star,
   TrendingUp,
 } from "lucide-react";
+import { trpc } from "@/lib/trpc";
+import { PageLoading } from "@/components/ui/loading-spinner";
+import { PageError } from "@/components/ui/error-display";
+import { PageEmpty } from "@/components/ui/empty-state";
+import { toast } from "sonner";
+import { format } from "date-fns";
 
-interface Idea {
-  id: string;
-  title: string;
-  description: string;
-  category: string;
-  status: "reviewing" | "approved" | "implemented" | "rejected";
-  impactScore: number;
-  pointsEarned: number;
-  submittedBy: string;
-  submittedAt: string;
-  likes: number;
-  comments: number;
-}
+type IdeaStatus = "submitted" | "reviewing" | "approved" | "implemented" | "rejected";
+type IdeaCategory = "content_format" | "process_improvement" | "new_platform" | "campaign_concept" | "automation";
 
-const mockIdeas: Idea[] = [
-  {
-    id: "1",
-    title: "Chatbot tư vấn răng miệng 24/7",
-    description: "Xây dựng chatbot AI để tự động trả lời các câu hỏi thường gặp về chăm sóc răng miệng, giúp giảm tải cho hotline và tăng trải nghiệm khách hàng.",
-    category: "Technology",
-    status: "implemented",
-    impactScore: 95,
-    pointsEarned: 50,
-    submittedBy: "Nguyễn Văn A",
-    submittedAt: "2023-12-01",
-    likes: 24,
-    comments: 8,
-  },
-  {
-    id: "2",
-    title: "Video Before/After series cho từng dịch vụ",
-    description: "Tạo series video ngắn so sánh trước/sau điều trị cho các dịch vụ chính: niềng răng, tẩy trắng, implant. Mỗi video khoảng 30-60 giây, tối ưu cho TikTok và Reels.",
-    category: "Content",
-    status: "approved",
-    impactScore: 85,
-    pointsEarned: 25,
-    submittedBy: "Trần Thị B",
-    submittedAt: "2024-01-02",
-    likes: 18,
-    comments: 5,
-  },
-  {
-    id: "3",
-    title: "Loyalty program cho khách hàng cũ",
-    description: "Chương trình tích điểm cho khách hàng: mỗi 1M chi tiêu = 1 điểm, tích đủ điểm đổi voucher giảm giá hoặc dịch vụ miễn phí.",
-    category: "Marketing",
-    status: "reviewing",
-    impactScore: 78,
-    pointsEarned: 15,
-    submittedBy: "Lê Văn C",
-    submittedAt: "2024-01-08",
-    likes: 12,
-    comments: 3,
-  },
-  {
-    id: "4",
-    title: "Partnership với phòng gym/yoga",
-    description: "Hợp tác cross-promotion với các phòng gym/yoga trong khu vực: họ giới thiệu khách hàng, ta cung cấp ưu đãi đặc biệt.",
-    category: "Partnership",
-    status: "reviewing",
-    impactScore: 72,
-    pointsEarned: 15,
-    submittedBy: "Phạm Văn D",
-    submittedAt: "2024-01-10",
-    likes: 8,
-    comments: 2,
-  },
-  {
-    id: "5",
-    title: "Live Q&A với bác sĩ mỗi tuần",
-    description: "Tổ chức livestream Q&A với bác sĩ mỗi tuần trên Facebook để giải đáp thắc mắc của khách hàng về các vấn đề răng miệng.",
-    category: "Content",
-    status: "approved",
-    impactScore: 68,
-    pointsEarned: 25,
-    submittedBy: "Nguyễn Thị E",
-    submittedAt: "2024-01-05",
-    likes: 15,
-    comments: 4,
-  },
-];
+const statusConfig: Record<IdeaStatus, { label: string; color: string; icon: typeof Clock }> = {
+  submitted: { label: "Da gui", color: "bg-blue-100 text-blue-700", icon: Clock },
+  reviewing: { label: "Dang xem xet", color: "bg-yellow-100 text-yellow-700", icon: Clock },
+  approved: { label: "Da duyet", color: "bg-blue-100 text-blue-700", icon: CheckCircle },
+  implemented: { label: "Da trien khai", color: "bg-green-100 text-green-700", icon: Rocket },
+  rejected: { label: "Khong phu hop", color: "bg-gray-100 text-gray-700", icon: Clock },
+};
 
-const statusConfig = {
-  reviewing: { label: "Đang xem xét", color: "bg-yellow-100 text-yellow-700", icon: Clock },
-  approved: { label: "Đã duyệt", color: "bg-blue-100 text-blue-700", icon: CheckCircle },
-  implemented: { label: "Đã triển khai", color: "bg-green-100 text-green-700", icon: Rocket },
-  rejected: { label: "Không phù hợp", color: "bg-gray-100 text-gray-700", icon: Clock },
+const categoryLabels: Record<IdeaCategory, string> = {
+  content_format: "Content Format",
+  process_improvement: "Process Improvement",
+  new_platform: "New Platform",
+  campaign_concept: "Campaign Concept",
+  automation: "Automation",
 };
 
 export default function InnovationIdeasPage() {
   const [isNewIdeaOpen, setIsNewIdeaOpen] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState<string>("all");
 
+  // Form state
+  const [ideaTitle, setIdeaTitle] = useState("");
+  const [ideaDescription, setIdeaDescription] = useState("");
+  const [ideaCategory, setIdeaCategory] = useState<IdeaCategory>("content_format");
+
+  const utils = trpc.useUtils();
+
+  // Fetch ideas
+  const { data: myIdeas, isLoading, error, refetch } = trpc.gamification.getMyIdeas.useQuery();
+
+  // Fetch my points for stats
+  const { data: pointsData } = trpc.gamification.getMyPoints.useQuery();
+
+  // Submit idea mutation
+  const submitIdeaMutation = trpc.gamification.submitIdea.useMutation({
+    onSuccess: () => {
+      utils.gamification.getMyIdeas.invalidate();
+      utils.gamification.getMyPoints.invalidate();
+      setIsNewIdeaOpen(false);
+      setIdeaTitle("");
+      setIdeaDescription("");
+      setIdeaCategory("content_format");
+      toast.success("Y tuong da duoc gui! +30 diem");
+    },
+    onError: (err) => toast.error(err.message),
+  });
+
+  const handleSubmitIdea = () => {
+    if (!ideaTitle.trim()) {
+      toast.error("Vui long nhap tieu de y tuong");
+      return;
+    }
+    if (!ideaDescription.trim() || ideaDescription.trim().length < 10) {
+      toast.error("Mo ta phai co it nhat 10 ky tu");
+      return;
+    }
+    submitIdeaMutation.mutate({
+      title: ideaTitle.trim(),
+      description: ideaDescription.trim(),
+      category: ideaCategory,
+    });
+  };
+
+  if (isLoading) return <PageLoading text="Dang tai y tuong..." />;
+  if (error) return <PageError error={error} onRetry={refetch} />;
+
+  const ideas = myIdeas ?? [];
+
   const filteredIdeas =
     selectedCategory === "all"
-      ? mockIdeas
-      : mockIdeas.filter((idea) => idea.category === selectedCategory);
+      ? ideas
+      : ideas.filter((idea) => idea.category === selectedCategory);
 
   const stats = {
-    total: mockIdeas.length,
-    implemented: mockIdeas.filter((i) => i.status === "implemented").length,
-    totalPoints: mockIdeas.reduce((sum, i) => sum + i.pointsEarned, 0),
+    total: ideas.length,
+    implemented: ideas.filter((i) => i.status === "implemented").length,
+    totalPoints: pointsData?.points?.totalPoints ?? 0,
   };
 
   return (
@@ -146,60 +130,72 @@ export default function InnovationIdeasPage() {
         <div>
           <h1 className="text-2xl font-bold">Innovation Ideas</h1>
           <p className="text-muted-foreground">
-            Đóng góp ý tưởng sáng tạo và nhận điểm thưởng
+            Dong gop y tuong sang tao va nhan diem thuong
           </p>
         </div>
         <Dialog open={isNewIdeaOpen} onOpenChange={setIsNewIdeaOpen}>
           <DialogTrigger asChild>
             <Button>
               <Plus className="h-4 w-4 mr-2" />
-              Gửi ý tưởng
+              Gui y tuong
             </Button>
           </DialogTrigger>
           <DialogContent className="sm:max-w-[500px]">
             <DialogHeader>
-              <DialogTitle>Gửi ý tưởng mới</DialogTitle>
+              <DialogTitle>Gui y tuong moi</DialogTitle>
               <DialogDescription>
-                Chia sẻ ý tưởng sáng tạo của bạn. Nếu được triển khai, bạn sẽ nhận được điểm thưởng!
+                Chia se y tuong sang tao cua ban. Neu duoc trien khai, ban se nhan duoc diem thuong!
               </DialogDescription>
             </DialogHeader>
             <div className="grid gap-4 py-4">
               <div className="grid gap-2">
-                <Label htmlFor="title">Tiêu đề ý tưởng</Label>
-                <Input id="title" placeholder="Nhập tiêu đề ngắn gọn..." />
+                <Label htmlFor="idea-title">Tieu de y tuong</Label>
+                <Input
+                  id="idea-title"
+                  placeholder="Nhap tieu de ngan gon..."
+                  value={ideaTitle}
+                  onChange={(e) => setIdeaTitle(e.target.value)}
+                />
               </div>
               <div className="grid gap-2">
-                <Label htmlFor="category">Danh mục</Label>
-                <Select defaultValue="content">
+                <Label htmlFor="idea-category">Danh muc</Label>
+                <Select
+                  value={ideaCategory}
+                  onValueChange={(v) => setIdeaCategory(v as IdeaCategory)}
+                >
                   <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="content">Content</SelectItem>
-                    <SelectItem value="marketing">Marketing</SelectItem>
-                    <SelectItem value="technology">Technology</SelectItem>
-                    <SelectItem value="partnership">Partnership</SelectItem>
-                    <SelectItem value="process">Process</SelectItem>
-                    <SelectItem value="other">Khác</SelectItem>
+                    <SelectItem value="content_format">Content Format</SelectItem>
+                    <SelectItem value="process_improvement">Process Improvement</SelectItem>
+                    <SelectItem value="new_platform">New Platform</SelectItem>
+                    <SelectItem value="campaign_concept">Campaign Concept</SelectItem>
+                    <SelectItem value="automation">Automation</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
               <div className="grid gap-2">
-                <Label htmlFor="description">Mô tả chi tiết</Label>
+                <Label htmlFor="idea-description">Mo ta chi tiet</Label>
                 <Textarea
-                  id="description"
-                  placeholder="Mô tả ý tưởng của bạn: vấn đề cần giải quyết, giải pháp đề xuất, lợi ích mong đợi..."
+                  id="idea-description"
+                  placeholder="Mo ta y tuong cua ban: van de can giai quyet, giai phap de xuat, loi ich mong doi..."
                   rows={5}
+                  value={ideaDescription}
+                  onChange={(e) => setIdeaDescription(e.target.value)}
                 />
               </div>
             </div>
             <DialogFooter>
               <Button variant="outline" onClick={() => setIsNewIdeaOpen(false)}>
-                Hủy
+                Huy
               </Button>
-              <Button onClick={() => setIsNewIdeaOpen(false)}>
+              <Button
+                onClick={handleSubmitIdea}
+                disabled={submitIdeaMutation.isPending}
+              >
                 <Lightbulb className="h-4 w-4 mr-2" />
-                Gửi ý tưởng
+                {submitIdeaMutation.isPending ? "Dang gui..." : "Gui y tuong (+30 diem)"}
               </Button>
             </DialogFooter>
           </DialogContent>
@@ -215,7 +211,7 @@ export default function InnovationIdeasPage() {
             </div>
             <div>
               <p className="text-2xl font-bold">{stats.total}</p>
-              <p className="text-sm text-muted-foreground">Tổng ý tưởng</p>
+              <p className="text-sm text-muted-foreground">Tong y tuong</p>
             </div>
           </CardContent>
         </Card>
@@ -226,7 +222,7 @@ export default function InnovationIdeasPage() {
             </div>
             <div>
               <p className="text-2xl font-bold">{stats.implemented}</p>
-              <p className="text-sm text-muted-foreground">Đã triển khai</p>
+              <p className="text-sm text-muted-foreground">Da trien khai</p>
             </div>
           </CardContent>
         </Card>
@@ -237,7 +233,7 @@ export default function InnovationIdeasPage() {
             </div>
             <div>
               <p className="text-2xl font-bold">{stats.totalPoints}</p>
-              <p className="text-sm text-muted-foreground">Điểm đã nhận</p>
+              <p className="text-sm text-muted-foreground">Diem da nhan</p>
             </div>
           </CardContent>
         </Card>
@@ -247,78 +243,106 @@ export default function InnovationIdeasPage() {
       <div className="flex items-center gap-4">
         <Select value={selectedCategory} onValueChange={setSelectedCategory}>
           <SelectTrigger className="w-[180px]">
-            <SelectValue placeholder="Tất cả danh mục" />
+            <SelectValue placeholder="Tat ca danh muc" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="all">Tất cả danh mục</SelectItem>
-            <SelectItem value="Content">Content</SelectItem>
-            <SelectItem value="Marketing">Marketing</SelectItem>
-            <SelectItem value="Technology">Technology</SelectItem>
-            <SelectItem value="Partnership">Partnership</SelectItem>
+            <SelectItem value="all">Tat ca danh muc</SelectItem>
+            <SelectItem value="content_format">Content Format</SelectItem>
+            <SelectItem value="process_improvement">Process Improvement</SelectItem>
+            <SelectItem value="new_platform">New Platform</SelectItem>
+            <SelectItem value="campaign_concept">Campaign Concept</SelectItem>
+            <SelectItem value="automation">Automation</SelectItem>
           </SelectContent>
         </Select>
       </div>
 
       {/* Ideas Grid */}
-      <div className="grid gap-4 md:grid-cols-2">
-        {filteredIdeas.map((idea) => {
-          const statusInfo = statusConfig[idea.status];
-          const StatusIcon = statusInfo.icon;
+      {filteredIdeas.length === 0 ? (
+        <PageEmpty
+          icon={Lightbulb}
+          title="Chua co y tuong nao"
+          description={
+            selectedCategory !== "all"
+              ? "Khong co y tuong nao trong danh muc nay"
+              : "Gui y tuong dau tien de nhan diem thuong"
+          }
+          action={
+            selectedCategory === "all"
+              ? { label: "Gui y tuong", onClick: () => setIsNewIdeaOpen(true) }
+              : undefined
+          }
+        />
+      ) : (
+        <div className="grid gap-4 md:grid-cols-2">
+          {filteredIdeas.map((idea) => {
+            const status = (idea.status as IdeaStatus) ?? "submitted";
+            const statusInfo = statusConfig[status] ?? statusConfig.submitted;
+            const StatusIcon = statusInfo.icon;
+            const category = idea.category as IdeaCategory;
 
-          return (
-            <Card key={idea.id} className="hover:shadow-md transition-shadow">
-              <CardContent className="p-6">
-                <div className="flex items-start justify-between mb-3">
-                  <Badge variant="secondary">{idea.category}</Badge>
-                  <Badge className={statusInfo.color}>
-                    <StatusIcon className="h-3 w-3 mr-1" />
-                    {statusInfo.label}
-                  </Badge>
-                </div>
-
-                <h3 className="text-lg font-semibold mb-2">{idea.title}</h3>
-                <p className="text-muted-foreground text-sm mb-4 line-clamp-3">
-                  {idea.description}
-                </p>
-
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-4 text-sm text-muted-foreground">
-                    <span className="flex items-center gap-1">
-                      <ThumbsUp className="h-4 w-4" />
-                      {idea.likes}
-                    </span>
-                    <span className="flex items-center gap-1">
-                      <MessageSquare className="h-4 w-4" />
-                      {idea.comments}
-                    </span>
+            return (
+              <Card key={idea.id} className="hover:shadow-md transition-shadow">
+                <CardContent className="p-6">
+                  <div className="flex items-start justify-between mb-3">
+                    <Badge variant="secondary">
+                      {categoryLabels[category] ?? idea.category}
+                    </Badge>
+                    <Badge className={statusInfo.color}>
+                      <StatusIcon className="h-3 w-3 mr-1" />
+                      {statusInfo.label}
+                    </Badge>
                   </div>
-                  <div className="flex items-center gap-2">
-                    <div className="flex items-center gap-1 text-sm">
-                      <TrendingUp className="h-4 w-4 text-blue-500" />
-                      <span className="font-medium">{idea.impactScore}</span>
+
+                  <h3 className="text-lg font-semibold mb-2">{idea.title}</h3>
+                  <p className="text-muted-foreground text-sm mb-4 line-clamp-3">
+                    {idea.description}
+                  </p>
+
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-4 text-sm text-muted-foreground">
+                      {idea.impactScore && (
+                        <span className="flex items-center gap-1">
+                          <TrendingUp className="h-4 w-4 text-blue-500" />
+                          <span className="font-medium">{idea.impactScore}/10</span>
+                        </span>
+                      )}
                     </div>
-                    {idea.pointsEarned > 0 && (
-                      <Badge variant="outline" className="text-amber-600 border-amber-600">
-                        +{idea.pointsEarned} pts
-                      </Badge>
+                    <div className="flex items-center gap-2">
+                      {status === "implemented" && (
+                        <Badge variant="outline" className="text-amber-600 border-amber-600">
+                          +50 pts
+                        </Badge>
+                      )}
+                      {status === "approved" && (
+                        <Badge variant="outline" className="text-blue-600 border-blue-600">
+                          Approved
+                        </Badge>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="mt-4 pt-3 border-t text-sm text-muted-foreground">
+                    Gui ngay{" "}
+                    {format(new Date(idea.createdAt), "dd/MM/yyyy")}
+                    {idea.implementedAt && (
+                      <span>
+                        {" "}
+                        | Trien khai{" "}
+                        {format(new Date(idea.implementedAt), "dd/MM/yyyy")}
+                      </span>
                     )}
                   </div>
-                </div>
-
-                <div className="mt-4 pt-3 border-t text-sm text-muted-foreground">
-                  Gửi bởi <span className="font-medium">{idea.submittedBy}</span> •{" "}
-                  {new Date(idea.submittedAt).toLocaleDateString("vi-VN")}
-                </div>
-              </CardContent>
-            </Card>
-          );
-        })}
-      </div>
+                </CardContent>
+              </Card>
+            );
+          })}
+        </div>
+      )}
 
       {/* How it works */}
       <Card>
         <CardHeader>
-          <CardTitle className="text-lg">Cách thức hoạt động</CardTitle>
+          <CardTitle className="text-lg">Cach thuc hoat dong</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="grid gap-4 md:grid-cols-4">
@@ -326,36 +350,36 @@ export default function InnovationIdeasPage() {
               <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-purple-100 text-purple-600 mb-3">
                 <Lightbulb className="h-6 w-6" />
               </div>
-              <h4 className="font-medium mb-1">1. Gửi ý tưởng</h4>
+              <h4 className="font-medium mb-1">1. Gui y tuong</h4>
               <p className="text-sm text-muted-foreground">
-                Chia sẻ ý tưởng sáng tạo của bạn
+                Chia se y tuong sang tao cua ban (+30 pts)
               </p>
             </div>
             <div className="text-center p-4">
               <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-yellow-100 text-yellow-600 mb-3">
                 <Clock className="h-6 w-6" />
               </div>
-              <h4 className="font-medium mb-1">2. Xem xét</h4>
+              <h4 className="font-medium mb-1">2. Xem xet</h4>
               <p className="text-sm text-muted-foreground">
-                Team đánh giá tính khả thi (+15 pts)
+                Team danh gia tinh kha thi
               </p>
             </div>
             <div className="text-center p-4">
               <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-blue-100 text-blue-600 mb-3">
                 <CheckCircle className="h-6 w-6" />
               </div>
-              <h4 className="font-medium mb-1">3. Phê duyệt</h4>
+              <h4 className="font-medium mb-1">3. Phe duyet</h4>
               <p className="text-sm text-muted-foreground">
-                Ý tưởng được chấp nhận (+25 pts)
+                Y tuong duoc chap nhan
               </p>
             </div>
             <div className="text-center p-4">
               <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-green-100 text-green-600 mb-3">
                 <Rocket className="h-6 w-6" />
               </div>
-              <h4 className="font-medium mb-1">4. Triển khai</h4>
+              <h4 className="font-medium mb-1">4. Trien khai</h4>
               <p className="text-sm text-muted-foreground">
-                Ý tưởng được thực hiện (+50 pts)
+                Y tuong duoc thuc hien (+50 pts)
               </p>
             </div>
           </div>

@@ -1,169 +1,159 @@
 "use client";
 
 import { useState } from "react";
-import Link from "next/link";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
-  Inbox as InboxIcon,
+  MessageSquare,
+  FileText,
+  Clock,
+  User,
   CheckCircle,
   XCircle,
-  Camera,
-  FileText,
-  Mic,
-  Video,
-  Image as ImageIcon,
-  Calendar,
-  User,
-  Clock,
   AlertTriangle,
-  ArrowRight,
-  MessageSquare,
-  FileCheck,
-  BarChart3,
+  Send,
+  Inbox as InboxIcon,
 } from "lucide-react";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { trpc } from "@/lib/trpc";
+import { PageLoading } from "@/components/ui/loading-spinner";
+import { PageError } from "@/components/ui/error-display";
+import { PageEmpty } from "@/components/ui/empty-state";
+import { toast } from "sonner";
+import { format } from "date-fns";
 
-// Content Opportunity types
-interface ContentOpportunity {
-  id: string;
-  type: "testimonial" | "before-after" | "event" | "procedure";
-  title: string;
-  from: string;
-  priority: "high" | "normal" | "low";
-  consentStatus: "obtained" | "pending" | "not-required";
-  createdAt: string;
-}
-
-// Task Request types
-interface TaskRequest {
-  id: string;
-  title: string;
-  requester: string;
-  requesterRole: string;
-  type: "design" | "content" | "video" | "other";
-  urgency: "urgent" | "high" | "normal" | "low";
-  deadline: string;
-}
-
-// Mock data for Content Opportunities
-const mockOpportunities: ContentOpportunity[] = [
-  {
-    id: "1",
-    type: "testimonial",
-    title: "Patient testimonial - Implant success",
-    from: "Sales Team (Nguyen Van C)",
-    priority: "high",
-    consentStatus: "obtained",
-    createdAt: "2024-01-10",
-  },
-  {
-    id: "2",
-    type: "before-after",
-    title: "Before/After case - Teeth whitening",
-    from: "Nurse Team (Tran Thi D)",
-    priority: "normal",
-    consentStatus: "pending",
-    createdAt: "2024-01-09",
-  },
-  {
-    id: "3",
-    type: "procedure",
-    title: "Orthodontics case study - Invisalign",
-    from: "Doctor (BS. Le Van E)",
-    priority: "normal",
-    consentStatus: "obtained",
-    createdAt: "2024-01-08",
-  },
-];
-
-// Mock data for Task Requests
-const mockRequests: TaskRequest[] = [
-  {
-    id: "1",
-    title: "Poster design for Tet promotion",
-    requester: "Nguyen Van Manager",
-    requesterRole: "Sales Manager",
-    type: "design",
-    urgency: "urgent",
-    deadline: "2024-01-15",
-  },
-  {
-    id: "2",
-    title: "SEO article - Teeth whitening service",
-    requester: "Dr. Huong",
-    requesterRole: "Dentist",
-    type: "content",
-    urgency: "normal",
-    deadline: "2024-01-20",
-  },
-  {
-    id: "3",
-    title: "Video introduction for new doctor",
-    requester: "HR Department",
-    requesterRole: "HR",
-    type: "video",
-    urgency: "low",
-    deadline: "2024-01-25",
-  },
-];
-
-const opportunityTypeConfig = {
-  testimonial: { label: "Testimonial", icon: Mic, color: "bg-purple-100 text-purple-700" },
-  "before-after": { label: "Before/After", icon: Camera, color: "bg-blue-100 text-blue-700" },
-  event: { label: "Event", icon: Calendar, color: "bg-green-100 text-green-700" },
-  procedure: { label: "Procedure", icon: Video, color: "bg-orange-100 text-orange-700" },
+const opportunityTypeLabels: Record<string, { label: string; color: string }> = {
+  testimonial: { label: "Testimonial", color: "bg-blue-100 text-blue-800" },
+  before_after: { label: "Before/After", color: "bg-purple-100 text-purple-800" },
+  success_story: { label: "Success Story", color: "bg-green-100 text-green-800" },
+  educational: { label: "Educational", color: "bg-yellow-100 text-yellow-800" },
 };
 
-const taskTypeConfig = {
-  design: { label: "Design", icon: ImageIcon, color: "bg-pink-100 text-pink-700" },
-  content: { label: "Content", icon: FileText, color: "bg-blue-100 text-blue-700" },
-  video: { label: "Video", icon: Video, color: "bg-purple-100 text-purple-700" },
-  other: { label: "Other", icon: FileText, color: "bg-gray-100 text-gray-700" },
+const requestTypeLabels: Record<string, { label: string; color: string }> = {
+  design: { label: "Design", color: "bg-pink-100 text-pink-800" },
+  content: { label: "Content", color: "bg-blue-100 text-blue-800" },
+  video: { label: "Video", color: "bg-purple-100 text-purple-800" },
+  other: { label: "Other", color: "bg-gray-100 text-gray-800" },
 };
 
-const priorityConfig = {
-  high: { label: "High", color: "bg-red-100 text-red-700" },
-  normal: { label: "Normal", color: "bg-blue-100 text-blue-700" },
-  low: { label: "Low", color: "bg-gray-100 text-gray-700" },
+const urgencyConfig: Record<string, { label: string; variant: "destructive" | "secondary" | "outline" }> = {
+  urgent: { label: "Khẩn cấp", variant: "destructive" },
+  high: { label: "Cao", variant: "destructive" },
+  normal: { label: "Bình thường", variant: "secondary" },
+  low: { label: "Thấp", variant: "outline" },
 };
 
-const urgencyConfig = {
-  urgent: { label: "Urgent", color: "bg-red-100 text-red-700" },
-  high: { label: "High", color: "bg-orange-100 text-orange-700" },
-  normal: { label: "Normal", color: "bg-blue-100 text-blue-700" },
-  low: { label: "Low", color: "bg-gray-100 text-gray-700" },
+const statusConfig: Record<string, { label: string; variant: "default" | "secondary" | "destructive" | "outline" }> = {
+  new: { label: "Mới", variant: "secondary" },
+  accepted: { label: "Đã nhận", variant: "default" },
+  declined: { label: "Từ chối", variant: "destructive" },
+  need_more_info: { label: "Cần thêm info", variant: "outline" },
+  in_progress: { label: "Đang xử lý", variant: "default" },
+  published: { label: "Đã xuất bản", variant: "default" },
+  completed: { label: "Hoàn thành", variant: "default" },
 };
 
-const consentConfig = {
-  obtained: { label: "Consent Obtained", color: "bg-green-100 text-green-700" },
-  pending: { label: "Consent Pending", color: "bg-yellow-100 text-yellow-700" },
-  "not-required": { label: "Not Required", color: "bg-gray-100 text-gray-700" },
-};
-
-export default function InboxHubPage() {
+export default function InboxPage() {
   const [activeTab, setActiveTab] = useState("opportunities");
+  const [selectedOpportunity, setSelectedOpportunity] = useState<string | null>(null);
+  const [selectedRequest, setSelectedRequest] = useState<string | null>(null);
+  const [isOpportunityDetailOpen, setIsOpportunityDetailOpen] = useState(false);
+  const [isRequestDetailOpen, setIsRequestDetailOpen] = useState(false);
+  const [selectedAssignee, setSelectedAssignee] = useState("");
 
-  // Calculate stats
-  const opportunityStats = {
-    total: mockOpportunities.length,
-    highPriority: mockOpportunities.filter((o) => o.priority === "high").length,
-    withConsent: mockOpportunities.filter((o) => o.consentStatus === "obtained").length,
+  const utils = trpc.useUtils();
+
+  // Fetch data
+  const {
+    data: opportunities = [],
+    isLoading: loadingOpportunities,
+    error: opportunitiesError,
+    refetch: refetchOpportunities,
+  } = trpc.external.getContentOpportunities.useQuery();
+
+  const {
+    data: taskRequests = [],
+    isLoading: loadingRequests,
+    error: requestsError,
+    refetch: refetchRequests,
+  } = trpc.external.getTaskRequests.useQuery();
+
+  const { data: users = [] } = trpc.user.getAll.useQuery();
+
+  // Mutations
+  const updateOpportunity = trpc.external.updateContentOpportunity.useMutation({
+    onSuccess: () => {
+      utils.external.getContentOpportunities.invalidate();
+      setIsOpportunityDetailOpen(false);
+      setSelectedAssignee("");
+      toast.success("Cập nhật thành công");
+    },
+    onError: (error) => toast.error(error.message),
+  });
+
+  const acceptRequest = trpc.external.acceptTaskRequest.useMutation({
+    onSuccess: () => {
+      utils.external.getTaskRequests.invalidate();
+      setIsRequestDetailOpen(false);
+      setSelectedAssignee("");
+      toast.success("Task request đã được chấp nhận và tạo task mới");
+    },
+    onError: (error) => toast.error(error.message),
+  });
+
+  const declineRequest = trpc.external.declineTaskRequest.useMutation({
+    onSuccess: () => {
+      utils.external.getTaskRequests.invalidate();
+      setIsRequestDetailOpen(false);
+      toast.success("Task request đã bị từ chối");
+    },
+    onError: (error) => toast.error(error.message),
+  });
+
+  const selectedOpp = opportunities.find((o) => o.id === selectedOpportunity);
+  const selectedReq = taskRequests.find((r) => r.id === selectedRequest);
+
+  const newOpportunitiesCount = opportunities.filter((o) => o.status === "new").length;
+  const newRequestsCount = taskRequests.filter((r) => r.status === "new").length;
+
+  const handleAcceptOpportunity = (id: string, assigneeId: string) => {
+    updateOpportunity.mutate({ id, status: "accepted", assignedToId: assigneeId });
   };
 
-  const requestStats = {
-    total: mockRequests.length,
-    urgent: mockRequests.filter((r) => r.urgency === "urgent").length,
-    design: mockRequests.filter((r) => r.type === "design").length,
+  const handleDeclineOpportunity = (id: string) => {
+    updateOpportunity.mutate({ id, status: "declined" });
   };
 
-  const getDaysUntilDeadline = (deadline: string) => {
-    const days = Math.ceil(
-      (new Date(deadline).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24)
-    );
-    return days;
+  const handleAcceptRequest = () => {
+    if (!selectedRequest || !selectedAssignee) {
+      toast.error("Vui lòng chọn người được giao");
+      return;
+    }
+    acceptRequest.mutate({ id: selectedRequest, assigneeId: selectedAssignee });
   };
+
+  const isLoading = loadingOpportunities || loadingRequests;
+  const error = opportunitiesError || requestsError;
+
+  if (isLoading) return <PageLoading text="Đang tải inbox..." />;
+  if (error) return <PageError error={error} onRetry={() => { refetchOpportunities(); refetchRequests(); }} />;
 
   return (
     <div className="p-6 space-y-6">
@@ -171,20 +161,20 @@ export default function InboxHubPage() {
       <div>
         <h1 className="text-2xl font-semibold mb-1">Inbox Hub</h1>
         <p className="text-muted-foreground">
-          Manage content opportunities and task requests from across the organization
+          Nhận và xử lý yêu cầu từ các bộ phận khác
         </p>
       </div>
 
-      {/* Quick Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+      {/* Summary Cards */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <Card>
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-muted-foreground">Content Opportunities</p>
-                <p className="text-2xl font-semibold">{opportunityStats.total}</p>
+                <p className="text-2xl font-semibold">{opportunities.length}</p>
               </div>
-              <InboxIcon className="w-8 h-8 text-muted-foreground" />
+              <MessageSquare className="w-8 h-8 text-blue-500" />
             </div>
           </CardContent>
         </Card>
@@ -193,9 +183,9 @@ export default function InboxHubPage() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-muted-foreground">Task Requests</p>
-                <p className="text-2xl font-semibold">{requestStats.total}</p>
+                <p className="text-2xl font-semibold">{taskRequests.length}</p>
               </div>
-              <FileText className="w-8 h-8 text-muted-foreground" />
+              <FileText className="w-8 h-8 text-purple-500" />
             </div>
           </CardContent>
         </Card>
@@ -203,10 +193,10 @@ export default function InboxHubPage() {
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-muted-foreground">With Consent</p>
-                <p className="text-2xl font-semibold">{opportunityStats.withConsent}</p>
+                <p className="text-sm text-muted-foreground">Cần xử lý</p>
+                <p className="text-2xl font-semibold">{newOpportunitiesCount + newRequestsCount}</p>
               </div>
-              <FileCheck className="w-8 h-8 text-green-500" />
+              <AlertTriangle className="w-8 h-8 text-yellow-500" />
             </div>
           </CardContent>
         </Card>
@@ -214,179 +204,437 @@ export default function InboxHubPage() {
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-muted-foreground">Urgent Items</p>
+                <p className="text-sm text-muted-foreground">Đang xử lý</p>
                 <p className="text-2xl font-semibold">
-                  {opportunityStats.highPriority + requestStats.urgent}
+                  {opportunities.filter((o) => o.status === "in_progress").length +
+                    taskRequests.filter((r) => r.status === "in_progress").length}
                 </p>
               </div>
-              <AlertTriangle className="w-8 h-8 text-red-500" />
+              <Clock className="w-8 h-8 text-green-500" />
             </div>
           </CardContent>
         </Card>
       </div>
 
-      {/* Tabs for Content Opportunities and Task Requests */}
-      <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="mb-4">
+      {/* Tabs */}
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
+        <TabsList>
           <TabsTrigger value="opportunities" className="gap-2">
-            <Camera className="w-4 h-4" />
-            Content Opportunities ({opportunityStats.total})
+            Content Opportunities
+            {newOpportunitiesCount > 0 && (
+              <Badge variant="destructive" className="ml-1">
+                {newOpportunitiesCount}
+              </Badge>
+            )}
           </TabsTrigger>
           <TabsTrigger value="requests" className="gap-2">
-            <FileText className="w-4 h-4" />
-            Task Requests ({requestStats.total})
+            Task Requests
+            {newRequestsCount > 0 && (
+              <Badge variant="destructive" className="ml-1">
+                {newRequestsCount}
+              </Badge>
+            )}
           </TabsTrigger>
         </TabsList>
 
         {/* Content Opportunities Tab */}
         <TabsContent value="opportunities" className="space-y-4">
-          <div className="flex items-center justify-between">
-            <p className="text-sm text-muted-foreground">
-              Recent content opportunities from Sales and Nurse teams
-            </p>
-            <Link href="/inbox/opportunities">
-              <Button variant="outline" size="sm" className="gap-2">
-                View All
-                <ArrowRight className="w-4 h-4" />
-              </Button>
-            </Link>
-          </div>
-
-          <div className="space-y-3">
-            {mockOpportunities.slice(0, 3).map((opportunity) => {
-              const typeInfo = opportunityTypeConfig[opportunity.type];
-              const TypeIcon = typeInfo.icon;
-              const priorityInfo = priorityConfig[opportunity.priority];
-              const consentInfo = consentConfig[opportunity.consentStatus];
-
-              return (
+          {opportunities.length === 0 ? (
+            <PageEmpty
+              icon={MessageSquare}
+              title="Không có content opportunity nào"
+              description="Khi có cơ hội content mới từ sales/nurse team, chúng sẽ xuất hiện ở đây"
+            />
+          ) : (
+            <div className="space-y-3">
+              {opportunities.map((opp) => (
                 <Card
-                  key={opportunity.id}
-                  className={`hover:shadow-md transition-shadow ${
-                    opportunity.priority === "high" ? "border-l-4 border-l-red-500" : ""
+                  key={opp.id}
+                  className={`hover:shadow-md transition-shadow cursor-pointer ${
+                    opp.status === "new" ? "border-l-4 border-l-primary" : ""
                   }`}
+                  onClick={() => {
+                    setSelectedOpportunity(opp.id);
+                    setIsOpportunityDetailOpen(true);
+                  }}
                 >
                   <CardContent className="p-4">
-                    <div className="flex items-start justify-between">
-                      <div className="flex gap-3">
-                        <div className={`p-2 rounded-lg ${typeInfo.color}`}>
-                          <TypeIcon className="h-5 w-5" />
+                    <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3 mb-3">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span
+                          className={`px-2 py-1 rounded text-xs font-medium ${
+                            opportunityTypeLabels[opp.type]?.color ?? "bg-gray-100"
+                          }`}
+                        >
+                          {opportunityTypeLabels[opp.type]?.label ?? opp.type}
+                        </span>
+                        <Badge variant={urgencyConfig[opp.urgency]?.variant ?? "secondary"}>
+                          {urgencyConfig[opp.urgency]?.label ?? opp.urgency}
+                        </Badge>
+                        <Badge variant={opp.consentStatus === "obtained" ? "default" : "outline"}>
+                          Consent: {opp.consentStatus}
+                        </Badge>
+                      </div>
+                      <Badge variant={statusConfig[opp.status]?.variant ?? "outline"}>
+                        {statusConfig[opp.status]?.label ?? opp.status}
+                      </Badge>
+                    </div>
+
+                    <p className="text-sm mb-3 line-clamp-2">{opp.description}</p>
+
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-sm text-muted-foreground">
+                      <div className="flex flex-wrap items-center gap-4">
+                        <div className="flex items-center gap-1">
+                          <User className="w-4 h-4" />
+                          <span>
+                            {opp.submitterName} ({opp.submitterTeam})
+                          </span>
                         </div>
-                        <div>
-                          <div className="flex items-center gap-2 mb-1">
-                            <Badge className={typeInfo.color}>{typeInfo.label}</Badge>
-                            <Badge className={priorityInfo.color}>{priorityInfo.label}</Badge>
-                            <Badge className={consentInfo.color}>{consentInfo.label}</Badge>
-                          </div>
-                          <h3 className="font-semibold mb-1">{opportunity.title}</h3>
-                          <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                            <User className="h-4 w-4" />
-                            <span>{opportunity.from}</span>
-                            <span>•</span>
-                            <span>{new Date(opportunity.createdAt).toLocaleDateString()}</span>
-                          </div>
+                        <div className="flex items-center gap-1">
+                          <Clock className="w-4 h-4" />
+                          <span>{format(new Date(opp.createdAt), "MMM d, HH:mm")}</span>
                         </div>
                       </div>
-                      <div className="flex gap-2">
-                        <Button size="sm" variant="outline">
-                          <MessageSquare className="h-4 w-4 mr-1" />
-                          Need Info
-                        </Button>
-                        <Button size="sm" variant="outline">
-                          <XCircle className="h-4 w-4 mr-1" />
-                          Decline
-                        </Button>
-                        <Button size="sm">
-                          <CheckCircle className="h-4 w-4 mr-1" />
-                          Accept
-                        </Button>
-                      </div>
+                      {opp.assignedTo && (
+                        <span className="text-primary">
+                          Assigned: {opp.assignedTo.name}
+                        </span>
+                      )}
                     </div>
                   </CardContent>
                 </Card>
-              );
-            })}
-          </div>
+              ))}
+            </div>
+          )}
         </TabsContent>
 
         {/* Task Requests Tab */}
         <TabsContent value="requests" className="space-y-4">
-          <div className="flex items-center justify-between">
-            <p className="text-sm text-muted-foreground">
-              External task requests from other departments
-            </p>
-            <Link href="/inbox/requests">
-              <Button variant="outline" size="sm" className="gap-2">
-                View All
-                <ArrowRight className="w-4 h-4" />
-              </Button>
-            </Link>
-          </div>
-
-          <div className="space-y-3">
-            {mockRequests.slice(0, 3).map((request) => {
-              const typeInfo = taskTypeConfig[request.type];
-              const TypeIcon = typeInfo.icon;
-              const urgencyInfo = urgencyConfig[request.urgency];
-              const daysLeft = getDaysUntilDeadline(request.deadline);
-
-              return (
+          {taskRequests.length === 0 ? (
+            <PageEmpty
+              icon={FileText}
+              title="Không có task request nào"
+              description="Khi có yêu cầu task mới từ các bộ phận khác, chúng sẽ xuất hiện ở đây"
+            />
+          ) : (
+            <div className="space-y-3">
+              {taskRequests.map((req) => (
                 <Card
-                  key={request.id}
-                  className={`hover:shadow-md transition-shadow ${
-                    request.urgency === "urgent" ? "border-l-4 border-l-red-500" : ""
+                  key={req.id}
+                  className={`hover:shadow-md transition-shadow cursor-pointer ${
+                    req.status === "new" ? "border-l-4 border-l-primary" : ""
                   }`}
+                  onClick={() => {
+                    setSelectedRequest(req.id);
+                    setIsRequestDetailOpen(true);
+                  }}
                 >
                   <CardContent className="p-4">
-                    <div className="flex items-start justify-between">
-                      <div className="flex gap-3">
-                        <div className={`p-2 rounded-lg ${typeInfo.color}`}>
-                          <TypeIcon className="h-5 w-5" />
-                        </div>
-                        <div>
-                          <div className="flex items-center gap-2 mb-1">
-                            <Badge className={typeInfo.color}>{typeInfo.label}</Badge>
-                            <Badge className={urgencyInfo.color}>{urgencyInfo.label}</Badge>
-                            {daysLeft <= 3 && daysLeft > 0 && (
-                              <Badge variant="destructive">
-                                <Clock className="h-3 w-3 mr-1" />
-                                {daysLeft} days left
-                              </Badge>
-                            )}
-                            {daysLeft <= 0 && <Badge variant="destructive">Overdue!</Badge>}
-                          </div>
-                          <h3 className="font-semibold mb-1">{request.title}</h3>
-                          <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                            <User className="h-4 w-4" />
-                            <span>
-                              {request.requester} ({request.requesterRole})
-                            </span>
-                            <span>•</span>
-                            <Calendar className="h-4 w-4" />
-                            <span>
-                              Deadline: {new Date(request.deadline).toLocaleDateString()}
-                            </span>
-                          </div>
+                    <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3 mb-3">
+                      <div>
+                        <h3 className="font-medium mb-1">{req.title}</h3>
+                        <div className="flex flex-wrap items-center gap-2">
+                          <span
+                            className={`px-2 py-1 rounded text-xs font-medium ${
+                              requestTypeLabels[req.requestType]?.color ?? "bg-gray-100"
+                            }`}
+                          >
+                            {requestTypeLabels[req.requestType]?.label ?? req.requestType}
+                          </span>
+                          <Badge variant={urgencyConfig[req.urgency]?.variant ?? "secondary"}>
+                            {urgencyConfig[req.urgency]?.label ?? req.urgency}
+                          </Badge>
                         </div>
                       </div>
-                      <div className="flex gap-2">
-                        <Button size="sm" variant="outline" className="text-red-600">
-                          <XCircle className="h-4 w-4 mr-1" />
-                          Decline
-                        </Button>
-                        <Button size="sm">
-                          <CheckCircle className="h-4 w-4 mr-1" />
-                          Accept
-                        </Button>
-                      </div>
+                      <Badge variant={statusConfig[req.status]?.variant ?? "outline"}>
+                        {statusConfig[req.status]?.label ?? req.status}
+                      </Badge>
                     </div>
+
+                    <p className="text-sm text-muted-foreground mb-3 line-clamp-2">
+                      {req.description}
+                    </p>
+
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-sm text-muted-foreground">
+                      <div className="flex flex-wrap items-center gap-4">
+                        <div className="flex items-center gap-1">
+                          <User className="w-4 h-4" />
+                          <span>
+                            {req.requesterName} ({req.requesterTeam})
+                          </span>
+                        </div>
+                        {req.deadline && (
+                          <div className="flex items-center gap-1">
+                            <Clock className="w-4 h-4" />
+                            <span>Deadline: {format(new Date(req.deadline), "MMM d")}</span>
+                          </div>
+                        )}
+                      </div>
+                      {req.assignedTo && (
+                        <span className="text-primary">
+                          Assigned: {req.assignedTo.name}
+                        </span>
+                      )}
+                    </div>
+
+                    {req.relatedTask && (
+                      <div className="mt-2 pt-2 border-t">
+                        <span className="text-sm text-muted-foreground">
+                          Task: {req.relatedTask.title} ({req.relatedTask.status})
+                        </span>
+                      </div>
+                    )}
                   </CardContent>
                 </Card>
-              );
-            })}
-          </div>
+              ))}
+            </div>
+          )}
         </TabsContent>
       </Tabs>
+
+      {/* Opportunity Detail Modal */}
+      <Dialog open={isOpportunityDetailOpen} onOpenChange={setIsOpportunityDetailOpen}>
+        <DialogContent className="max-w-2xl w-full max-h-[90vh] md:max-h-[80vh] overflow-y-auto">
+          {selectedOpp && (
+            <>
+              <DialogHeader>
+                <DialogTitle>Content Opportunity</DialogTitle>
+                <DialogDescription>
+                  <div className="flex flex-wrap items-center gap-2 mt-2">
+                    <span
+                      className={`px-2 py-1 rounded text-xs font-medium ${
+                        opportunityTypeLabels[selectedOpp.type]?.color ?? "bg-gray-100"
+                      }`}
+                    >
+                      {opportunityTypeLabels[selectedOpp.type]?.label ?? selectedOpp.type}
+                    </span>
+                    <Badge variant={statusConfig[selectedOpp.status]?.variant ?? "outline"}>
+                      {statusConfig[selectedOpp.status]?.label ?? selectedOpp.status}
+                    </Badge>
+                  </div>
+                </DialogDescription>
+              </DialogHeader>
+
+              <div className="space-y-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <Label className="text-sm text-muted-foreground">Submitter</Label>
+                    <p className="mt-1">{selectedOpp.submitterName}</p>
+                  </div>
+                  <div>
+                    <Label className="text-sm text-muted-foreground">Team</Label>
+                    <p className="mt-1 capitalize">{selectedOpp.submitterTeam}</p>
+                  </div>
+                  <div>
+                    <Label className="text-sm text-muted-foreground">Urgency</Label>
+                    <p className="mt-1">{urgencyConfig[selectedOpp.urgency]?.label}</p>
+                  </div>
+                  <div>
+                    <Label className="text-sm text-muted-foreground">Consent Status</Label>
+                    <p className="mt-1 capitalize">{selectedOpp.consentStatus}</p>
+                  </div>
+                </div>
+
+                <div>
+                  <Label className="text-sm text-muted-foreground">Description</Label>
+                  <p className="mt-2 p-3 bg-muted/50 rounded-md text-sm">{selectedOpp.description}</p>
+                </div>
+
+                {selectedOpp.assignedTo && (
+                  <div>
+                    <Label className="text-sm text-muted-foreground">Assigned To</Label>
+                    <p className="mt-1">{selectedOpp.assignedTo.name}</p>
+                  </div>
+                )}
+
+                {/* Comments */}
+                {selectedOpp.comments && selectedOpp.comments.length > 0 && (
+                  <div>
+                    <Label className="text-sm text-muted-foreground mb-2 block">
+                      Comments ({selectedOpp.comments.length})
+                    </Label>
+                    <div className="space-y-2">
+                      {selectedOpp.comments.map((comment) => (
+                        <div key={comment.id} className="p-2 bg-muted/50 rounded text-sm">
+                          {comment.content}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {selectedOpp.status === "new" && (
+                  <div>
+                    <Label className="text-sm text-muted-foreground">Assign To</Label>
+                    <Select value={selectedAssignee} onValueChange={setSelectedAssignee}>
+                      <SelectTrigger className="mt-1">
+                        <SelectValue placeholder="Chọn người được giao..." />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {users.map((user) => (
+                          <SelectItem key={user.id} value={user.id}>
+                            {user.name} ({user.role})
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
+              </div>
+
+              <DialogFooter className="flex flex-col sm:flex-row gap-2">
+                {selectedOpp.status === "new" && (
+                  <>
+                    <Button
+                      variant="outline"
+                      className="gap-2"
+                      onClick={() => handleDeclineOpportunity(selectedOpp.id)}
+                      disabled={updateOpportunity.isPending}
+                    >
+                      <XCircle className="w-4 h-4" />
+                      Từ chối
+                    </Button>
+                    <Button
+                      className="gap-2"
+                      onClick={() => {
+                        if (!selectedAssignee) {
+                          toast.error("Vui lòng chọn người được giao");
+                          return;
+                        }
+                        handleAcceptOpportunity(selectedOpp.id, selectedAssignee);
+                      }}
+                      disabled={updateOpportunity.isPending || !selectedAssignee}
+                    >
+                      <CheckCircle className="w-4 h-4" />
+                      Chấp nhận
+                    </Button>
+                  </>
+                )}
+                <Button variant="outline" onClick={() => setIsOpportunityDetailOpen(false)}>
+                  Đóng
+                </Button>
+              </DialogFooter>
+            </>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Task Request Detail Modal */}
+      <Dialog open={isRequestDetailOpen} onOpenChange={setIsRequestDetailOpen}>
+        <DialogContent className="max-w-2xl w-full max-h-[90vh] md:max-h-[80vh] overflow-y-auto">
+          {selectedReq && (
+            <>
+              <DialogHeader>
+                <DialogTitle>{selectedReq.title}</DialogTitle>
+                <DialogDescription>
+                  <div className="flex flex-wrap items-center gap-2 mt-2">
+                    <span
+                      className={`px-2 py-1 rounded text-xs font-medium ${
+                        requestTypeLabels[selectedReq.requestType]?.color ?? "bg-gray-100"
+                      }`}
+                    >
+                      {requestTypeLabels[selectedReq.requestType]?.label ?? selectedReq.requestType}
+                    </span>
+                    <Badge variant={statusConfig[selectedReq.status]?.variant ?? "outline"}>
+                      {statusConfig[selectedReq.status]?.label ?? selectedReq.status}
+                    </Badge>
+                  </div>
+                </DialogDescription>
+              </DialogHeader>
+
+              <div className="space-y-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <Label className="text-sm text-muted-foreground">Requester</Label>
+                    <p className="mt-1">{selectedReq.requesterName}</p>
+                  </div>
+                  <div>
+                    <Label className="text-sm text-muted-foreground">Team</Label>
+                    <p className="mt-1 capitalize">{selectedReq.requesterTeam}</p>
+                  </div>
+                  <div>
+                    <Label className="text-sm text-muted-foreground">Urgency</Label>
+                    <p className="mt-1">{urgencyConfig[selectedReq.urgency]?.label}</p>
+                  </div>
+                  {selectedReq.deadline && (
+                    <div>
+                      <Label className="text-sm text-muted-foreground">Deadline</Label>
+                      <p className="mt-1">{format(new Date(selectedReq.deadline), "MMM d, yyyy")}</p>
+                    </div>
+                  )}
+                </div>
+
+                <div>
+                  <Label className="text-sm text-muted-foreground">Description</Label>
+                  <p className="mt-2 p-3 bg-muted/50 rounded-md text-sm">{selectedReq.description}</p>
+                </div>
+
+                {selectedReq.assignedTo && (
+                  <div>
+                    <Label className="text-sm text-muted-foreground">Assigned To</Label>
+                    <p className="mt-1">{selectedReq.assignedTo.name}</p>
+                  </div>
+                )}
+
+                {selectedReq.relatedTask && (
+                  <div className="p-3 bg-green-50 rounded-md">
+                    <Label className="text-sm text-muted-foreground">Related Task</Label>
+                    <p className="mt-1 font-medium">{selectedReq.relatedTask.title}</p>
+                    <Badge variant="secondary" className="mt-1">
+                      {selectedReq.relatedTask.status}
+                    </Badge>
+                  </div>
+                )}
+
+                {selectedReq.status === "new" && (
+                  <div>
+                    <Label className="text-sm text-muted-foreground">Assign To</Label>
+                    <Select value={selectedAssignee} onValueChange={setSelectedAssignee}>
+                      <SelectTrigger className="mt-1">
+                        <SelectValue placeholder="Chọn người được giao..." />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {users.map((user) => (
+                          <SelectItem key={user.id} value={user.id}>
+                            {user.name} ({user.role})
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
+              </div>
+
+              <DialogFooter className="flex flex-col sm:flex-row gap-2">
+                {selectedReq.status === "new" && (
+                  <>
+                    <Button
+                      variant="outline"
+                      className="gap-2"
+                      onClick={() => declineRequest.mutate({ id: selectedReq.id })}
+                      disabled={declineRequest.isPending}
+                    >
+                      <XCircle className="w-4 h-4" />
+                      Từ chối
+                    </Button>
+                    <Button
+                      className="gap-2"
+                      onClick={handleAcceptRequest}
+                      disabled={acceptRequest.isPending || !selectedAssignee}
+                    >
+                      <CheckCircle className="w-4 h-4" />
+                      Chấp nhận & Tạo Task
+                    </Button>
+                  </>
+                )}
+                <Button variant="outline" onClick={() => setIsRequestDetailOpen(false)}>
+                  Đóng
+                </Button>
+              </DialogFooter>
+            </>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

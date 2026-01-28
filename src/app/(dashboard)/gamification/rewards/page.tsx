@@ -13,141 +13,122 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Progress } from "@/components/ui/progress";
-import { Gift, Trophy, Star, Clock, Check, AlertCircle } from "lucide-react";
+import { Gift, Trophy, Star, Clock, Check } from "lucide-react";
+import { trpc } from "@/lib/trpc";
+import { PageLoading, LoadingSpinner } from "@/components/ui/loading-spinner";
+import { PageError } from "@/components/ui/error-display";
+import { toast } from "sonner";
 
-interface Reward {
+// Icon mapping for rewards based on name keywords
+const getRewardIcon = (name: string): string => {
+  const lower = name.toLowerCase();
+  if (lower.includes("coffee")) return "\u2615";
+  if (lower.includes("lunch") || lower.includes("food") || lower.includes("meal")) return "\ud83c\udf7d\ufe0f";
+  if (lower.includes("day off") || lower.includes("vacation") || lower.includes("holiday")) return "\ud83c\udfd6\ufe0f";
+  if (lower.includes("training") || lower.includes("course") || lower.includes("book")) return "\ud83d\udcda";
+  if (lower.includes("spa") || lower.includes("massage")) return "\ud83d\udc86";
+  if (lower.includes("tech") || lower.includes("gadget") || lower.includes("headphone")) return "\ud83c\udfa7";
+  if (lower.includes("home") || lower.includes("remote")) return "\ud83c\udfe0";
+  if (lower.includes("recognition") || lower.includes("wall")) return "\ud83c\udf1f";
+  if (lower.includes("movie") || lower.includes("ticket")) return "\ud83c\udfac";
+  if (lower.includes("gift")) return "\ud83c\udf81";
+  return "\ud83c\udf81";
+};
+
+interface RewardItem {
   id: string;
   name: string;
   description: string;
   pointsCost: number;
-  available: boolean;
-  stock: number;
-  icon: string;
-  category: "experience" | "gift" | "perk";
+  isActive: boolean;
+  createdAt: Date | string;
+  updatedAt: Date | string;
 }
 
-const rewards: Reward[] = [
-  {
-    id: "1",
-    name: "Coffee Voucher",
-    description: "Voucher cà phê miễn phí tại quán đối tác",
-    pointsCost: 100,
-    available: true,
-    stock: 50,
-    icon: "☕",
-    category: "gift",
-  },
-  {
-    id: "2",
-    name: "Lunch Treat",
-    description: "Bữa trưa miễn phí cho cả team (tối đa 5 người)",
-    pointsCost: 300,
-    available: true,
-    stock: 10,
-    icon: "🍽️",
-    category: "experience",
-  },
-  {
-    id: "3",
-    name: "Extra Day Off",
-    description: "Một ngày nghỉ phép thêm (có lương)",
-    pointsCost: 500,
-    available: true,
-    stock: 5,
-    icon: "🏖️",
-    category: "perk",
-  },
-  {
-    id: "4",
-    name: "Training Course",
-    description: "Khóa học online theo yêu cầu (trị giá 2 triệu)",
-    pointsCost: 400,
-    available: true,
-    stock: 15,
-    icon: "📚",
-    category: "experience",
-  },
-  {
-    id: "5",
-    name: "Spa Voucher",
-    description: "Voucher spa/massage thư giãn tại cơ sở đối tác",
-    pointsCost: 600,
-    available: true,
-    stock: 8,
-    icon: "💆",
-    category: "gift",
-  },
-  {
-    id: "6",
-    name: "Tech Gadget",
-    description: "Tai nghe/phụ kiện công nghệ cao cấp",
-    pointsCost: 1000,
-    available: false,
-    stock: 0,
-    icon: "🎧",
-    category: "gift",
-  },
-  {
-    id: "7",
-    name: "Work From Home Day",
-    description: "Một ngày làm việc từ xa (cho vị trí cần có mặt)",
-    pointsCost: 200,
-    available: true,
-    stock: 20,
-    icon: "🏠",
-    category: "perk",
-  },
-  {
-    id: "8",
-    name: "Recognition Wall",
-    description: "Được vinh danh trên bảng Recognition của công ty",
-    pointsCost: 150,
-    available: true,
-    stock: 999,
-    icon: "🌟",
-    category: "experience",
-  },
-  {
-    id: "9",
-    name: "Movie Tickets",
-    description: "2 vé xem phim tại CGV/Lotte",
-    pointsCost: 250,
-    available: true,
-    stock: 12,
-    icon: "🎬",
-    category: "gift",
-  },
-];
-
-const redemptionHistory = [
-  { reward: "Coffee Voucher", date: "15/12/2023", points: 100, status: "completed" },
-  { reward: "Lunch Treat", date: "20/11/2023", points: 300, status: "completed" },
-  { reward: "Training Course", date: "01/10/2023", points: 400, status: "completed" },
-];
-
-const categoryConfig = {
-  experience: { label: "Trải nghiệm", color: "bg-purple-100 text-purple-700" },
-  gift: { label: "Quà tặng", color: "bg-blue-100 text-blue-700" },
-  perk: { label: "Đặc quyền", color: "bg-green-100 text-green-700" },
-};
-
 export default function RewardsPage() {
-  const [selectedReward, setSelectedReward] = useState<Reward | null>(null);
+  const [selectedReward, setSelectedReward] = useState<RewardItem | null>(null);
   const [isRedeemOpen, setIsRedeemOpen] = useState(false);
-  const userPoints = 450;
 
-  const openRedeem = (reward: Reward) => {
+  // Fetch rewards and points from tRPC
+  const rewardsQuery = trpc.gamification.getAvailableRewards.useQuery();
+  const myPointsQuery = trpc.gamification.getMyPoints.useQuery();
+  const redemptionsQuery = trpc.gamification.getMyRedemptions.useQuery();
+
+  // Redeem mutation
+  const redeemMutation = trpc.gamification.redeemReward.useMutation({
+    onSuccess: () => {
+      toast.success("Doi thuong thanh cong!");
+      setIsRedeemOpen(false);
+      setSelectedReward(null);
+      rewardsQuery.refetch();
+      myPointsQuery.refetch();
+      redemptionsQuery.refetch();
+    },
+    onError: (error) => {
+      toast.error(error.message || "Doi thuong that bai");
+    },
+  });
+
+  const isLoading = rewardsQuery.isLoading || myPointsQuery.isLoading;
+  const error = rewardsQuery.error || myPointsQuery.error;
+
+  if (isLoading) return <PageLoading text="Loading rewards..." />;
+  if (error) {
+    return (
+      <PageError
+        error={error}
+        onRetry={() => {
+          rewardsQuery.refetch();
+          myPointsQuery.refetch();
+          redemptionsQuery.refetch();
+        }}
+      />
+    );
+  }
+
+  const { rewards = [], currentPoints: rewardsCurrentPoints = 0 } = rewardsQuery.data || {};
+  const myPoints = myPointsQuery.data?.points;
+  const userPoints = myPoints?.totalPoints ?? rewardsCurrentPoints;
+  const userLevel = myPoints?.level ?? 1;
+
+  const redemptionHistory = redemptionsQuery.data || [];
+
+  const openRedeem = (reward: RewardItem) => {
     setSelectedReward(reward);
     setIsRedeemOpen(true);
   };
 
   const handleRedeem = () => {
-    // Redeem logic
-    setIsRedeemOpen(false);
+    if (!selectedReward) return;
+    redeemMutation.mutate({ rewardId: selectedReward.id });
   };
 
-  const canRedeem = (reward: Reward) => {
-    return reward.available && reward.pointsCost <= userPoints;
+  const canRedeem = (reward: RewardItem) => {
+    return reward.isActive && reward.pointsCost <= userPoints;
+  };
+
+  // Compute stats
+  const availableRewardsCount = rewards.filter((r) => r.isActive).length;
+  const redemptionCount = redemptionHistory.length;
+  const totalPointsSpent = redemptionHistory.reduce((sum, r) => sum + (r.reward?.pointsCost ?? 0), 0);
+
+  // Level progress: each level requires level * 1000 points (simple heuristic)
+  const nextLevelThreshold = userLevel * 1000;
+
+  // Status display mapping
+  const getStatusDisplay = (status: string) => {
+    switch (status) {
+      case "fulfilled":
+        return { label: "Da nhan", color: "text-green-600" };
+      case "approved":
+        return { label: "Da duyet", color: "text-blue-600" };
+      case "pending":
+        return { label: "Dang xu ly", color: "text-yellow-600" };
+      case "rejected":
+        return { label: "Tu choi", color: "text-red-600" };
+      default:
+        return { label: status, color: "text-muted-foreground" };
+    }
   };
 
   return (
@@ -156,7 +137,7 @@ export default function RewardsPage() {
       <div>
         <h1 className="text-2xl font-bold">Rewards Catalog</h1>
         <p className="text-muted-foreground">
-          Đổi điểm lấy phần thưởng hấp dẫn
+          Doi diem lay phan thuong hap dan
         </p>
       </div>
 
@@ -165,23 +146,23 @@ export default function RewardsPage() {
         <CardContent className="p-6">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm text-muted-foreground mb-1">Điểm hiện có</p>
+              <p className="text-sm text-muted-foreground mb-1">Diem hien co</p>
               <p className="text-4xl font-bold text-primary">{userPoints}</p>
               <p className="text-sm text-muted-foreground mt-1">
-                điểm có thể sử dụng
+                diem co the su dung
               </p>
             </div>
             <div className="text-right">
               <Trophy className="h-16 w-16 text-amber-500 mb-2" />
-              <Badge variant="secondary">Level 3 - Pro</Badge>
+              <Badge variant="secondary">Level {userLevel}</Badge>
             </div>
           </div>
           <div className="mt-4">
             <div className="flex items-center justify-between text-sm mb-1">
-              <span>Đến Level 4</span>
-              <span>{userPoints}/1000</span>
+              <span>Den Level {userLevel + 1}</span>
+              <span>{userPoints}/{nextLevelThreshold}</span>
             </div>
-            <Progress value={(userPoints / 1000) * 100} className="h-2" />
+            <Progress value={Math.min((userPoints / nextLevelThreshold) * 100, 100)} className="h-2" />
           </div>
         </CardContent>
       </Card>
@@ -194,8 +175,8 @@ export default function RewardsPage() {
               <Gift className="h-5 w-5 text-green-600" />
             </div>
             <div>
-              <p className="text-2xl font-bold">{rewards.filter((r) => r.available).length}</p>
-              <p className="text-sm text-muted-foreground">Phần thưởng có sẵn</p>
+              <p className="text-2xl font-bold">{availableRewardsCount}</p>
+              <p className="text-sm text-muted-foreground">Phan thuong co san</p>
             </div>
           </CardContent>
         </Card>
@@ -205,8 +186,8 @@ export default function RewardsPage() {
               <Check className="h-5 w-5 text-blue-600" />
             </div>
             <div>
-              <p className="text-2xl font-bold">{redemptionHistory.length}</p>
-              <p className="text-sm text-muted-foreground">Đã đổi thưởng</p>
+              <p className="text-2xl font-bold">{redemptionCount}</p>
+              <p className="text-sm text-muted-foreground">Da doi thuong</p>
             </div>
           </CardContent>
         </Card>
@@ -216,10 +197,8 @@ export default function RewardsPage() {
               <Star className="h-5 w-5 text-purple-600" />
             </div>
             <div>
-              <p className="text-2xl font-bold">
-                {redemptionHistory.reduce((sum, h) => sum + h.points, 0)}
-              </p>
-              <p className="text-sm text-muted-foreground">Điểm đã sử dụng</p>
+              <p className="text-2xl font-bold">{totalPointsSpent}</p>
+              <p className="text-sm text-muted-foreground">Diem da su dung</p>
             </div>
           </CardContent>
         </Card>
@@ -227,21 +206,20 @@ export default function RewardsPage() {
 
       {/* Rewards Grid */}
       <div>
-        <h3 className="text-lg font-semibold mb-4">Danh sách phần thưởng</h3>
+        <h3 className="text-lg font-semibold mb-4">Danh sach phan thuong</h3>
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
           {rewards.map((reward) => {
             const canGet = canRedeem(reward);
-            const categoryInfo = categoryConfig[reward.category];
+            const icon = getRewardIcon(reward.name);
 
             return (
               <Card
                 key={reward.id}
-                className={`overflow-hidden ${!reward.available ? "opacity-60" : ""}`}
+                className={`overflow-hidden ${!reward.isActive ? "opacity-60" : ""}`}
               >
                 <CardContent className="p-6">
                   <div className="flex items-start justify-between mb-4">
-                    <span className="text-5xl">{reward.icon}</span>
-                    <Badge className={categoryInfo.color}>{categoryInfo.label}</Badge>
+                    <span className="text-5xl">{icon}</span>
                   </div>
                   <h4 className="font-semibold text-lg mb-1">{reward.name}</h4>
                   <p className="text-sm text-muted-foreground mb-4">
@@ -249,15 +227,10 @@ export default function RewardsPage() {
                   </p>
                   <div className="flex items-center justify-between mb-4">
                     <Badge variant="outline" className="text-lg px-3 py-1">
-                      {reward.pointsCost} điểm
+                      {reward.pointsCost} diem
                     </Badge>
-                    {reward.available && reward.stock < 10 && (
-                      <span className="text-xs text-orange-600">
-                        Còn {reward.stock}
-                      </span>
-                    )}
-                    {!reward.available && (
-                      <span className="text-xs text-red-600">Hết hàng</span>
+                    {!reward.isActive && (
+                      <span className="text-xs text-red-600">Khong kha dung</span>
                     )}
                   </div>
                   <Button
@@ -265,16 +238,21 @@ export default function RewardsPage() {
                     disabled={!canGet}
                     onClick={() => openRedeem(reward)}
                   >
-                    {!reward.available
-                      ? "Hết hàng"
+                    {!reward.isActive
+                      ? "Khong kha dung"
                       : reward.pointsCost > userPoints
-                      ? `Cần thêm ${reward.pointsCost - userPoints} điểm`
-                      : "Đổi thưởng"}
+                      ? `Can them ${reward.pointsCost - userPoints} diem`
+                      : "Doi thuong"}
                   </Button>
                 </CardContent>
               </Card>
             );
           })}
+          {rewards.length === 0 && (
+            <p className="text-sm text-muted-foreground col-span-full text-center py-8">
+              Chua co phan thuong nao. Hay quay lai sau!
+            </p>
+          )}
         </div>
       </div>
 
@@ -283,32 +261,47 @@ export default function RewardsPage() {
         <CardHeader>
           <CardTitle className="text-lg flex items-center gap-2">
             <Clock className="h-5 w-5" />
-            Lịch sử đổi thưởng
+            Lich su doi thuong
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="space-y-3">
-            {redemptionHistory.map((item, index) => (
-              <div
-                key={index}
-                className="flex items-center justify-between p-4 rounded-lg bg-muted/50"
-              >
-                <div>
-                  <p className="font-medium">{item.reward}</p>
-                  <p className="text-sm text-muted-foreground">{item.date}</p>
-                </div>
-                <div className="text-right">
-                  <Badge variant="outline" className="text-red-600">
-                    -{item.points} pts
-                  </Badge>
-                  <p className="text-xs text-green-600 mt-1">
-                    <Check className="h-3 w-3 inline mr-1" />
-                    Đã nhận
-                  </p>
-                </div>
-              </div>
-            ))}
-          </div>
+          {redemptionsQuery.isLoading ? (
+            <LoadingSpinner size="sm" text="Loading history..." />
+          ) : redemptionHistory.length === 0 ? (
+            <p className="text-sm text-muted-foreground text-center py-4">
+              Chua co lich su doi thuong.
+            </p>
+          ) : (
+            <div className="space-y-3">
+              {redemptionHistory.map((item) => {
+                const statusInfo = getStatusDisplay(item.status);
+                return (
+                  <div
+                    key={item.id}
+                    className="flex items-center justify-between p-4 rounded-lg bg-muted/50"
+                  >
+                    <div>
+                      <p className="font-medium">{item.reward?.name ?? "Unknown reward"}</p>
+                      <p className="text-sm text-muted-foreground">
+                        {new Date(item.redeemedAt).toLocaleDateString()}
+                      </p>
+                    </div>
+                    <div className="text-right">
+                      <Badge variant="outline" className="text-red-600">
+                        -{item.reward?.pointsCost ?? 0} pts
+                      </Badge>
+                      <p className={`text-xs mt-1 ${statusInfo.color}`}>
+                        {item.status === "fulfilled" && (
+                          <Check className="h-3 w-3 inline mr-1" />
+                        )}
+                        {statusInfo.label}
+                      </p>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
         </CardContent>
       </Card>
 
@@ -319,7 +312,7 @@ export default function RewardsPage() {
             <>
               <DialogHeader>
                 <div className="text-center mb-4">
-                  <span className="text-6xl">{selectedReward.icon}</span>
+                  <span className="text-6xl">{getRewardIcon(selectedReward.name)}</span>
                 </div>
                 <DialogTitle className="text-center">
                   {selectedReward.name}
@@ -330,31 +323,44 @@ export default function RewardsPage() {
               </DialogHeader>
               <div className="py-4">
                 <div className="flex items-center justify-between p-4 rounded-lg bg-muted">
-                  <span>Chi phí</span>
+                  <span>Chi phi</span>
                   <span className="font-bold text-lg">
-                    {selectedReward.pointsCost} điểm
+                    {selectedReward.pointsCost} diem
                   </span>
                 </div>
                 <div className="flex items-center justify-between p-4">
-                  <span>Điểm hiện có</span>
+                  <span>Diem hien co</span>
                   <span className="font-bold text-lg text-primary">
-                    {userPoints} điểm
+                    {userPoints} diem
                   </span>
                 </div>
                 <div className="flex items-center justify-between p-4 border-t">
-                  <span>Điểm còn lại sau khi đổi</span>
+                  <span>Diem con lai sau khi doi</span>
                   <span className="font-bold text-lg">
-                    {userPoints - selectedReward.pointsCost} điểm
+                    {userPoints - selectedReward.pointsCost} diem
                   </span>
                 </div>
               </div>
               <DialogFooter className="gap-2">
-                <Button variant="outline" onClick={() => setIsRedeemOpen(false)}>
-                  Hủy
+                <Button
+                  variant="outline"
+                  onClick={() => setIsRedeemOpen(false)}
+                  disabled={redeemMutation.isPending}
+                >
+                  Huy
                 </Button>
-                <Button onClick={handleRedeem}>
-                  <Gift className="h-4 w-4 mr-2" />
-                  Xác nhận đổi thưởng
+                <Button
+                  onClick={handleRedeem}
+                  disabled={redeemMutation.isPending}
+                >
+                  {redeemMutation.isPending ? (
+                    <LoadingSpinner size="sm" className="p-0" />
+                  ) : (
+                    <>
+                      <Gift className="h-4 w-4 mr-2" />
+                      Xac nhan doi thuong
+                    </>
+                  )}
                 </Button>
               </DialogFooter>
             </>
