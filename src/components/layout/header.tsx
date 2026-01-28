@@ -52,7 +52,7 @@ export function Header() {
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
             <Input
               type="search"
-              placeholder="Search tasks, proposals, content..."
+              placeholder="Tìm kiếm..."
               className="pl-10 bg-background"
             />
           </div>
@@ -77,9 +77,9 @@ export function Header() {
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-80">
               <DropdownMenuLabel className="flex items-center justify-between">
-                Notifications
+                Thông báo
                 {unreadCount && unreadCount > 0 && (
-                  <Badge variant="secondary">{unreadCount} new</Badge>
+                  <Badge variant="secondary">{unreadCount} mới</Badge>
                 )}
               </DropdownMenuLabel>
               <DropdownMenuSeparator />
@@ -114,7 +114,7 @@ export function Header() {
               </div>
               <DropdownMenuSeparator />
               <DropdownMenuItem className="text-center justify-center text-primary">
-                View all notifications
+                Xem tất cả
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
@@ -144,11 +144,11 @@ export function Header() {
               <DropdownMenuSeparator />
               <DropdownMenuItem>
                 <User className="w-4 h-4 mr-2" />
-                Profile
+                Hồ sơ cá nhân
               </DropdownMenuItem>
               <DropdownMenuItem>
                 <Settings className="w-4 h-4 mr-2" />
-                Settings
+                Cài đặt
               </DropdownMenuItem>
               <DropdownMenuSeparator />
               <DropdownMenuItem
@@ -156,7 +156,7 @@ export function Header() {
                 onClick={() => signOut()}
               >
                 <LogOut className="w-4 h-4 mr-2" />
-                Sign out
+                Đăng xuất
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
