@@ -2,6 +2,18 @@ import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
 
 export async function updateSession(request: NextRequest) {
+  // Public routes that don't need any auth check
+  const publicRoutes = ['/login', '/unauthorized']
+  const isPublicRoute = publicRoutes.some(route =>
+    request.nextUrl.pathname === route ||
+    request.nextUrl.pathname.startsWith(route + '/')
+  )
+
+  // For public routes, just pass through without any Supabase calls
+  if (isPublicRoute) {
+    return NextResponse.next({ request })
+  }
+
   let supabaseResponse = NextResponse.next({
     request,
   })
