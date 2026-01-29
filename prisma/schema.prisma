@@ -283,24 +283,27 @@ model Task {
   creatorId    String
   assigneeId   String?
   proposalId   String?
+  calendarItemId String?
   parentTaskId String?
   isRecurring  Boolean   @default(false)
   recurringPattern String? // daily, weekly, monthly
   createdAt    DateTime  @default(now())
   updatedAt    DateTime  @updatedAt
 
-  creator     User          @relation("TaskCreator", fields: [creatorId], references: [id])
-  assignee    User?         @relation("TaskAssignee", fields: [assigneeId], references: [id])
-  proposal    Proposal?     @relation(fields: [proposalId], references: [id])
-  parentTask  Task?         @relation("TaskSubtasks", fields: [parentTaskId], references: [id])
-  subtasks    Task[]        @relation("TaskSubtasks")
-  comments    TaskComment[]
-  attachments TaskAttachment[]
-  taskRequest TaskRequest?
+  creator      User                 @relation("TaskCreator", fields: [creatorId], references: [id])
+  assignee     User?                @relation("TaskAssignee", fields: [assigneeId], references: [id])
+  proposal     Proposal?            @relation(fields: [proposalId], references: [id])
+  calendarItem ContentCalendarItem? @relation(fields: [calendarItemId], references: [id])
+  parentTask   Task?                @relation("TaskSubtasks", fields: [parentTaskId], references: [id])
+  subtasks     Task[]               @relation("TaskSubtasks")
+  comments     TaskComment[]
+  attachments  TaskAttachment[]
+  taskRequest  TaskRequest?
 
   @@index([status])
   @@index([assigneeId])
   @@index([dueDate])
+  @@index([calendarItemId])
 }
 
 model TaskComment {
@@ -331,10 +334,14 @@ model TaskTemplate {
   id          String   @id @default(cuid())
   name        String
   description String?
-  category    String
-  tasks       String   // JSON array of task definitions
+  category    String   // content, design, video, campaign, admin
+  contentType String?  // social_post, video, article, graphic, carousel, blog_post - links to calendar content types
+  tasks       String   // JSON array of task definitions: [{title, description, category, priority, daysBeforeDeadline}]
+  isActive    Boolean  @default(true)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
+
+  @@index([contentType])
 }
 
 // ==================== PROPOSALS & APPROVALS ====================
@@ -429,6 +436,7 @@ model ContentCalendarItem {
   socialPosts SocialPost[]
   comments    CalendarItemComment[]
   attachments CalendarItemAttachment[]
+  tasks       Task[]
 }
 
 model CalendarItemComment {

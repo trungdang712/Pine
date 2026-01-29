@@ -88,6 +88,14 @@ export const calendarRouter = createTRPCRouter({
           attachments: {
             orderBy: { createdAt: "desc" },
           },
+          tasks: {
+            include: {
+              assignee: {
+                select: { id: true, name: true, avatar: true },
+              },
+            },
+            orderBy: { dueDate: "asc" },
+          },
         },
       });
 
@@ -413,5 +421,163 @@ export const calendarRouter = createTRPCRouter({
         byStatus: Object.fromEntries(byStatus.map((s) => [s.status, s._count])),
         byPlatform: Object.fromEntries(byPlatform.map((p) => [p.platform, p._count])),
       };
+    }),
+
+  // Task Template endpoints
+  getTemplateByContentType: protectedProcedure
+    .input(z.object({ contentType: contentTypeEnum }))
+    .query(async ({ ctx, input }) => {
+      const template = await ctx.prisma.taskTemplate.findFirst({
+        where: {
+          contentType: input.contentType,
+          isActive: true,
+        },
+      });
+
+      if (!template) {
+        return null;
+      }
+
+      return {
+        ...template,
+        tasks: JSON.parse(template.tasks) as Array<{
+          title: string;
+          description: string;
+          category: string;
+          priority: string;
+          daysBeforeDeadline: number;
+        }>,
+      };
+    }),
+
+  getAllTemplates: protectedProcedure.query(async ({ ctx }) => {
+    const templates = await ctx.prisma.taskTemplate.findMany({
+      orderBy: { name: "asc" },
+    });
+
+    return templates.map((template) => ({
+      ...template,
+      tasks: JSON.parse(template.tasks) as Array<{
+        title: string;
+        description: string;
+        category: string;
+        priority: string;
+        daysBeforeDeadline: number;
+      }>,
+    }));
+  }),
+
+  updateTemplate: protectedProcedure
+    .input(
+      z.object({
+        id: z.string(),
+        name: z.string().optional(),
+        description: z.string().optional(),
+        isActive: z.boolean().optional(),
+        tasks: z
+          .array(
+            z.object({
+              title: z.string(),
+              description: z.string(),
+              category: z.string(),
+              priority: z.string(),
+              daysBeforeDeadline: z.number(),
+            })
+          )
+          .optional(),
+      })
+    )
+    .mutation(async ({ ctx, input }) => {
+      const { id, tasks, ...data } = input;
+
+      // Check admin permissions
+      const user = await ctx.prisma.user.findUnique({
+        where: { id: ctx.session.user.id },
+        select: { role: true },
+      });
+
+      if (!["super_admin", "admin", "marketing_manager"].includes(user?.role ?? "")) {
+        throw new TRPCError({ code: "FORBIDDEN", message: "Not authorized to update templates" });
+      }
+
+      return ctx.prisma.taskTemplate.update({
+        where: { id },
+        data: {
+          ...data,
+          ...(tasks && { tasks: JSON.stringify(tasks) }),
+        },
+      });
+    }),
+
+  createTasksFromTemplate: protectedProcedure
+    .input(
+      z.object({
+        calendarItemId: z.string(),
+        contentType: contentTypeEnum,
+        scheduledAt: z.string().datetime(),
+        assigneeIds: z.record(z.string(), z.string()).optional(), // Map task index to assignee ID
+      })
+    )
+    .mutation(async ({ ctx, input }) => {
+      // Get the calendar item
+      const calendarItem = await ctx.prisma.contentCalendarItem.findUnique({
+        where: { id: input.calendarItemId },
+      });
+
+      if (!calendarItem) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Calendar item not found" });
+      }
+
+      // Get the template
+      const template = await ctx.prisma.taskTemplate.findFirst({
+        where: {
+          contentType: input.contentType,
+          isActive: true,
+        },
+      });
+
+      if (!template) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Template not found for this content type" });
+      }
+
+      const templateTasks = JSON.parse(template.tasks) as Array<{
+        title: string;
+        description: string;
+        category: string;
+        priority: string;
+        daysBeforeDeadline: number;
+      }>;
+
+      const scheduledDate = new Date(input.scheduledAt);
+      const createdTasks = [];
+
+      for (let i = 0; i < templateTasks.length; i++) {
+        const taskDef = templateTasks[i];
+        const dueDate = new Date(scheduledDate);
+        dueDate.setDate(dueDate.getDate() - taskDef.daysBeforeDeadline);
+
+        const task = await ctx.prisma.task.create({
+          data: {
+            title: taskDef.title,
+            description: taskDef.description,
+            category: taskDef.category,
+            priority: taskDef.priority,
+            status: "todo",
+            dueDate,
+            creatorId: ctx.session.user.id,
+            assigneeId: input.assigneeIds?.[i.toString()] || null,
+            calendarItemId: input.calendarItemId,
+          },
+          include: {
+            assignee: {
+              select: { id: true, name: true, avatar: true },
+            },
+          },
+        });
+
+        createdTasks.push(task);
+      }
+
+      return createdTasks;
     }),
 });

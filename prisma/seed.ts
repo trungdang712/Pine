@@ -1233,6 +1233,103 @@ async function main() {
   }
   console.log("Created 6 integration configs");
 
+  // 15. Task Templates for content types (delete + recreate)
+  await prisma.taskTemplate.deleteMany({});
+  const taskTemplates = [
+    {
+      name: "Social Post Template",
+      description: "Standard tasks for creating a social media post",
+      category: "content",
+      contentType: "social_post",
+      isActive: true,
+      tasks: JSON.stringify([
+        { title: "Viết caption", description: "Viết nội dung caption cho bài đăng", category: "content", priority: "normal", daysBeforeDeadline: 2 },
+        { title: "Thiết kế hình ảnh", description: "Thiết kế hình ảnh/graphic cho bài đăng", category: "design", priority: "normal", daysBeforeDeadline: 2 },
+        { title: "Review nội dung", description: "Manager review và duyệt nội dung", category: "admin", priority: "high", daysBeforeDeadline: 1 },
+        { title: "Đăng bài", description: "Đăng bài lên các nền tảng theo lịch", category: "content", priority: "high", daysBeforeDeadline: 0 },
+      ]),
+    },
+    {
+      name: "Video Template",
+      description: "Standard tasks for creating a video content",
+      category: "video",
+      contentType: "video",
+      isActive: true,
+      tasks: JSON.stringify([
+        { title: "Viết script", description: "Viết kịch bản cho video", category: "content", priority: "normal", daysBeforeDeadline: 5 },
+        { title: "Chuẩn bị quay", description: "Setup thiết bị, location, diễn viên", category: "video", priority: "normal", daysBeforeDeadline: 3 },
+        { title: "Quay video", description: "Thực hiện quay video theo script", category: "video", priority: "high", daysBeforeDeadline: 3 },
+        { title: "Edit video", description: "Chỉnh sửa, cắt ghép, thêm hiệu ứng", category: "video", priority: "normal", daysBeforeDeadline: 2 },
+        { title: "Thêm subtitle", description: "Thêm phụ đề cho video", category: "video", priority: "normal", daysBeforeDeadline: 1 },
+        { title: "Review video", description: "Manager review và duyệt video", category: "admin", priority: "high", daysBeforeDeadline: 1 },
+        { title: "Đăng video", description: "Upload và đăng video lên các nền tảng", category: "content", priority: "high", daysBeforeDeadline: 0 },
+      ]),
+    },
+    {
+      name: "Article Template",
+      description: "Standard tasks for creating an article/blog post",
+      category: "content",
+      contentType: "article",
+      isActive: true,
+      tasks: JSON.stringify([
+        { title: "Research nội dung", description: "Nghiên cứu và thu thập thông tin cho bài viết", category: "content", priority: "normal", daysBeforeDeadline: 4 },
+        { title: "Viết bài", description: "Viết nội dung bài viết đầy đủ", category: "content", priority: "normal", daysBeforeDeadline: 3 },
+        { title: "Thiết kế hình minh họa", description: "Tạo hình ảnh minh họa cho bài viết", category: "design", priority: "normal", daysBeforeDeadline: 2 },
+        { title: "Review bài viết", description: "Manager review và chỉnh sửa nội dung", category: "admin", priority: "high", daysBeforeDeadline: 1 },
+        { title: "SEO optimization", description: "Tối ưu SEO cho bài viết", category: "content", priority: "normal", daysBeforeDeadline: 1 },
+        { title: "Đăng bài", description: "Đăng bài lên website/blog", category: "content", priority: "high", daysBeforeDeadline: 0 },
+      ]),
+    },
+    {
+      name: "Graphic Template",
+      description: "Standard tasks for creating graphic/infographic",
+      category: "design",
+      contentType: "graphic",
+      isActive: true,
+      tasks: JSON.stringify([
+        { title: "Thu thập nội dung", description: "Thu thập thông tin và data cho infographic", category: "content", priority: "normal", daysBeforeDeadline: 3 },
+        { title: "Thiết kế layout", description: "Tạo layout và concept cho graphic", category: "design", priority: "normal", daysBeforeDeadline: 2 },
+        { title: "Hoàn thiện design", description: "Hoàn thiện chi tiết thiết kế", category: "design", priority: "normal", daysBeforeDeadline: 1 },
+        { title: "Review design", description: "Manager review và duyệt thiết kế", category: "admin", priority: "high", daysBeforeDeadline: 1 },
+        { title: "Export & đăng", description: "Export các format và đăng lên các nền tảng", category: "design", priority: "high", daysBeforeDeadline: 0 },
+      ]),
+    },
+    {
+      name: "Carousel Template",
+      description: "Standard tasks for creating carousel/slide content",
+      category: "design",
+      contentType: "carousel",
+      isActive: true,
+      tasks: JSON.stringify([
+        { title: "Lên outline", description: "Lên dàn ý nội dung cho từng slide", category: "content", priority: "normal", daysBeforeDeadline: 3 },
+        { title: "Viết nội dung slides", description: "Viết nội dung chi tiết cho mỗi slide", category: "content", priority: "normal", daysBeforeDeadline: 2 },
+        { title: "Thiết kế slides", description: "Thiết kế visual cho các slides", category: "design", priority: "normal", daysBeforeDeadline: 2 },
+        { title: "Review carousel", description: "Manager review và duyệt", category: "admin", priority: "high", daysBeforeDeadline: 1 },
+        { title: "Đăng carousel", description: "Đăng carousel lên các nền tảng", category: "content", priority: "high", daysBeforeDeadline: 0 },
+      ]),
+    },
+    {
+      name: "Blog Post Template",
+      description: "Standard tasks for creating a blog post",
+      category: "content",
+      contentType: "blog_post",
+      isActive: true,
+      tasks: JSON.stringify([
+        { title: "Chọn topic & keyword", description: "Research và chọn topic, keyword SEO", category: "content", priority: "normal", daysBeforeDeadline: 5 },
+        { title: "Viết draft", description: "Viết bản draft đầu tiên", category: "content", priority: "normal", daysBeforeDeadline: 4 },
+        { title: "Chỉnh sửa & hoàn thiện", description: "Edit và hoàn thiện nội dung", category: "content", priority: "normal", daysBeforeDeadline: 3 },
+        { title: "Thiết kế featured image", description: "Tạo hình ảnh đại diện cho blog", category: "design", priority: "normal", daysBeforeDeadline: 2 },
+        { title: "Review bài viết", description: "Manager review và duyệt nội dung", category: "admin", priority: "high", daysBeforeDeadline: 1 },
+        { title: "Publish blog", description: "Đăng blog lên website", category: "content", priority: "high", daysBeforeDeadline: 0 },
+      ]),
+    },
+  ];
+
+  for (const template of taskTemplates) {
+    await prisma.taskTemplate.create({ data: template });
+  }
+  console.log("Created 6 task templates for content types");
+
   console.log("\nDatabase seeded successfully!");
 }
 

@@ -37,6 +37,10 @@ import {
   Send,
   MessageSquare,
   Paperclip,
+  CheckCircle2,
+  Circle,
+  ListTodo,
+  Users,
 } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useUpload, formatFileSize } from "@/hooks/use-upload";
@@ -94,6 +98,29 @@ interface CalendarItemAttachment {
   createdAt: Date;
 }
 
+interface LinkedTask {
+  id: string;
+  title: string;
+  description: string | null;
+  status: string;
+  priority: string;
+  category: string;
+  dueDate: Date | null;
+  assignee: {
+    id: string;
+    name: string | null;
+    avatar: string | null;
+  } | null;
+}
+
+interface TemplateTask {
+  title: string;
+  description: string;
+  category: string;
+  priority: string;
+  daysBeforeDeadline: number;
+}
+
 const platformColors: Record<string, string> = {
   facebook: "bg-blue-500",
   zalo: "bg-blue-600",
@@ -146,6 +173,11 @@ export default function CalendarPage() {
   const [selectedContent, setSelectedContent] = useState<CalendarItem | null>(null);
   const [isContentDetailOpen, setIsContentDetailOpen] = useState(false);
   const [isNewContentOpen, setIsNewContentOpen] = useState(false);
+  const [isTaskTemplateOpen, setIsTaskTemplateOpen] = useState(false);
+  const [newlyCreatedItemId, setNewlyCreatedItemId] = useState<string | null>(null);
+  const [newlyCreatedContentType, setNewlyCreatedContentType] = useState<ContentType | null>(null);
+  const [newlyCreatedScheduledAt, setNewlyCreatedScheduledAt] = useState<string | null>(null);
+  const [taskAssignees, setTaskAssignees] = useState<Record<string, string>>({});
   const [filterPlatform, setFilterPlatform] = useState<string>("all");
   const [filterStatus, setFilterStatus] = useState<string>("all");
   const [viewMode, setViewMode] = useState<"month" | "week" | "day">("month");
@@ -215,9 +247,19 @@ export default function CalendarPage() {
   const utils = trpc.useUtils();
 
   const createMutation = trpc.calendar.create.useMutation({
-    onSuccess: () => {
+    onSuccess: (data) => {
       toast.success("Content created successfully");
       setIsNewContentOpen(false);
+
+      // Store info for task template modal
+      if (newContent.contentType) {
+        setNewlyCreatedItemId(data.id);
+        setNewlyCreatedContentType(newContent.contentType as ContentType);
+        setNewlyCreatedScheduledAt(`${newContent.date}T${newContent.time || "10:00"}:00`);
+        setTaskAssignees({});
+        setIsTaskTemplateOpen(true);
+      }
+
       setNewContent({
         title: "",
         description: "",
@@ -286,6 +328,47 @@ export default function CalendarPage() {
     { id: selectedContent?.id ?? "" },
     { enabled: isContentDetailOpen && !!selectedContent?.id }
   );
+
+  // Fetch task template when task template modal opens
+  const { data: taskTemplate, isLoading: isLoadingTemplate } = trpc.calendar.getTemplateByContentType.useQuery(
+    { contentType: newlyCreatedContentType! },
+    { enabled: isTaskTemplateOpen && !!newlyCreatedContentType }
+  );
+
+  // Mutation to create tasks from template
+  const createTasksMutation = trpc.calendar.createTasksFromTemplate.useMutation({
+    onSuccess: (tasks) => {
+      toast.success(`Created ${tasks.length} tasks successfully`);
+      setIsTaskTemplateOpen(false);
+      setNewlyCreatedItemId(null);
+      setNewlyCreatedContentType(null);
+      setNewlyCreatedScheduledAt(null);
+      setTaskAssignees({});
+      utils.calendar.getById.invalidate();
+    },
+    onError: (error) => {
+      toast.error(`Failed to create tasks: ${error.message}`);
+    },
+  });
+
+  const handleCreateTasksFromTemplate = () => {
+    if (!newlyCreatedItemId || !newlyCreatedContentType || !newlyCreatedScheduledAt) return;
+
+    createTasksMutation.mutate({
+      calendarItemId: newlyCreatedItemId,
+      contentType: newlyCreatedContentType,
+      scheduledAt: new Date(newlyCreatedScheduledAt).toISOString(),
+      assigneeIds: taskAssignees,
+    });
+  };
+
+  const handleSkipTaskCreation = () => {
+    setIsTaskTemplateOpen(false);
+    setNewlyCreatedItemId(null);
+    setNewlyCreatedContentType(null);
+    setNewlyCreatedScheduledAt(null);
+    setTaskAssignees({});
+  };
 
   // Upload hook for attachments
   const { upload: uploadFile, uploading: isUploading } = useUpload({
@@ -1027,6 +1110,61 @@ export default function CalendarPage() {
                     <p className="text-sm text-muted-foreground">{t.common.noData}</p>
                   )}
                 </div>
+
+                {/* Linked Tasks Section */}
+                <div className="border-t pt-4">
+                  <Label className="flex items-center gap-2 mb-3">
+                    <ListTodo className="w-4 h-4" />
+                    Tasks liên kết ({contentDetail?.tasks?.length || 0})
+                  </Label>
+
+                  {isLoadingDetail ? (
+                    <div className="text-sm text-muted-foreground">{t.common.loading}</div>
+                  ) : contentDetail?.tasks && contentDetail.tasks.length > 0 ? (
+                    <div className="space-y-2 max-h-48 overflow-y-auto">
+                      {contentDetail.tasks.map((task: LinkedTask) => (
+                        <div
+                          key={task.id}
+                          className="flex items-center justify-between p-2 bg-muted/50 rounded-md"
+                        >
+                          <div className="flex items-center gap-3">
+                            {task.status === "done" ? (
+                              <CheckCircle2 className="w-4 h-4 text-green-500" />
+                            ) : (
+                              <Circle className="w-4 h-4 text-muted-foreground" />
+                            )}
+                            <div>
+                              <p className={`text-sm font-medium ${task.status === "done" ? "line-through text-muted-foreground" : ""}`}>
+                                {task.title}
+                              </p>
+                              <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                                {task.dueDate && (
+                                  <span>{new Date(task.dueDate).toLocaleDateString("vi-VN")}</span>
+                                )}
+                                {task.assignee && (
+                                  <>
+                                    <span>•</span>
+                                    <span>{task.assignee.name}</span>
+                                  </>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                          <Badge
+                            variant={task.status === "done" ? "default" : "outline"}
+                            className="text-xs"
+                          >
+                            {task.status === "done" ? "Hoàn thành" :
+                             task.status === "in_progress" ? "Đang làm" :
+                             task.status === "review" ? "Review" : "Chờ"}
+                          </Badge>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-sm text-muted-foreground">Chưa có tasks liên kết</p>
+                  )}
+                </div>
               </div>
 
               <DialogFooter className="flex justify-between">
@@ -1228,6 +1366,108 @@ export default function CalendarPage() {
                 </>
               ) : (
                 t.calendar.createEvent
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Task Template Modal - shown after creating content */}
+      <Dialog open={isTaskTemplateOpen} onOpenChange={setIsTaskTemplateOpen}>
+        <DialogContent className="max-w-[100vw] sm:max-w-2xl w-full max-h-[100dvh] sm:max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <ListTodo className="w-5 h-5" />
+              Tạo tasks từ template
+            </DialogTitle>
+            <DialogDescription>
+              {newlyCreatedContentType && (
+                <>Template cho: <strong>{contentTypeDisplayNames[newlyCreatedContentType]}</strong></>
+              )}
+            </DialogDescription>
+          </DialogHeader>
+
+          {isLoadingTemplate ? (
+            <div className="flex items-center justify-center py-8">
+              <LoadingSpinner />
+            </div>
+          ) : taskTemplate ? (
+            <div className="space-y-4">
+              <p className="text-sm text-muted-foreground">
+                {taskTemplate.description}
+              </p>
+
+              <div className="space-y-3">
+                {taskTemplate.tasks.map((task: TemplateTask, index: number) => {
+                  const dueDate = newlyCreatedScheduledAt
+                    ? new Date(new Date(newlyCreatedScheduledAt).getTime() - task.daysBeforeDeadline * 24 * 60 * 60 * 1000)
+                    : null;
+
+                  return (
+                    <div key={index} className="border rounded-lg p-3 space-y-2">
+                      <div className="flex items-start justify-between">
+                        <div>
+                          <p className="font-medium">{task.title}</p>
+                          <p className="text-sm text-muted-foreground">{task.description}</p>
+                        </div>
+                        <Badge variant="outline" className="ml-2">
+                          {task.daysBeforeDeadline === 0 ? "Ngày đăng" : `-${task.daysBeforeDeadline} ngày`}
+                        </Badge>
+                      </div>
+                      <div className="flex items-center gap-4 text-sm">
+                        <span className="text-muted-foreground">
+                          Deadline: {dueDate?.toLocaleDateString("vi-VN")}
+                        </span>
+                        <span className="text-muted-foreground">•</span>
+                        <span className="text-muted-foreground capitalize">{task.category}</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Users className="w-4 h-4 text-muted-foreground" />
+                        <Select
+                          value={taskAssignees[index.toString()] || ""}
+                          onValueChange={(value) => setTaskAssignees({ ...taskAssignees, [index.toString()]: value })}
+                        >
+                          <SelectTrigger className="h-8">
+                            <SelectValue placeholder="Chọn người thực hiện" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {teamMembers.map((member) => (
+                              <SelectItem key={member.id} value={member.id}>
+                                {member.name}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          ) : (
+            <div className="text-center py-8 text-muted-foreground">
+              Không tìm thấy template cho loại nội dung này
+            </div>
+          )}
+
+          <DialogFooter className="gap-2">
+            <Button variant="outline" onClick={handleSkipTaskCreation}>
+              Bỏ qua
+            </Button>
+            <Button
+              onClick={handleCreateTasksFromTemplate}
+              disabled={!taskTemplate || createTasksMutation.isPending}
+            >
+              {createTasksMutation.isPending ? (
+                <>
+                  <LoadingSpinner size="sm" className="mr-2 p-0" />
+                  Đang tạo...
+                </>
+              ) : (
+                <>
+                  <CheckCircle2 className="w-4 h-4 mr-2" />
+                  Tạo {taskTemplate?.tasks.length || 0} tasks
+                </>
               )}
             </Button>
           </DialogFooter>

@@ -55,6 +55,9 @@ import {
   WifiOff,
   AlertTriangle,
   Settings,
+  ListTodo,
+  Plus,
+  GripVertical,
 } from "lucide-react";
 import { toast } from "sonner";
 import { useLanguage, type Language } from "@/i18n";
@@ -152,6 +155,11 @@ export default function SettingsPage() {
     { enabled: !!managePlatform && manageDialogOpen }
   );
 
+  // Task templates query
+  const { data: taskTemplates, isLoading: templatesLoading, refetch: refetchTemplates } = trpc.calendar.getAllTemplates.useQuery(undefined, {
+    enabled: isAuthenticated && isAdmin,
+  });
+
   // --- tRPC Mutations ---
   const updateProfileMutation = trpc.user.updateProfile.useMutation({
     onSuccess: () => {
@@ -220,6 +228,72 @@ export default function SettingsPage() {
     },
     onError: (error) => toast.error(error.message),
   });
+
+  const updateTemplateMutation = trpc.calendar.updateTemplate.useMutation({
+    onSuccess: () => {
+      toast.success("Template updated successfully");
+      setEditTemplateDialogOpen(false);
+      refetchTemplates();
+    },
+    onError: (error) => toast.error(error.message),
+  });
+
+  // Template edit state
+  const [editTemplateDialogOpen, setEditTemplateDialogOpen] = useState(false);
+  const [editingTemplate, setEditingTemplate] = useState<{
+    id: string;
+    name: string;
+    description: string | null;
+    contentType: string | null;
+    isActive: boolean;
+    tasks: Array<{
+      title: string;
+      description: string;
+      category: string;
+      priority: string;
+      daysBeforeDeadline: number;
+    }>;
+  } | null>(null);
+
+  const handleEditTemplate = (template: typeof editingTemplate) => {
+    setEditingTemplate(template);
+    setEditTemplateDialogOpen(true);
+  };
+
+  const handleSaveTemplate = () => {
+    if (!editingTemplate) return;
+    updateTemplateMutation.mutate({
+      id: editingTemplate.id,
+      name: editingTemplate.name,
+      description: editingTemplate.description || undefined,
+      isActive: editingTemplate.isActive,
+      tasks: editingTemplate.tasks,
+    });
+  };
+
+  const handleUpdateTaskInTemplate = (taskIndex: number, field: string, value: string | number) => {
+    if (!editingTemplate) return;
+    const updatedTasks = [...editingTemplate.tasks];
+    updatedTasks[taskIndex] = { ...updatedTasks[taskIndex], [field]: value };
+    setEditingTemplate({ ...editingTemplate, tasks: updatedTasks });
+  };
+
+  const handleAddTaskToTemplate = () => {
+    if (!editingTemplate) return;
+    setEditingTemplate({
+      ...editingTemplate,
+      tasks: [
+        ...editingTemplate.tasks,
+        { title: "", description: "", category: "content", priority: "normal", daysBeforeDeadline: 1 },
+      ],
+    });
+  };
+
+  const handleRemoveTaskFromTemplate = (taskIndex: number) => {
+    if (!editingTemplate) return;
+    const updatedTasks = editingTemplate.tasks.filter((_, i) => i !== taskIndex);
+    setEditingTemplate({ ...editingTemplate, tasks: updatedTasks });
+  };
 
   // --- Helpers ---
   const getInitials = (name: string) => {
@@ -483,6 +557,12 @@ export default function SettingsPage() {
             <Palette className="w-4 h-4 mr-2" />
             {t.settings.tabs.appearance}
           </TabsTrigger>
+          {isAdmin && (
+            <TabsTrigger value="templates">
+              <ListTodo className="w-4 h-4 mr-2" />
+              Task Templates
+            </TabsTrigger>
+          )}
         </TabsList>
 
         {/* Profile Tab */}
@@ -1313,7 +1393,223 @@ export default function SettingsPage() {
             </CardContent>
           </Card>
         </TabsContent>
+
+        {/* Task Templates Tab */}
+        {isAdmin && (
+          <TabsContent value="templates" className="space-y-6">
+            <Card>
+              <CardHeader>
+                <CardTitle>Task Templates</CardTitle>
+                <CardDescription>
+                  Quản lý templates để tự động tạo tasks khi tạo nội dung mới trên calendar
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                {templatesLoading ? (
+                  <div className="flex items-center justify-center py-8">
+                    <Loader2 className="w-6 h-6 animate-spin" />
+                  </div>
+                ) : taskTemplates && taskTemplates.length > 0 ? (
+                  <div className="space-y-4">
+                    {taskTemplates.map((template) => (
+                      <div
+                        key={template.id}
+                        className="border rounded-lg p-4 space-y-3"
+                      >
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <div className="flex items-center gap-2">
+                              <h4 className="font-medium">{template.name}</h4>
+                              <Badge variant={template.isActive ? "default" : "secondary"}>
+                                {template.isActive ? "Active" : "Inactive"}
+                              </Badge>
+                            </div>
+                            <p className="text-sm text-muted-foreground">{template.description}</p>
+                            <p className="text-xs text-muted-foreground mt-1">
+                              Content Type: <strong>{template.contentType || "N/A"}</strong> • {template.tasks.length} tasks
+                            </p>
+                          </div>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleEditTemplate(template)}
+                          >
+                            <Edit className="w-4 h-4 mr-2" />
+                            Edit
+                          </Button>
+                        </div>
+                        <div className="pl-4 border-l-2 space-y-1">
+                          {template.tasks.map((task, idx) => (
+                            <div key={idx} className="flex items-center justify-between text-sm">
+                              <span>{task.title}</span>
+                              <span className="text-muted-foreground">
+                                {task.daysBeforeDeadline === 0 ? "Ngày đăng" : `-${task.daysBeforeDeadline} ngày`}
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-center py-8 text-muted-foreground">
+                    No templates found
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+        )}
       </Tabs>
+
+      {/* Edit Template Dialog */}
+      <Dialog open={editTemplateDialogOpen} onOpenChange={setEditTemplateDialogOpen}>
+        <DialogContent className="max-w-[100vw] sm:max-w-2xl w-full max-h-[100dvh] sm:max-h-[85vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Edit Template: {editingTemplate?.name}</DialogTitle>
+            <DialogDescription>
+              Chỉnh sửa các tasks trong template này
+            </DialogDescription>
+          </DialogHeader>
+          {editingTemplate && (
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>Template Name</Label>
+                  <Input
+                    value={editingTemplate.name}
+                    onChange={(e) => setEditingTemplate({ ...editingTemplate, name: e.target.value })}
+                  />
+                </div>
+                <div className="flex items-center gap-2 pt-6">
+                  <Switch
+                    checked={editingTemplate.isActive}
+                    onCheckedChange={(checked) => setEditingTemplate({ ...editingTemplate, isActive: checked })}
+                  />
+                  <Label>Active</Label>
+                </div>
+              </div>
+              <div className="space-y-2">
+                <Label>Description</Label>
+                <Textarea
+                  value={editingTemplate.description || ""}
+                  onChange={(e) => setEditingTemplate({ ...editingTemplate, description: e.target.value })}
+                  rows={2}
+                />
+              </div>
+
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <Label>Tasks ({editingTemplate.tasks.length})</Label>
+                  <Button variant="outline" size="sm" onClick={handleAddTaskToTemplate}>
+                    <Plus className="w-4 h-4 mr-2" />
+                    Add Task
+                  </Button>
+                </div>
+                {editingTemplate.tasks.map((task, idx) => (
+                  <div key={idx} className="border rounded-lg p-3 space-y-3">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <GripVertical className="w-4 h-4 text-muted-foreground" />
+                        <span className="text-sm font-medium">Task {idx + 1}</span>
+                      </div>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="text-destructive"
+                        onClick={() => handleRemoveTaskFromTemplate(idx)}
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </Button>
+                    </div>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="space-y-1">
+                        <Label className="text-xs">Title</Label>
+                        <Input
+                          value={task.title}
+                          onChange={(e) => handleUpdateTaskInTemplate(idx, "title", e.target.value)}
+                          placeholder="Task title"
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <Label className="text-xs">Days Before Deadline</Label>
+                        <Input
+                          type="number"
+                          value={task.daysBeforeDeadline}
+                          onChange={(e) => handleUpdateTaskInTemplate(idx, "daysBeforeDeadline", parseInt(e.target.value) || 0)}
+                          min={0}
+                        />
+                      </div>
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-xs">Description</Label>
+                      <Input
+                        value={task.description}
+                        onChange={(e) => handleUpdateTaskInTemplate(idx, "description", e.target.value)}
+                        placeholder="Task description"
+                      />
+                    </div>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="space-y-1">
+                        <Label className="text-xs">Category</Label>
+                        <Select
+                          value={task.category}
+                          onValueChange={(value) => handleUpdateTaskInTemplate(idx, "category", value)}
+                        >
+                          <SelectTrigger>
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="content">Content</SelectItem>
+                            <SelectItem value="design">Design</SelectItem>
+                            <SelectItem value="video">Video</SelectItem>
+                            <SelectItem value="admin">Admin</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="space-y-1">
+                        <Label className="text-xs">Priority</Label>
+                        <Select
+                          value={task.priority}
+                          onValueChange={(value) => handleUpdateTaskInTemplate(idx, "priority", value)}
+                        >
+                          <SelectTrigger>
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="low">Low</SelectItem>
+                            <SelectItem value="normal">Normal</SelectItem>
+                            <SelectItem value="high">High</SelectItem>
+                            <SelectItem value="urgent">Urgent</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setEditTemplateDialogOpen(false)}>
+              Cancel
+            </Button>
+            <Button onClick={handleSaveTemplate} disabled={updateTemplateMutation.isPending}>
+              {updateTemplateMutation.isPending ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  Saving...
+                </>
+              ) : (
+                <>
+                  <Save className="w-4 h-4 mr-2" />
+                  Save Changes
+                </>
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Invite Member Dialog */}
       <Dialog open={inviteDialogOpen} onOpenChange={setInviteDialogOpen}>
