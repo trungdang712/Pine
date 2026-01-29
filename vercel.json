@@ -7,6 +7,22 @@
     {
       "path": "/api/cron/reddit?action=digest",
       "schedule": "0 8 * * *"
+    },
+    {
+      "path": "/api/cron/sync-ads?platform=google_ads",
+      "schedule": "0 6 * * *"
+    },
+    {
+      "path": "/api/cron/sync-ads?platform=facebook",
+      "schedule": "0 6 * * *"
+    },
+    {
+      "path": "/api/cron/sync-posts",
+      "schedule": "0 */6 * * *"
+    },
+    {
+      "path": "/api/cron/sync-ga4",
+      "schedule": "0 7 * * *"
     }
   ]
 }

@@ -60,6 +60,9 @@ import {
   Plus,
   GripVertical,
   Globe,
+  ExternalLink,
+  RefreshCw,
+  Upload,
 } from "lucide-react";
 import { toast } from "sonner";
 import { useLanguage, type Language } from "@/i18n";
@@ -84,6 +87,35 @@ export default function SettingsPage() {
       setActiveTab("security");
     }
   }, [searchParams, profile?.mustChangePassword]);
+
+  // Handle OAuth callback results
+  useEffect(() => {
+    const success = searchParams.get("success");
+    const error = searchParams.get("error");
+    const errorDescription = searchParams.get("error_description");
+    const platform = searchParams.get("platform");
+    const instagramConnected = searchParams.get("instagram_connected");
+
+    if (success === "true" && platform) {
+      toast.success(`Successfully connected ${platform.replace("_", " ").replace(/\b\w/g, l => l.toUpperCase())}`);
+      if (instagramConnected === "true") {
+        toast.success("Instagram account also connected via Facebook");
+      }
+      // Clear URL params
+      const url = new URL(window.location.href);
+      url.searchParams.delete("success");
+      url.searchParams.delete("platform");
+      url.searchParams.delete("instagram_connected");
+      window.history.replaceState({}, "", url.toString());
+    } else if (error) {
+      toast.error(`OAuth failed: ${errorDescription || error}`);
+      // Clear URL params
+      const url = new URL(window.location.href);
+      url.searchParams.delete("error");
+      url.searchParams.delete("error_description");
+      window.history.replaceState({}, "", url.toString());
+    }
+  }, [searchParams]);
 
   // Profile form state
   const [profileForm, setProfileForm] = useState({
@@ -129,6 +161,8 @@ export default function SettingsPage() {
   const [managePlatform, setManagePlatform] = useState("");
   const [disconnectDialogOpen, setDisconnectDialogOpen] = useState(false);
   const [disconnectPlatform, setDisconnectPlatform] = useState("");
+  const [oauthLoading, setOauthLoading] = useState(false);
+  const [syncLoading, setSyncLoading] = useState<string | null>(null);
 
   // Notification preferences (client-side)
   const [emailNotifications, setEmailNotifications] = useState(true);
@@ -259,6 +293,22 @@ export default function SettingsPage() {
       }
     },
     onError: (error) => toast.error(error.message),
+  });
+
+  const triggerSyncMutation = trpc.integration.triggerSync.useMutation({
+    onSuccess: (data) => {
+      setSyncLoading(null);
+      if (data.success) {
+        toast.success(data.message);
+        refetchIntegrations();
+      } else {
+        toast.error(data.message);
+      }
+    },
+    onError: (error) => {
+      setSyncLoading(null);
+      toast.error(error.message);
+    },
   });
 
   const updateTemplateMutation = trpc.calendar.updateTemplate.useMutation({
@@ -703,6 +753,84 @@ export default function SettingsPage() {
 
   const handleTestConnection = (platform: string) => {
     testConnectionMutation.mutate({ platform });
+  };
+
+  // Helper to check if platform supports OAuth
+  const supportsOAuth = (platform: string): boolean => {
+    return ["google_ads", "google_analytics", "facebook"].includes(platform);
+  };
+
+  // Helper to get OAuth URL and redirect
+  const handleOAuthConnect = async (platform: "google_ads" | "google_analytics" | "facebook") => {
+    setOauthLoading(true);
+    try {
+      // Build OAuth URL based on platform
+      const baseUrl = window.location.origin;
+      let oauthUrl = "";
+
+      if (platform === "google_ads" || platform === "google_analytics") {
+        // Google OAuth
+        const scopes = platform === "google_ads"
+          ? ["https://www.googleapis.com/auth/adwords"]
+          : ["https://www.googleapis.com/auth/analytics.readonly"];
+        scopes.push(
+          "https://www.googleapis.com/auth/userinfo.email",
+          "https://www.googleapis.com/auth/userinfo.profile"
+        );
+        const state = btoa(JSON.stringify({ platform, returnUrl: "/settings?tab=integrations" }));
+        const params = new URLSearchParams({
+          client_id: process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID || "",
+          redirect_uri: `${baseUrl}/api/auth/callback/google`,
+          response_type: "code",
+          scope: scopes.join(" "),
+          access_type: "offline",
+          prompt: "consent",
+          state,
+        });
+        oauthUrl = `https://accounts.google.com/o/oauth2/v2/auth?${params.toString()}`;
+      } else if (platform === "facebook") {
+        // Facebook OAuth
+        const permissions = [
+          "ads_read",
+          "ads_management",
+          "pages_show_list",
+          "pages_read_engagement",
+          "pages_read_user_content",
+          "read_insights",
+          "instagram_basic",
+          "instagram_manage_insights",
+          "business_management",
+        ];
+        const state = btoa(JSON.stringify({ returnUrl: "/settings?tab=integrations" }));
+        const params = new URLSearchParams({
+          client_id: process.env.NEXT_PUBLIC_FACEBOOK_APP_ID || "",
+          redirect_uri: `${baseUrl}/api/auth/callback/facebook`,
+          response_type: "code",
+          scope: permissions.join(","),
+          state,
+        });
+        oauthUrl = `https://www.facebook.com/v19.0/dialog/oauth?${params.toString()}`;
+      }
+
+      if (oauthUrl) {
+        window.location.href = oauthUrl;
+      } else {
+        toast.error("OAuth not configured for this platform");
+        setOauthLoading(false);
+      }
+    } catch {
+      toast.error("Failed to initiate OAuth");
+      setOauthLoading(false);
+    }
+  };
+
+  // Handle manual sync trigger
+  const handleTriggerSync = (platform: string, syncType: "campaigns" | "posts" | "landing_pages") => {
+    setSyncLoading(platform);
+    triggerSyncMutation.mutate({
+      platform: platform as "google_ads" | "facebook" | "zalo" | "google_analytics",
+      syncType,
+    });
   };
 
   // Notification settings (static config - no DB model for preferences)
@@ -1294,7 +1422,7 @@ export default function SettingsPage() {
                                   </p>
                                 )}
                               </div>
-                              <div className="flex gap-2">
+                              <div className="flex gap-2 flex-wrap">
                                 {isAdmin && (
                                   <>
                                     <Button
@@ -1309,11 +1437,35 @@ export default function SettingsPage() {
                                       <Settings className="w-3 h-3 mr-1" />
                                       Manage
                                     </Button>
+                                    {/* Sync button for syncable platforms */}
+                                    {["google_ads", "facebook", "zalo", "google_analytics"].includes(integration.platform) && (
+                                      <Button
+                                        variant="outline"
+                                        size="sm"
+                                        onClick={() => {
+                                          const syncType = integration.platform === "google_analytics"
+                                            ? "landing_pages"
+                                            : integration.platform === "zalo"
+                                              ? "posts"
+                                              : "campaigns";
+                                          handleTriggerSync(integration.platform, syncType);
+                                        }}
+                                        disabled={syncLoading === integration.platform}
+                                        title="Sync data now"
+                                      >
+                                        {syncLoading === integration.platform ? (
+                                          <Loader2 className="w-3 h-3 animate-spin" />
+                                        ) : (
+                                          <RefreshCw className="w-3 h-3" />
+                                        )}
+                                      </Button>
+                                    )}
                                     <Button
                                       variant="outline"
                                       size="sm"
                                       onClick={() => handleTestConnection(integration.platform)}
                                       disabled={testConnectionMutation.isPending}
+                                      title="Test connection"
                                     >
                                       {testConnectionMutation.isPending ? (
                                         <Loader2 className="w-3 h-3 animate-spin" />
@@ -1329,6 +1481,7 @@ export default function SettingsPage() {
                                         setDisconnectPlatform(integration.platform);
                                         setDisconnectDialogOpen(true);
                                       }}
+                                      title="Disconnect"
                                     >
                                       <WifiOff className="w-3 h-3" />
                                     </Button>
@@ -2432,7 +2585,9 @@ export default function SettingsPage() {
           <DialogHeader>
             <DialogTitle>Connect {getPlatformDisplay(connectPlatform)}</DialogTitle>
             <DialogDescription>
-              Enter the API credentials for {getPlatformDisplay(connectPlatform)} to establish the connection.
+              {supportsOAuth(connectPlatform)
+                ? `Connect your ${getPlatformDisplay(connectPlatform)} account using OAuth for secure authentication.`
+                : `Enter the API credentials for ${getPlatformDisplay(connectPlatform)} to establish the connection.`}
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
@@ -2440,6 +2595,85 @@ export default function SettingsPage() {
               <Label>Platform</Label>
               <Input value={getPlatformDisplay(connectPlatform)} disabled />
             </div>
+
+            {/* OAuth-supported platforms */}
+            {supportsOAuth(connectPlatform) && (
+              <div className="space-y-4">
+                <div className="p-4 bg-accent/50 rounded-lg space-y-3">
+                  <div className="flex items-center gap-2">
+                    <Shield className="w-4 h-4 text-green-600" />
+                    <span className="text-sm font-medium">Secure OAuth Connection</span>
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    Click the button below to securely connect via OAuth. You&apos;ll be redirected to
+                    {connectPlatform === "facebook" ? " Facebook " : " Google "}
+                    to authorize access.
+                  </p>
+                  <Button
+                    className="w-full"
+                    onClick={() => handleOAuthConnect(connectPlatform as "google_ads" | "google_analytics" | "facebook")}
+                    disabled={oauthLoading}
+                  >
+                    {oauthLoading ? (
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    ) : (
+                      <ExternalLink className="w-4 h-4 mr-2" />
+                    )}
+                    Connect with {connectPlatform === "facebook" ? "Facebook" : "Google"}
+                  </Button>
+                </div>
+
+                <div className="relative">
+                  <div className="absolute inset-0 flex items-center">
+                    <span className="w-full border-t" />
+                  </div>
+                  <div className="relative flex justify-center text-xs uppercase">
+                    <span className="bg-background px-2 text-muted-foreground">Or use manual credentials</span>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* GA4 Service Account Upload (special case) */}
+            {connectPlatform === "google_analytics" && (
+              <div className="space-y-2">
+                <Label>Service Account JSON (Alternative)</Label>
+                <div className="border-2 border-dashed rounded-lg p-4 text-center">
+                  <Upload className="w-8 h-8 mx-auto mb-2 text-muted-foreground" />
+                  <p className="text-sm text-muted-foreground mb-2">
+                    For server-to-server access, upload your GA4 service account JSON key
+                  </p>
+                  <input
+                    type="file"
+                    accept=".json"
+                    className="hidden"
+                    id="ga4-service-account"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (file) {
+                        const reader = new FileReader();
+                        reader.onload = (event) => {
+                          const content = event.target?.result as string;
+                          setConnectCredentials(content);
+                          toast.success("Service account file loaded");
+                        };
+                        reader.readAsText(file);
+                      }
+                    }}
+                  />
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => document.getElementById("ga4-service-account")?.click()}
+                  >
+                    <Upload className="w-4 h-4 mr-2" />
+                    Upload JSON Key
+                  </Button>
+                </div>
+              </div>
+            )}
+
+            {/* Manual credentials input */}
             <div className="space-y-2">
               <Label htmlFor="credentials">Credentials (JSON)</Label>
               <Textarea
@@ -2451,7 +2685,9 @@ export default function SettingsPage() {
                 className="font-mono text-sm"
               />
               <p className="text-xs text-muted-foreground">
-                Enter valid JSON with the required API keys and secrets for this platform.
+                {supportsOAuth(connectPlatform)
+                  ? "Only use this if you have existing API credentials from a previous setup."
+                  : "Enter valid JSON with the required API keys and secrets for this platform."}
               </p>
             </div>
           </div>
@@ -2459,10 +2695,10 @@ export default function SettingsPage() {
             <Button variant="outline" onClick={() => setConnectDialogOpen(false)}>
               Cancel
             </Button>
-            <Button onClick={handleConnectIntegration} disabled={connectMutation.isPending}>
+            <Button onClick={handleConnectIntegration} disabled={connectMutation.isPending || !connectCredentials.trim()}>
               {connectMutation.isPending && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
               <Link2 className="w-4 h-4 mr-2" />
-              Connect
+              Connect with Credentials
             </Button>
           </DialogFooter>
         </DialogContent>

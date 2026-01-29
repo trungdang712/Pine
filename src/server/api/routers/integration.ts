@@ -419,6 +419,90 @@ async function testPlatformConnection(
 // Router
 // ---------------------------------------------------------------------------
 
+// ---------------------------------------------------------------------------
+// OAuth URL Generation Helpers
+// ---------------------------------------------------------------------------
+
+const GOOGLE_CLIENT_ID = process.env.GOOGLE_ADS_CLIENT_ID ?? "";
+const GOOGLE_REDIRECT_URI =
+  process.env.GOOGLE_OAUTH_REDIRECT_URI ??
+  `${process.env.NEXT_PUBLIC_APP_URL}/api/auth/callback/google`;
+
+const FACEBOOK_APP_ID = process.env.FACEBOOK_APP_ID ?? "";
+const FACEBOOK_REDIRECT_URI =
+  process.env.FACEBOOK_OAUTH_REDIRECT_URI ??
+  `${process.env.NEXT_PUBLIC_APP_URL}/api/auth/callback/facebook`;
+
+function generateGoogleOAuthUrl(platform: "google_ads" | "google_analytics"): string {
+  // Define scopes based on platform
+  const scopes =
+    platform === "google_ads"
+      ? ["https://www.googleapis.com/auth/adwords"]
+      : ["https://www.googleapis.com/auth/analytics.readonly"];
+
+  // Add common scopes
+  scopes.push(
+    "https://www.googleapis.com/auth/userinfo.email",
+    "https://www.googleapis.com/auth/userinfo.profile"
+  );
+
+  // Encode state with platform info
+  const state = Buffer.from(
+    JSON.stringify({
+      platform,
+      returnUrl: "/settings?tab=integrations",
+    })
+  ).toString("base64");
+
+  const params = new URLSearchParams({
+    client_id: GOOGLE_CLIENT_ID,
+    redirect_uri: GOOGLE_REDIRECT_URI,
+    response_type: "code",
+    scope: scopes.join(" "),
+    access_type: "offline",
+    prompt: "consent", // Force consent to get refresh token
+    state,
+  });
+
+  return `https://accounts.google.com/o/oauth2/v2/auth?${params.toString()}`;
+}
+
+function generateFacebookOAuthUrl(): string {
+  // Permissions needed for ads and page management
+  const permissions = [
+    "ads_read",
+    "ads_management",
+    "pages_show_list",
+    "pages_read_engagement",
+    "pages_read_user_content",
+    "read_insights",
+    "instagram_basic",
+    "instagram_manage_insights",
+    "business_management",
+  ];
+
+  // Encode state
+  const state = Buffer.from(
+    JSON.stringify({
+      returnUrl: "/settings?tab=integrations",
+    })
+  ).toString("base64");
+
+  const params = new URLSearchParams({
+    client_id: FACEBOOK_APP_ID,
+    redirect_uri: FACEBOOK_REDIRECT_URI,
+    response_type: "code",
+    scope: permissions.join(","),
+    state,
+  });
+
+  return `https://www.facebook.com/v19.0/dialog/oauth?${params.toString()}`;
+}
+
+// ---------------------------------------------------------------------------
+// Router
+// ---------------------------------------------------------------------------
+
 export const integrationRouter = createTRPCRouter({
   // 1. getAll - returns all integrations (hide credentials)
   getAll: protectedProcedure.query(async ({ ctx }) => {
@@ -688,5 +772,149 @@ export const integrationRouter = createTRPCRouter({
           message: `${name} connection test encountered an unexpected error: ${errorMessage}. Please verify your credentials and try again.`,
         };
       }
+    }),
+
+  // 7. getOAuthUrl - returns the OAuth URL for initiating OAuth flow
+  getOAuthUrl: adminProcedure
+    .input(
+      z.object({
+        platform: z.enum(["google_ads", "google_analytics", "facebook"]),
+      })
+    )
+    .query(({ input }) => {
+      let url: string;
+
+      switch (input.platform) {
+        case "google_ads":
+        case "google_analytics":
+          url = generateGoogleOAuthUrl(input.platform);
+          break;
+        case "facebook":
+          url = generateFacebookOAuthUrl();
+          break;
+        default:
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message: `OAuth not supported for platform: ${input.platform}`,
+          });
+      }
+
+      return { url, platform: input.platform };
+    }),
+
+  // 8. triggerSync - manually trigger a sync for a platform
+  triggerSync: adminProcedure
+    .input(
+      z.object({
+        platform: z.enum(["google_ads", "facebook", "zalo", "google_analytics"]),
+        syncType: z.enum(["campaigns", "posts", "landing_pages"]).default("campaigns"),
+        date: z.string().optional(), // YYYY-MM-DD format
+      })
+    )
+    .mutation(async ({ ctx, input }) => {
+      const { syncService } = await import("@/server/services/sync");
+      const name = displayName(input.platform);
+
+      // Check if integration is configured
+      const config = await ctx.prisma.integrationConfig.findUnique({
+        where: { platform: input.platform },
+      });
+
+      if (!config || !config.isActive) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: `${name} integration is not configured or not active.`,
+        });
+      }
+
+      // Parse date or use yesterday
+      let syncDate: Date;
+      if (input.date) {
+        syncDate = new Date(input.date);
+        if (isNaN(syncDate.getTime())) {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message: "Invalid date format. Use YYYY-MM-DD.",
+          });
+        }
+      } else {
+        syncDate = new Date();
+        syncDate.setDate(syncDate.getDate() - 1);
+        syncDate.setHours(0, 0, 0, 0);
+      }
+
+      try {
+        let result;
+
+        switch (input.platform) {
+          case "google_ads":
+            if (input.syncType === "campaigns") {
+              result = await syncService.syncGoogleAdsCampaigns(syncDate);
+              await syncService.recordBudgetSpend("google_ads", syncDate);
+            }
+            break;
+
+          case "facebook":
+            if (input.syncType === "campaigns") {
+              result = await syncService.syncFacebookAdsCampaigns(syncDate);
+              await syncService.recordBudgetSpend("facebook", syncDate);
+            } else if (input.syncType === "posts") {
+              result = await syncService.syncSocialPosts();
+            }
+            break;
+
+          case "zalo":
+            if (input.syncType === "posts") {
+              result = await syncService.syncSocialPosts();
+            }
+            break;
+
+          case "google_analytics":
+            if (input.syncType === "landing_pages") {
+              result = await syncService.syncLandingPageMetrics(syncDate);
+            }
+            break;
+        }
+
+        if (!result) {
+          return {
+            success: false,
+            message: `Sync type "${input.syncType}" not supported for ${name}.`,
+            recordsProcessed: 0,
+          };
+        }
+
+        return {
+          success: result.success,
+          message: result.success
+            ? `Successfully synced ${result.recordsProcessed} records from ${name}.`
+            : `Sync completed with errors: ${result.errors.join("; ")}`,
+          recordsProcessed: result.recordsProcessed,
+          errors: result.errors.length > 0 ? result.errors : undefined,
+        };
+      } catch (err) {
+        throw new TRPCError({
+          code: "INTERNAL_SERVER_ERROR",
+          message: `Sync failed for ${name}: ${err instanceof Error ? err.message : "Unknown error"}`,
+        });
+      }
+    }),
+
+  // 9. getSyncLogs - get recent sync logs for a platform
+  getSyncLogs: protectedProcedure
+    .input(
+      z.object({
+        platform: z.string().optional(),
+        limit: z.number().min(1).max(100).default(20),
+      })
+    )
+    .query(async ({ ctx, input }) => {
+      const logs = await ctx.prisma.syncLog.findMany({
+        where: input.platform ? { platform: input.platform } : undefined,
+        orderBy: { startedAt: "desc" },
+        take: input.limit,
+      });
+
+      return logs;
     }),
 });
