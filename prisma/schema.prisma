@@ -33,7 +33,9 @@ model User {
   // Relations
   createdTasks     Task[]              @relation("TaskCreator")
   assignedTasks    Task[]              @relation("TaskAssignee")
+  reviewedTasks    Task[]              @relation("TaskReviewer")
   taskComments     TaskComment[]
+  taskActivities   TaskActivity[]
   proposals        Proposal[]          @relation("ProposalCreator")
   proposalComments ProposalComment[]
   approvalSteps    ApprovalStep[]
@@ -290,8 +292,15 @@ model Task {
   createdAt    DateTime  @default(now())
   updatedAt    DateTime  @updatedAt
 
+  // Workflow fields
+  reviewerId     String?
+  reviewNotes    String?
+  reviewedAt     DateTime?
+  rejectionCount Int       @default(0)
+
   creator      User                 @relation("TaskCreator", fields: [creatorId], references: [id])
   assignee     User?                @relation("TaskAssignee", fields: [assigneeId], references: [id])
+  reviewer     User?                @relation("TaskReviewer", fields: [reviewerId], references: [id])
   proposal     Proposal?            @relation(fields: [proposalId], references: [id])
   calendarItem ContentCalendarItem? @relation(fields: [calendarItemId], references: [id])
   parentTask   Task?                @relation("TaskSubtasks", fields: [parentTaskId], references: [id])
@@ -299,11 +308,13 @@ model Task {
   comments     TaskComment[]
   attachments  TaskAttachment[]
   taskRequest  TaskRequest?
+  activities   TaskActivity[]
 
   @@index([status])
   @@index([assigneeId])
   @@index([dueDate])
   @@index([calendarItemId])
+  @@index([reviewerId])
 }
 
 model TaskComment {
@@ -316,6 +327,22 @@ model TaskComment {
 
   task Task @relation(fields: [taskId], references: [id], onDelete: Cascade)
   user User @relation(fields: [userId], references: [id])
+}
+
+model TaskActivity {
+  id          String   @id @default(cuid())
+  taskId      String
+  userId      String
+  action      String   // created, assigned, started, submitted_for_review, approved, rejected, completed
+  fromStatus  String?
+  toStatus    String?
+  comment     String?
+  createdAt   DateTime @default(now())
+
+  task        Task     @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  user        User     @relation(fields: [userId], references: [id])
+
+  @@index([taskId])
 }
 
 model TaskAttachment {
@@ -421,7 +448,8 @@ model ContentCalendarItem {
   id          String    @id @default(cuid())
   title       String
   description String?
-  platform    String    // facebook, instagram, zalo, tiktok, website
+  platform    String    // facebook, instagram, zalo, tiktok, website (kept for backward compatibility)
+  channelId   String?   // Link to specific social channel
   contentType String?   // social_post, video, article, graphic, carousel, blog_post
   status      String    @default("planned") // planned, in_production, ready_for_review, approved, scheduled, published, needs_revision
   scheduledAt DateTime?
@@ -431,12 +459,15 @@ model ContentCalendarItem {
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
 
-  creator     User          @relation(fields: [creatorId], references: [id])
-  proposal    Proposal?     @relation(fields: [proposalId], references: [id])
+  creator     User           @relation(fields: [creatorId], references: [id])
+  proposal    Proposal?      @relation(fields: [proposalId], references: [id])
+  channel     SocialChannel? @relation(fields: [channelId], references: [id])
   socialPosts SocialPost[]
   comments    CalendarItemComment[]
   attachments CalendarItemAttachment[]
   tasks       Task[]
+
+  @@index([channelId])
 }
 
 model CalendarItemComment {
@@ -770,6 +801,46 @@ model QualityRating {
   rater User @relation("QualityRater", fields: [raterId], references: [id])
 
   @@index([userId, date])
+}
+
+// ==================== SOCIAL CHANNELS ====================
+
+model SocialChannel {
+  id          String    @id @default(cuid())
+  name        String    // "Greenfield Dental - Main Page", "Greenfield Implant Center"
+  platform    String    // facebook, instagram, zalo, tiktok, youtube, website
+  accountId   String?   // Page ID, Account ID from platform
+  accountUrl  String?   // URL to the page/account
+  avatarUrl   String?   // Channel avatar/logo
+  description String?
+  metadata    String?   // JSON: followers, additional info
+  isActive    Boolean   @default(true)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  calendarItems ContentCalendarItem[]
+
+  @@index([platform])
+  @@index([isActive])
+}
+
+// ==================== PLATFORMS ====================
+
+model Platform {
+  id          String   @id @default(cuid())
+  code        String   @unique  // "facebook", "linkedin"
+  displayName String             // "Facebook", "LinkedIn"
+  icon        String?            // Emoji or icon name
+  color       String             // Hex color "#0077B5"
+  category    String             // "social", "advertising", "analytics"
+  isActive    Boolean  @default(true)
+  sortOrder   Int      @default(0)
+  metadata    String?            // JSON for extra config
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([category])
+  @@index([isActive])
 }
 
 // ==================== SYSTEM ====================

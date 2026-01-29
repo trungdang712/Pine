@@ -49,10 +49,23 @@ import { LoadingSpinner, PageLoading } from "@/components/ui/loading-spinner";
 import { ErrorDisplay } from "@/components/ui/error-display";
 import { toast } from "sonner";
 import { useLanguage } from "@/i18n";
+import { usePlatforms } from "@/hooks/use-platforms";
+import { PlatformFilterSelect, PlatformSelect } from "@/components/platform";
+import { PlatformLegend, PlatformDot } from "@/components/platform";
 
 type Platform = "facebook" | "instagram" | "zalo" | "tiktok" | "website";
 type ContentStatus = "planned" | "in_production" | "ready_for_review" | "approved" | "scheduled" | "published" | "needs_revision";
 type ContentType = "social_post" | "video" | "article" | "graphic" | "carousel" | "blog_post";
+
+interface SocialChannel {
+  id: string;
+  name: string;
+  platform: string;
+  accountId: string | null;
+  accountUrl: string | null;
+  avatarUrl: string | null;
+  isActive: boolean;
+}
 
 interface CalendarItem {
   id: string;
@@ -63,6 +76,8 @@ interface CalendarItem {
   status: ContentStatus;
   scheduledAt: Date | null;
   publishedAt: Date | null;
+  channelId: string | null;
+  channel: SocialChannel | null;
   creator: {
     id: string;
     name: string | null;
@@ -141,14 +156,22 @@ const statusColors: Record<string, string> = {
 
 export default function CalendarPage() {
   const { t } = useLanguage();
+  const { platforms, getPlatformDisplayName, getPlatformColor } = usePlatforms();
   const [currentDate, setCurrentDate] = useState(() => new Date());
 
+  // Fallback for platforms not yet in DB (backwards compatibility)
   const platformDisplayNames: Record<string, string> = {
     facebook: t.calendar.platforms.facebook,
     zalo: t.calendar.platforms.zalo,
     tiktok: t.calendar.platforms.tiktok,
     instagram: t.calendar.platforms.instagram,
     website: "Website",
+  };
+
+  // Use dynamic platform name if available, fallback to static
+  const getDisplayName = (code: string) => {
+    const dynamicName = getPlatformDisplayName(code);
+    return dynamicName !== code ? dynamicName : (platformDisplayNames[code] ?? code);
   };
 
   const statusDisplayNames: Record<string, string> = {
@@ -187,6 +210,7 @@ export default function CalendarPage() {
     title: "",
     description: "",
     platform: "" as Platform | "",
+    channelId: "",
     contentType: "",
     date: "",
     time: "10:00",
@@ -198,6 +222,7 @@ export default function CalendarPage() {
   // Form state for editing content
   const [editContent, setEditContent] = useState({
     platform: "" as Platform | "",
+    channelId: "" as string | "",
     status: "" as ContentStatus | "",
     date: "",
     time: "",
@@ -243,6 +268,14 @@ export default function CalendarPage() {
   // Fetch team members for assignee dropdown
   const { data: teamMembers = [] } = trpc.user.getTeamMembers.useQuery();
 
+  // Fetch active channels
+  const { data: channels = [] } = trpc.channels.getActive.useQuery();
+
+  // Filter channels by selected platform
+  const getChannelsForPlatform = (platform: string) => {
+    return channels.filter((channel: SocialChannel) => channel.platform === platform);
+  };
+
   // Mutations
   const utils = trpc.useUtils();
 
@@ -251,11 +284,11 @@ export default function CalendarPage() {
       toast.success("Content created successfully");
       setIsNewContentOpen(false);
 
-      // Store info for task template modal
-      if (newContent.contentType) {
+      // Store info for task template modal - use API response data to avoid stale closure
+      if (data.contentType) {
         setNewlyCreatedItemId(data.id);
-        setNewlyCreatedContentType(newContent.contentType as ContentType);
-        setNewlyCreatedScheduledAt(`${newContent.date}T${newContent.time || "10:00"}:00`);
+        setNewlyCreatedContentType(data.contentType as ContentType);
+        setNewlyCreatedScheduledAt(data.scheduledAt ? new Date(data.scheduledAt).toISOString() : null);
         setTaskAssignees({});
         setIsTaskTemplateOpen(true);
       }
@@ -264,6 +297,7 @@ export default function CalendarPage() {
         title: "",
         description: "",
         platform: "",
+        channelId: "",
         contentType: "",
         date: "",
         time: "10:00",
@@ -467,6 +501,7 @@ export default function CalendarPage() {
     const scheduledDate = content.scheduledAt ? new Date(content.scheduledAt) : null;
     setEditContent({
       platform: content.platform,
+      channelId: content.channelId || "",
       status: content.status,
       date: scheduledDate ? scheduledDate.toISOString().split("T")[0] : "",
       time: scheduledDate ? scheduledDate.toTimeString().slice(0, 5) : "",
@@ -490,6 +525,7 @@ export default function CalendarPage() {
       title: newContent.title,
       description: newContent.description || undefined,
       platform: newContent.platform as Platform,
+      channelId: newContent.channelId || undefined,
       contentType: newContent.contentType ? (newContent.contentType as ContentType) : undefined,
       status: newContent.status,
       scheduledAt: scheduledAt.toISOString(),
@@ -506,6 +542,7 @@ export default function CalendarPage() {
     updateMutation.mutate({
       id: selectedContent.id,
       platform: editContent.platform as Platform || undefined,
+      channelId: editContent.channelId || null,
       contentType: editContent.contentType ? (editContent.contentType as ContentType) : null,
       status: editContent.status as ContentStatus || undefined,
       description: editContent.description || undefined,
@@ -684,19 +721,11 @@ export default function CalendarPage() {
           <div className="flex items-center gap-4">
             <div className="flex-1">
               <Label className="text-sm mb-2 block">{t.calendar.platform}</Label>
-              <Select value={filterPlatform} onValueChange={setFilterPlatform}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">{t.common.all}</SelectItem>
-                  <SelectItem value="facebook">{t.calendar.platforms.facebook}</SelectItem>
-                  <SelectItem value="zalo">{t.calendar.platforms.zalo}</SelectItem>
-                  <SelectItem value="tiktok">{t.calendar.platforms.tiktok}</SelectItem>
-                  <SelectItem value="instagram">{t.calendar.platforms.instagram}</SelectItem>
-                  <SelectItem value="website">Website</SelectItem>
-                </SelectContent>
-              </Select>
+              <PlatformFilterSelect
+                value={filterPlatform}
+                onValueChange={setFilterPlatform}
+                allLabel={t.common.all}
+              />
             </div>
             <div className="flex-1">
               <Label className="text-sm mb-2 block">{t.tasks.status}</Label>
@@ -760,28 +789,7 @@ export default function CalendarPage() {
         </CardHeader>
         <CardContent>
           {/* Platform Legend */}
-          <div className="flex flex-wrap items-center gap-4 mb-4 text-sm">
-            <div className="flex items-center gap-2">
-              <div className="w-3 h-3 rounded-full bg-blue-500" />
-              <span>{t.calendar.platforms.facebook}</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <div className="w-3 h-3 rounded-full bg-blue-600" />
-              <span>{t.calendar.platforms.zalo}</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <div className="w-3 h-3 rounded-full bg-black" />
-              <span>{t.calendar.platforms.tiktok}</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <div className="w-3 h-3 rounded-full bg-pink-500" />
-              <span>{t.calendar.platforms.instagram}</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <div className="w-3 h-3 rounded-full bg-yellow-500" />
-              <span>Website</span>
-            </div>
-          </div>
+          <PlatformLegend className="mb-4" />
 
           {/* Calendar Grid */}
           <div className="border rounded-lg overflow-x-auto">
@@ -827,9 +835,9 @@ export default function CalendarPage() {
                               onClick={() => handleContentClick(item)}
                             >
                               <div className="flex items-center gap-1 mb-0.5">
-                                <div className={`w-2 h-2 rounded-full ${platformColors[item.platform]}`} />
-                                <Badge variant="secondary" className="text-[10px] px-1 py-0 h-4">
-                                  {platformDisplayNames[item.platform]}
+                                <PlatformDot code={item.platform} size="sm" />
+                                <Badge variant="secondary" className="text-[10px] px-1 py-0 h-4 truncate max-w-[80px]" title={item.channel?.name || getDisplayName(item.platform)}>
+                                  {item.channel?.name || getDisplayName(item.platform)}
                                 </Badge>
                                 <span className="text-[10px] text-muted-foreground ml-auto">
                                   {formatTime(item.scheduledAt)}
@@ -889,19 +897,41 @@ export default function CalendarPage() {
                   <div>
                     <Label className="text-sm text-muted-foreground">{t.calendar.platform}</Label>
                     <div className="mt-1">
-                      <Select
+                      <PlatformSelect
                         value={editContent.platform}
-                        onValueChange={(value) => setEditContent({ ...editContent, platform: value as Platform })}
+                        onValueChange={(value) => setEditContent({ ...editContent, platform: value as Platform, channelId: "" })}
+                        placeholder={t.calendar.platform}
+                      />
+                    </div>
+                  </div>
+                  <div>
+                    <Label className="text-sm text-muted-foreground">Kênh đăng</Label>
+                    <div className="mt-1">
+                      <Select
+                        value={editContent.channelId}
+                        onValueChange={(value) => setEditContent({ ...editContent, channelId: value })}
+                        disabled={!editContent.platform}
                       >
                         <SelectTrigger>
-                          <SelectValue />
+                          <SelectValue placeholder={editContent.platform ? "Chọn kênh" : "Chọn nền tảng trước"} />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="facebook">{t.calendar.platforms.facebook}</SelectItem>
-                          <SelectItem value="zalo">{t.calendar.platforms.zalo}</SelectItem>
-                          <SelectItem value="tiktok">{t.calendar.platforms.tiktok}</SelectItem>
-                          <SelectItem value="instagram">{t.calendar.platforms.instagram}</SelectItem>
-                          <SelectItem value="website">Website</SelectItem>
+                          {getChannelsForPlatform(editContent.platform).map((channel: SocialChannel) => (
+                            <SelectItem key={channel.id} value={channel.id}>
+                              <div className="flex items-center gap-2">
+                                {channel.avatarUrl && (
+                                  <Avatar className="w-5 h-5">
+                                    <AvatarImage src={channel.avatarUrl} />
+                                    <AvatarFallback>{channel.name.charAt(0)}</AvatarFallback>
+                                  </Avatar>
+                                )}
+                                {channel.name}
+                              </div>
+                            </SelectItem>
+                          ))}
+                          {getChannelsForPlatform(editContent.platform).length === 0 && editContent.platform && (
+                            <SelectItem value="none" disabled>Chưa có kênh nào</SelectItem>
+                          )}
                         </SelectContent>
                       </Select>
                     </div>
@@ -1244,23 +1274,47 @@ export default function CalendarPage() {
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <Label>{t.calendar.platform} *</Label>
-                <Select
+                <PlatformSelect
                   value={newContent.platform}
-                  onValueChange={(value) => setNewContent({ ...newContent, platform: value as Platform })}
+                  onValueChange={(value) => setNewContent({ ...newContent, platform: value as Platform, channelId: "" })}
+                  placeholder={t.calendar.platform}
+                  className="mt-1"
+                />
+              </div>
+
+              <div>
+                <Label>Kênh đăng</Label>
+                <Select
+                  value={newContent.channelId}
+                  onValueChange={(value) => setNewContent({ ...newContent, channelId: value })}
+                  disabled={!newContent.platform}
                 >
                   <SelectTrigger className="mt-1">
-                    <SelectValue placeholder={t.calendar.platform} />
+                    <SelectValue placeholder={newContent.platform ? "Chọn kênh" : "Chọn nền tảng trước"} />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="facebook">{t.calendar.platforms.facebook}</SelectItem>
-                    <SelectItem value="zalo">{t.calendar.platforms.zalo}</SelectItem>
-                    <SelectItem value="tiktok">{t.calendar.platforms.tiktok}</SelectItem>
-                    <SelectItem value="instagram">{t.calendar.platforms.instagram}</SelectItem>
-                    <SelectItem value="website">Website</SelectItem>
+                    {getChannelsForPlatform(newContent.platform).map((channel: SocialChannel) => (
+                      <SelectItem key={channel.id} value={channel.id}>
+                        <div className="flex items-center gap-2">
+                          {channel.avatarUrl && (
+                            <Avatar className="w-5 h-5">
+                              <AvatarImage src={channel.avatarUrl} />
+                              <AvatarFallback>{channel.name.charAt(0)}</AvatarFallback>
+                            </Avatar>
+                          )}
+                          {channel.name}
+                        </div>
+                      </SelectItem>
+                    ))}
+                    {getChannelsForPlatform(newContent.platform).length === 0 && newContent.platform && (
+                      <SelectItem value="none" disabled>Chưa có kênh nào</SelectItem>
+                    )}
                   </SelectContent>
                 </Select>
               </div>
+            </div>
 
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <Label>{t.calendar.contentType}</Label>
                 <Select
@@ -1277,6 +1331,24 @@ export default function CalendarPage() {
                     <SelectItem value="graphic">{contentTypeDisplayNames.graphic}</SelectItem>
                     <SelectItem value="carousel">{contentTypeDisplayNames.carousel}</SelectItem>
                     <SelectItem value="blog_post">{contentTypeDisplayNames.blog_post}</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div>
+                <Label>{t.tasks.status}</Label>
+                <Select
+                  value={newContent.status}
+                  onValueChange={(value) => setNewContent({ ...newContent, status: value as ContentStatus })}
+                >
+                  <SelectTrigger className="mt-1">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="planned">{statusDisplayNames.planned}</SelectItem>
+                    <SelectItem value="in_production">{statusDisplayNames.in_production}</SelectItem>
+                    <SelectItem value="ready_for_review">{statusDisplayNames.ready_for_review}</SelectItem>
+                    <SelectItem value="approved">{statusDisplayNames.approved}</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -1304,43 +1376,23 @@ export default function CalendarPage() {
               </div>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div>
-                <Label>{t.tasks.assignee}</Label>
-                <Select
-                  value={newContent.assignee}
-                  onValueChange={(value) => setNewContent({ ...newContent, assignee: value })}
-                >
-                  <SelectTrigger className="mt-1">
-                    <SelectValue placeholder={t.tasks.assignee} />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {teamMembers.map((member) => (
-                      <SelectItem key={member.id} value={member.id}>
-                        {member.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div>
-                <Label>{t.tasks.status}</Label>
-                <Select
-                  value={newContent.status}
-                  onValueChange={(value) => setNewContent({ ...newContent, status: value as ContentStatus })}
-                >
-                  <SelectTrigger className="mt-1">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="planned">{statusDisplayNames.planned}</SelectItem>
-                    <SelectItem value="in_production">{statusDisplayNames.in_production}</SelectItem>
-                    <SelectItem value="ready_for_review">{statusDisplayNames.ready_for_review}</SelectItem>
-                    <SelectItem value="approved">{statusDisplayNames.approved}</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
+            <div>
+              <Label>{t.tasks.assignee}</Label>
+              <Select
+                value={newContent.assignee}
+                onValueChange={(value) => setNewContent({ ...newContent, assignee: value })}
+              >
+                <SelectTrigger className="mt-1">
+                  <SelectValue placeholder={t.tasks.assignee} />
+                </SelectTrigger>
+                <SelectContent>
+                  {teamMembers.map((member) => (
+                    <SelectItem key={member.id} value={member.id}>
+                      {member.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
 
             <div>

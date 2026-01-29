@@ -404,6 +404,117 @@ async function main() {
   }
   console.log("Created brand colors");
 
+  // 4b. Platforms (upsert by unique code - idempotent)
+  const platforms = [
+    // Social Media
+    {
+      code: "facebook",
+      displayName: "Facebook",
+      icon: "📘",
+      color: "#1877F2",
+      category: "social",
+      sortOrder: 1,
+    },
+    {
+      code: "instagram",
+      displayName: "Instagram",
+      icon: "📸",
+      color: "#E4405F",
+      category: "social",
+      sortOrder: 2,
+    },
+    {
+      code: "tiktok",
+      displayName: "TikTok",
+      icon: "🎵",
+      color: "#000000",
+      category: "social",
+      sortOrder: 3,
+    },
+    {
+      code: "zalo",
+      displayName: "Zalo",
+      icon: "💙",
+      color: "#0068FF",
+      category: "social",
+      sortOrder: 4,
+    },
+    {
+      code: "youtube",
+      displayName: "YouTube",
+      icon: "🔴",
+      color: "#FF0000",
+      category: "social",
+      sortOrder: 5,
+    },
+    {
+      code: "linkedin",
+      displayName: "LinkedIn",
+      icon: "🔗",
+      color: "#0A66C2",
+      category: "social",
+      sortOrder: 6,
+    },
+    {
+      code: "twitter",
+      displayName: "Twitter/X",
+      icon: "🐦",
+      color: "#1DA1F2",
+      category: "social",
+      sortOrder: 7,
+    },
+    // Advertising
+    {
+      code: "google_ads",
+      displayName: "Google Ads",
+      icon: "🎯",
+      color: "#4285F4",
+      category: "advertising",
+      sortOrder: 1,
+    },
+    {
+      code: "facebook_ads",
+      displayName: "Facebook Ads",
+      icon: "📢",
+      color: "#1877F2",
+      category: "advertising",
+      sortOrder: 2,
+    },
+    // Website
+    {
+      code: "website",
+      displayName: "Website",
+      icon: "🌐",
+      color: "#F59E0B",
+      category: "website",
+      sortOrder: 1,
+    },
+    // Analytics
+    {
+      code: "google_analytics",
+      displayName: "Google Analytics",
+      icon: "📊",
+      color: "#E37400",
+      category: "analytics",
+      sortOrder: 1,
+    },
+  ];
+
+  for (const platform of platforms) {
+    await prisma.platform.upsert({
+      where: { code: platform.code },
+      update: {
+        displayName: platform.displayName,
+        icon: platform.icon,
+        color: platform.color,
+        category: platform.category,
+        sortOrder: platform.sortOrder,
+      },
+      create: platform,
+    });
+  }
+  console.log("Created platforms");
+
   // Helper for dates
   const daysFromNow = (days: number) =>
     new Date(Date.now() + days * 24 * 60 * 60 * 1000);
@@ -1329,6 +1440,88 @@ async function main() {
     await prisma.taskTemplate.create({ data: template });
   }
   console.log("Created 6 task templates for content types");
+
+  // 16. Social Channels (delete + recreate)
+  await prisma.socialChannel.deleteMany({});
+  const socialChannels = [
+    {
+      name: "Greenfield Dental - Fanpage Chính",
+      platform: "facebook",
+      accountId: "109283746501928",
+      accountUrl: "https://facebook.com/greenfielddental",
+      avatarUrl: null,
+      description: "Fanpage chính thức của Nha khoa Greenfield",
+      isActive: true,
+    },
+    {
+      name: "Greenfield Dental - Chi nhánh Q7",
+      platform: "facebook",
+      accountId: "209384756502039",
+      accountUrl: "https://facebook.com/greenfielddental.q7",
+      avatarUrl: null,
+      description: "Fanpage chi nhánh Quận 7",
+      isActive: true,
+    },
+    {
+      name: "Greenfield Dental Official",
+      platform: "instagram",
+      accountId: "17841405793210",
+      accountUrl: "https://instagram.com/greenfielddental",
+      avatarUrl: null,
+      description: "Tài khoản Instagram chính thức",
+      isActive: true,
+    },
+    {
+      name: "Greenfield Stories",
+      platform: "instagram",
+      accountId: "17841405793211",
+      accountUrl: "https://instagram.com/greenfield.stories",
+      avatarUrl: null,
+      description: "Tài khoản Instagram chia sẻ câu chuyện bệnh nhân",
+      isActive: true,
+    },
+    {
+      name: "Nha khoa Greenfield OA",
+      platform: "zalo",
+      accountId: "zalo_oa_4829173648",
+      accountUrl: null,
+      avatarUrl: null,
+      description: "Zalo Official Account",
+      isActive: true,
+    },
+    {
+      name: "Greenfield Dental",
+      platform: "tiktok",
+      accountId: "greenfielddental_vn",
+      accountUrl: "https://tiktok.com/@greenfielddental_vn",
+      avatarUrl: null,
+      description: "Tài khoản TikTok chính thức",
+      isActive: true,
+    },
+    {
+      name: "Dr. Nguyen Tips",
+      platform: "tiktok",
+      accountId: "dr.nguyen.tips",
+      accountUrl: "https://tiktok.com/@dr.nguyen.tips",
+      avatarUrl: null,
+      description: "Kênh TikTok của Bác sĩ Nguyễn - Tips nha khoa",
+      isActive: true,
+    },
+    {
+      name: "Website Blog",
+      platform: "website",
+      accountId: null,
+      accountUrl: "https://greenfielddental.vn/blog",
+      avatarUrl: null,
+      description: "Blog trên website chính",
+      isActive: true,
+    },
+  ];
+
+  for (const channel of socialChannels) {
+    await prisma.socialChannel.create({ data: channel });
+  }
+  console.log("Created 8 social channels");
 
   console.log("\nDatabase seeded successfully!");
 }

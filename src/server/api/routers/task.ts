@@ -112,6 +112,9 @@ export const taskRouter = createTRPCRouter({
           assignee: {
             select: { id: true, name: true, avatar: true },
           },
+          reviewer: {
+            select: { id: true, name: true, avatar: true },
+          },
           proposal: {
             select: { id: true, title: true },
           },
@@ -132,6 +135,13 @@ export const taskRouter = createTRPCRouter({
           },
           attachments: true,
           taskRequest: true,
+          activities: {
+            include: {
+              user: { select: { id: true, name: true, avatar: true } },
+            },
+            orderBy: { createdAt: "desc" },
+            take: 10,
+          },
         },
       });
 
@@ -396,5 +406,255 @@ export const taskRouter = createTRPCRouter({
       ]);
 
       return { total, completed, inProgress, overdue };
+    }),
+
+  // Task Workflow Endpoints
+  submitForReview: protectedProcedure
+    .input(z.object({ id: z.string() }))
+    .mutation(async ({ ctx, input }) => {
+      const task = await ctx.prisma.task.findUnique({
+        where: { id: input.id },
+        include: { creator: { select: { id: true, name: true } } },
+      });
+
+      if (!task) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Task not found" });
+      }
+
+      // Only assignee can submit for review
+      if (task.assigneeId !== ctx.session.user.id) {
+        throw new TRPCError({ code: "FORBIDDEN", message: "Only the assignee can submit for review" });
+      }
+
+      if (task.status !== "in_progress") {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "Task must be in progress to submit for review" });
+      }
+
+      // Update task status
+      const updatedTask = await ctx.prisma.task.update({
+        where: { id: input.id },
+        data: { status: "review" },
+        include: {
+          creator: { select: { id: true, name: true, avatar: true } },
+          assignee: { select: { id: true, name: true, avatar: true } },
+        },
+      });
+
+      // Create activity log
+      await ctx.prisma.taskActivity.create({
+        data: {
+          taskId: input.id,
+          userId: ctx.session.user.id,
+          action: "submitted_for_review",
+          fromStatus: "in_progress",
+          toStatus: "review",
+        },
+      });
+
+      // Notify task creator
+      if (task.creatorId !== ctx.session.user.id) {
+        await ctx.prisma.userAlert.create({
+          data: {
+            userId: task.creatorId,
+            type: "task_submitted_for_review",
+            title: "Task Submitted for Review",
+            message: `Task "${task.title}" has been submitted for your review`,
+            link: `/tasks?id=${task.id}`,
+          },
+        });
+      }
+
+      return updatedTask;
+    }),
+
+  approveTask: protectedProcedure
+    .input(z.object({ id: z.string() }))
+    .mutation(async ({ ctx, input }) => {
+      const task = await ctx.prisma.task.findUnique({
+        where: { id: input.id },
+        include: { assignee: { select: { id: true, name: true } } },
+      });
+
+      if (!task) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Task not found" });
+      }
+
+      // Only creator or manager can approve
+      const user = await ctx.prisma.user.findUnique({
+        where: { id: ctx.session.user.id },
+        select: { role: true },
+      });
+
+      const isCreator = task.creatorId === ctx.session.user.id;
+      const isManager = ["super_admin", "admin", "marketing_manager"].includes(user?.role ?? "");
+
+      if (!isCreator && !isManager) {
+        throw new TRPCError({ code: "FORBIDDEN", message: "Only the task creator or manager can approve" });
+      }
+
+      if (task.status !== "review") {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "Task must be in review to approve" });
+      }
+
+      // Update task status
+      const updatedTask = await ctx.prisma.task.update({
+        where: { id: input.id },
+        data: {
+          status: "done",
+          completedAt: new Date(),
+          reviewerId: ctx.session.user.id,
+          reviewedAt: new Date(),
+        },
+        include: {
+          creator: { select: { id: true, name: true, avatar: true } },
+          assignee: { select: { id: true, name: true, avatar: true } },
+        },
+      });
+
+      // Create activity log
+      await ctx.prisma.taskActivity.create({
+        data: {
+          taskId: input.id,
+          userId: ctx.session.user.id,
+          action: "approved",
+          fromStatus: "review",
+          toStatus: "done",
+        },
+      });
+
+      // Award points to assignee
+      if (task.assigneeId) {
+        const dueDate = task.dueDate;
+        const isEarly = dueDate && new Date() < dueDate;
+        const points = isEarly ? 15 : 10;
+
+        await ctx.prisma.pointTransaction.create({
+          data: {
+            userId: task.assigneeId,
+            action: isEarly ? "task_approved_early" : "task_approved",
+            points,
+            description: `Task approved: ${task.title}`,
+            referenceId: input.id,
+          },
+        });
+
+        await ctx.prisma.userPoints.upsert({
+          where: { userId: task.assigneeId },
+          update: {
+            totalPoints: { increment: points },
+            weeklyPoints: { increment: points },
+            monthlyPoints: { increment: points },
+          },
+          create: {
+            userId: task.assigneeId,
+            totalPoints: points,
+            weeklyPoints: points,
+            monthlyPoints: points,
+          },
+        });
+
+        // Notify assignee
+        await ctx.prisma.userAlert.create({
+          data: {
+            userId: task.assigneeId,
+            type: "task_approved",
+            title: "Task Approved",
+            message: `Your task "${task.title}" has been approved! +${points} points`,
+            link: `/tasks?id=${task.id}`,
+          },
+        });
+      }
+
+      return updatedTask;
+    }),
+
+  requestRevision: protectedProcedure
+    .input(
+      z.object({
+        id: z.string(),
+        feedback: z.string().min(1, "Feedback is required"),
+      })
+    )
+    .mutation(async ({ ctx, input }) => {
+      const task = await ctx.prisma.task.findUnique({
+        where: { id: input.id },
+        include: { assignee: { select: { id: true, name: true } } },
+      });
+
+      if (!task) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Task not found" });
+      }
+
+      // Only creator or manager can request revision
+      const user = await ctx.prisma.user.findUnique({
+        where: { id: ctx.session.user.id },
+        select: { role: true },
+      });
+
+      const isCreator = task.creatorId === ctx.session.user.id;
+      const isManager = ["super_admin", "admin", "marketing_manager"].includes(user?.role ?? "");
+
+      if (!isCreator && !isManager) {
+        throw new TRPCError({ code: "FORBIDDEN", message: "Only the task creator or manager can request revision" });
+      }
+
+      if (task.status !== "review") {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "Task must be in review to request revision" });
+      }
+
+      // Update task status and increment rejection count
+      const updatedTask = await ctx.prisma.task.update({
+        where: { id: input.id },
+        data: {
+          status: "in_progress",
+          reviewerId: ctx.session.user.id,
+          reviewNotes: input.feedback,
+          reviewedAt: new Date(),
+          rejectionCount: { increment: 1 },
+        },
+        include: {
+          creator: { select: { id: true, name: true, avatar: true } },
+          assignee: { select: { id: true, name: true, avatar: true } },
+        },
+      });
+
+      // Create activity log
+      await ctx.prisma.taskActivity.create({
+        data: {
+          taskId: input.id,
+          userId: ctx.session.user.id,
+          action: "rejected",
+          fromStatus: "review",
+          toStatus: "in_progress",
+          comment: input.feedback,
+        },
+      });
+
+      // Notify assignee
+      if (task.assigneeId) {
+        await ctx.prisma.userAlert.create({
+          data: {
+            userId: task.assigneeId,
+            type: "task_revision_requested",
+            title: "Revision Requested",
+            message: `Your task "${task.title}" needs revision: ${input.feedback}`,
+            link: `/tasks?id=${task.id}`,
+          },
+        });
+      }
+
+      return updatedTask;
+    }),
+
+  getTaskActivity: protectedProcedure
+    .input(z.object({ taskId: z.string() }))
+    .query(async ({ ctx, input }) => {
+      return ctx.prisma.taskActivity.findMany({
+        where: { taskId: input.taskId },
+        include: {
+          user: { select: { id: true, name: true, avatar: true } },
+        },
+        orderBy: { createdAt: "desc" },
+      });
     }),
 });

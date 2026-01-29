@@ -13,6 +13,8 @@ import { alertsRouter } from "./routers/alerts";
 import { redditRouter } from "./routers/reddit";
 import { integrationRouter } from "./routers/integration";
 import { dashboardRouter } from "./routers/dashboard";
+import { channelsRouter } from "./routers/channels";
+import { platformRouter } from "./routers/platform";
 
 export const appRouter = createTRPCRouter({
   user: userRouter,
@@ -29,6 +31,8 @@ export const appRouter = createTRPCRouter({
   reddit: redditRouter,
   integration: integrationRouter,
   dashboard: dashboardRouter,
+  channels: channelsRouter,
+  platform: platformRouter,
 });
 
 export type AppRouter = typeof appRouter;

@@ -22,6 +22,11 @@ import {
   CheckCircle2,
   Clock,
   AlertTriangle,
+  RotateCcw,
+  ArrowRight,
+  History,
+  ThumbsUp,
+  ThumbsDown,
 } from "lucide-react";
 import {
   DndContext,
@@ -64,6 +69,7 @@ import { PageEmpty } from "@/components/ui/empty-state";
 import { toast } from "sonner";
 import { format } from "date-fns";
 import { useLanguage } from "@/i18n";
+import { useAuth } from "@/hooks/use-auth";
 
 type TaskStatus = "todo" | "in_progress" | "review" | "done";
 type TaskPriority = "urgent" | "high" | "normal" | "low";
@@ -79,7 +85,23 @@ interface Task {
   dueDate: Date | null;
   assignee: { id: string; name: string; avatar: string | null } | null;
   creator: { id: string; name: string; avatar: string | null };
+  reviewer?: { id: string; name: string; avatar: string | null } | null;
+  reviewNotes?: string | null;
+  reviewedAt?: Date | null;
+  rejectionCount?: number;
   _count: { comments: number; attachments: number };
+}
+
+interface TaskActivity {
+  id: string;
+  taskId: string;
+  userId: string;
+  action: string;
+  fromStatus: string | null;
+  toStatus: string | null;
+  comment: string | null;
+  createdAt: Date;
+  user: { id: string; name: string | null; avatar: string | null };
 }
 
 interface TaskCardProps {
@@ -275,6 +297,7 @@ function MobileTaskList({
 
 export default function TasksPage() {
   const { t } = useLanguage();
+  const { profile } = useAuth();
   const isMobile = useIsMobile();
   const [activeId, setActiveId] = useState<string | null>(null);
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
@@ -282,6 +305,8 @@ export default function TasksPage() {
   const [isNewTaskOpen, setIsNewTaskOpen] = useState(false);
   const [showFilters, setShowFilters] = useState(false);
   const [newComment, setNewComment] = useState("");
+  const [revisionFeedback, setRevisionFeedback] = useState("");
+  const [showRevisionDialog, setShowRevisionDialog] = useState(false);
 
   // Filter states
   const [filterAssignee, setFilterAssignee] = useState<string>("all");
@@ -347,6 +372,42 @@ export default function TasksPage() {
       utils.task.getById.invalidate();
       setNewComment("");
       toast.success(t.common.success);
+    },
+    onError: (error) => {
+      toast.error(error.message);
+    },
+  });
+
+  // Workflow mutations
+  const submitForReview = trpc.task.submitForReview.useMutation({
+    onSuccess: () => {
+      utils.task.getKanbanBoard.invalidate();
+      utils.task.getById.invalidate();
+      toast.success("Task submitted for review");
+    },
+    onError: (error) => {
+      toast.error(error.message);
+    },
+  });
+
+  const approveTask = trpc.task.approveTask.useMutation({
+    onSuccess: () => {
+      utils.task.getKanbanBoard.invalidate();
+      utils.task.getById.invalidate();
+      toast.success("Task approved successfully");
+    },
+    onError: (error) => {
+      toast.error(error.message);
+    },
+  });
+
+  const requestRevision = trpc.task.requestRevision.useMutation({
+    onSuccess: () => {
+      utils.task.getKanbanBoard.invalidate();
+      utils.task.getById.invalidate();
+      setShowRevisionDialog(false);
+      setRevisionFeedback("");
+      toast.success("Revision requested");
     },
     onError: (error) => {
       toast.error(error.message);
@@ -772,6 +833,138 @@ export default function TasksPage() {
                   </div>
                 </div>
 
+                {/* Revision Notes (if any) */}
+                {taskDetails?.reviewNotes && (
+                  <div className="border border-yellow-300 bg-yellow-50 rounded-md p-3">
+                    <div className="flex items-center gap-2 mb-2">
+                      <RotateCcw className="w-4 h-4 text-yellow-600" />
+                      <Label className="text-sm font-medium text-yellow-800">Revision Feedback</Label>
+                      {taskDetails.rejectionCount && taskDetails.rejectionCount > 0 && (
+                        <Badge variant="secondary" className="text-xs bg-yellow-200 text-yellow-800">
+                          {taskDetails.rejectionCount} revision{taskDetails.rejectionCount > 1 ? "s" : ""}
+                        </Badge>
+                      )}
+                    </div>
+                    <p className="text-sm text-yellow-800">{taskDetails.reviewNotes}</p>
+                    {taskDetails.reviewer && (
+                      <p className="text-xs text-yellow-600 mt-2">
+                        From: {taskDetails.reviewer.name} {taskDetails.reviewedAt && `on ${format(new Date(taskDetails.reviewedAt), "MMM d, yyyy")}`}
+                      </p>
+                    )}
+                  </div>
+                )}
+
+                {/* Workflow Actions */}
+                {(() => {
+                  const currentStatus = taskDetails?.status ?? selectedTask.status;
+                  const isAssignee = selectedTask.assignee?.id === profile?.id;
+                  const isCreator = selectedTask.creator?.id === profile?.id;
+                  const isManager = ["super_admin", "admin", "marketing_manager"].includes(profile?.role ?? "");
+                  const canReview = isCreator || isManager;
+
+                  return (
+                    <div className="border-t pt-4">
+                      <Label className="text-sm text-muted-foreground mb-3 block">Workflow Actions</Label>
+                      <div className="flex flex-wrap gap-2">
+                        {/* Submit for Review - Assignee only, when in_progress */}
+                        {currentStatus === "in_progress" && isAssignee && (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="gap-2"
+                            onClick={() => submitForReview.mutate({ id: selectedTask.id })}
+                            disabled={submitForReview.isPending}
+                          >
+                            <ArrowRight className="w-4 h-4" />
+                            {submitForReview.isPending ? "Submitting..." : "Submit for Review"}
+                          </Button>
+                        )}
+
+                        {/* Approve - Creator/Manager only, when in review */}
+                        {currentStatus === "review" && canReview && (
+                          <>
+                            <Button
+                              size="sm"
+                              className="gap-2 bg-green-600 hover:bg-green-700"
+                              onClick={() => approveTask.mutate({ id: selectedTask.id })}
+                              disabled={approveTask.isPending}
+                            >
+                              <ThumbsUp className="w-4 h-4" />
+                              {approveTask.isPending ? "Approving..." : "Approve"}
+                            </Button>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="gap-2 border-orange-300 text-orange-600 hover:bg-orange-50"
+                              onClick={() => setShowRevisionDialog(true)}
+                            >
+                              <ThumbsDown className="w-4 h-4" />
+                              Request Revision
+                            </Button>
+                          </>
+                        )}
+
+                        {/* Status indicator */}
+                        {currentStatus === "review" && !canReview && (
+                          <Badge variant="secondary" className="text-sm">
+                            <Clock className="w-3 h-3 mr-1" />
+                            Awaiting review
+                          </Badge>
+                        )}
+                        {currentStatus === "done" && (
+                          <Badge variant="default" className="text-sm bg-green-600">
+                            <CheckCircle2 className="w-3 h-3 mr-1" />
+                            Completed
+                          </Badge>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })()}
+
+                {/* Activity Timeline */}
+                {taskDetails?.activities && taskDetails.activities.length > 0 && (
+                  <div className="border-t pt-4">
+                    <Label className="text-sm text-muted-foreground mb-3 flex items-center gap-2">
+                      <History className="w-4 h-4" />
+                      Activity ({taskDetails.activities.length})
+                    </Label>
+                    <div className="space-y-3 max-h-[150px] overflow-y-auto">
+                      {taskDetails.activities.map((activity: TaskActivity) => (
+                        <div key={activity.id} className="flex gap-3 text-sm">
+                          <div className="w-6 h-6 rounded-full bg-muted flex items-center justify-center flex-shrink-0">
+                            {activity.action === "approved" && <ThumbsUp className="w-3 h-3 text-green-600" />}
+                            {activity.action === "rejected" && <ThumbsDown className="w-3 h-3 text-orange-600" />}
+                            {activity.action === "submitted_for_review" && <ArrowRight className="w-3 h-3 text-blue-600" />}
+                            {!["approved", "rejected", "submitted_for_review"].includes(activity.action) && (
+                              <Clock className="w-3 h-3 text-muted-foreground" />
+                            )}
+                          </div>
+                          <div className="flex-1">
+                            <p className="text-muted-foreground">
+                              <span className="font-medium text-foreground">{activity.user.name}</span>
+                              {" "}
+                              {activity.action === "submitted_for_review" && "submitted for review"}
+                              {activity.action === "approved" && "approved this task"}
+                              {activity.action === "rejected" && "requested revision"}
+                              {activity.action === "created" && "created this task"}
+                              {activity.action === "assigned" && "assigned this task"}
+                              {activity.action === "started" && "started working"}
+                              {activity.action === "completed" && "completed this task"}
+                            </p>
+                            {activity.comment && (
+                              <p className="text-xs text-muted-foreground mt-1 italic">"{activity.comment}"</p>
+                            )}
+                            <p className="text-xs text-muted-foreground">
+                              {format(new Date(activity.createdAt), "MMM d, HH:mm")}
+                            </p>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
                 {/* Attachments */}
                 {taskDetails?.attachments && taskDetails.attachments.length > 0 && (
                   <div>
@@ -960,6 +1153,57 @@ export default function TasksPage() {
             </Button>
             <Button onClick={handleCreateTask} disabled={createTask.isPending}>
               {createTask.isPending ? t.common.loading : t.tasks.createTask}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Revision Request Dialog */}
+      <Dialog open={showRevisionDialog} onOpenChange={setShowRevisionDialog}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Request Revision</DialogTitle>
+            <DialogDescription>
+              Provide feedback for the assignee about what needs to be revised.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <Label>Feedback *</Label>
+              <Textarea
+                placeholder="Describe what needs to be changed..."
+                rows={4}
+                className="mt-1"
+                value={revisionFeedback}
+                onChange={(e) => setRevisionFeedback(e.target.value)}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setShowRevisionDialog(false);
+                setRevisionFeedback("");
+              }}
+            >
+              {t.common.cancel}
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={() => {
+                if (!selectedTask || !revisionFeedback.trim()) {
+                  toast.error("Please provide feedback");
+                  return;
+                }
+                requestRevision.mutate({
+                  id: selectedTask.id,
+                  feedback: revisionFeedback.trim(),
+                });
+              }}
+              disabled={requestRevision.isPending || !revisionFeedback.trim()}
+            >
+              {requestRevision.isPending ? "Sending..." : "Request Revision"}
             </Button>
           </DialogFooter>
         </DialogContent>

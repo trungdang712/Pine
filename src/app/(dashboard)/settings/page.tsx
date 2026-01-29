@@ -58,6 +58,7 @@ import {
   ListTodo,
   Plus,
   GripVertical,
+  Globe,
 } from "lucide-react";
 import { toast } from "sonner";
 import { useLanguage, type Language } from "@/i18n";
@@ -157,6 +158,16 @@ export default function SettingsPage() {
 
   // Task templates query
   const { data: taskTemplates, isLoading: templatesLoading, refetch: refetchTemplates } = trpc.calendar.getAllTemplates.useQuery(undefined, {
+    enabled: isAuthenticated && isAdmin,
+  });
+
+  // Social channels query
+  const { data: socialChannels, isLoading: channelsLoading, refetch: refetchChannels } = trpc.channels.getAll.useQuery(undefined, {
+    enabled: isAuthenticated && isAdmin,
+  });
+
+  // Platforms query
+  const { data: allPlatforms, isLoading: platformsLoading, refetch: refetchPlatforms } = trpc.platform.getAll.useQuery(undefined, {
     enabled: isAuthenticated && isAdmin,
   });
 
@@ -293,6 +304,234 @@ export default function SettingsPage() {
     if (!editingTemplate) return;
     const updatedTasks = editingTemplate.tasks.filter((_, i) => i !== taskIndex);
     setEditingTemplate({ ...editingTemplate, tasks: updatedTasks });
+  };
+
+  // Channel mutations
+  const createChannelMutation = trpc.channels.create.useMutation({
+    onSuccess: () => {
+      toast.success("Channel created successfully");
+      setChannelDialogOpen(false);
+      setEditingChannel(null);
+      refetchChannels();
+    },
+    onError: (error) => toast.error(error.message),
+  });
+
+  const updateChannelMutation = trpc.channels.update.useMutation({
+    onSuccess: () => {
+      toast.success("Channel updated successfully");
+      setChannelDialogOpen(false);
+      setEditingChannel(null);
+      refetchChannels();
+    },
+    onError: (error) => toast.error(error.message),
+  });
+
+  const deleteChannelMutation = trpc.channels.delete.useMutation({
+    onSuccess: () => {
+      toast.success("Channel deleted successfully");
+      refetchChannels();
+    },
+    onError: (error) => toast.error(error.message),
+  });
+
+  // Platform mutations
+  const createPlatformMutation = trpc.platform.create.useMutation({
+    onSuccess: () => {
+      toast.success("Platform created successfully");
+      setPlatformDialogOpen(false);
+      setEditingPlatform(null);
+      refetchPlatforms();
+    },
+    onError: (error) => toast.error(error.message),
+  });
+
+  const updatePlatformMutation = trpc.platform.update.useMutation({
+    onSuccess: () => {
+      toast.success("Platform updated successfully");
+      setPlatformDialogOpen(false);
+      setEditingPlatform(null);
+      refetchPlatforms();
+    },
+    onError: (error) => toast.error(error.message),
+  });
+
+  const deletePlatformMutation = trpc.platform.delete.useMutation({
+    onSuccess: () => {
+      toast.success("Platform deactivated successfully");
+      refetchPlatforms();
+    },
+    onError: (error) => toast.error(error.message),
+  });
+
+  // Platform state
+  const [platformDialogOpen, setPlatformDialogOpen] = useState(false);
+  const [editingPlatform, setEditingPlatform] = useState<{
+    id?: string;
+    code: string;
+    displayName: string;
+    icon: string;
+    color: string;
+    category: string;
+    sortOrder: number;
+    isActive: boolean;
+  } | null>(null);
+
+  const handleAddPlatform = () => {
+    setEditingPlatform({
+      code: "",
+      displayName: "",
+      icon: "",
+      color: "#3B82F6",
+      category: "social",
+      sortOrder: 0,
+      isActive: true,
+    });
+    setPlatformDialogOpen(true);
+  };
+
+  const handleEditPlatform = (platform: {
+    id: string;
+    code: string;
+    displayName: string;
+    icon: string | null;
+    color: string;
+    category: string;
+    sortOrder: number;
+    isActive: boolean;
+  }) => {
+    setEditingPlatform({
+      id: platform.id,
+      code: platform.code,
+      displayName: platform.displayName,
+      icon: platform.icon || "",
+      color: platform.color,
+      category: platform.category,
+      sortOrder: platform.sortOrder,
+      isActive: platform.isActive,
+    });
+    setPlatformDialogOpen(true);
+  };
+
+  const handleSavePlatform = () => {
+    if (!editingPlatform) return;
+    if (editingPlatform.id) {
+      updatePlatformMutation.mutate({
+        id: editingPlatform.id,
+        displayName: editingPlatform.displayName,
+        icon: editingPlatform.icon || null,
+        color: editingPlatform.color,
+        category: editingPlatform.category as "social" | "advertising" | "analytics" | "website",
+        sortOrder: editingPlatform.sortOrder,
+        isActive: editingPlatform.isActive,
+      });
+    } else {
+      createPlatformMutation.mutate({
+        code: editingPlatform.code.toLowerCase().replace(/[^a-z_]/g, "_"),
+        displayName: editingPlatform.displayName,
+        icon: editingPlatform.icon || undefined,
+        color: editingPlatform.color,
+        category: editingPlatform.category as "social" | "advertising" | "analytics" | "website",
+        sortOrder: editingPlatform.sortOrder,
+      });
+    }
+  };
+
+  const getCategoryDisplay = (category: string) => {
+    const categoryMap: Record<string, string> = {
+      social: "Social Media",
+      advertising: "Advertising",
+      analytics: "Analytics",
+      website: "Website",
+    };
+    return categoryMap[category] || category;
+  };
+
+  // Channel state
+  const [channelDialogOpen, setChannelDialogOpen] = useState(false);
+  const [editingChannel, setEditingChannel] = useState<{
+    id?: string;
+    name: string;
+    platform: string;
+    accountId: string;
+    accountUrl: string;
+    avatarUrl: string;
+    description: string;
+    isActive: boolean;
+  } | null>(null);
+
+  const handleAddChannel = () => {
+    setEditingChannel({
+      name: "",
+      platform: "facebook",
+      accountId: "",
+      accountUrl: "",
+      avatarUrl: "",
+      description: "",
+      isActive: true,
+    });
+    setChannelDialogOpen(true);
+  };
+
+  const handleEditChannel = (channel: {
+    id: string;
+    name: string;
+    platform: string;
+    accountId: string | null;
+    accountUrl: string | null;
+    avatarUrl: string | null;
+    description: string | null;
+    isActive: boolean;
+  }) => {
+    setEditingChannel({
+      id: channel.id,
+      name: channel.name,
+      platform: channel.platform,
+      accountId: channel.accountId || "",
+      accountUrl: channel.accountUrl || "",
+      avatarUrl: channel.avatarUrl || "",
+      description: channel.description || "",
+      isActive: channel.isActive,
+    });
+    setChannelDialogOpen(true);
+  };
+
+  const handleSaveChannel = () => {
+    if (!editingChannel) return;
+    if (editingChannel.id) {
+      updateChannelMutation.mutate({
+        id: editingChannel.id,
+        name: editingChannel.name,
+        platform: editingChannel.platform as "facebook" | "instagram" | "zalo" | "tiktok" | "youtube" | "website",
+        accountId: editingChannel.accountId || null,
+        accountUrl: editingChannel.accountUrl || null,
+        avatarUrl: editingChannel.avatarUrl || null,
+        description: editingChannel.description || null,
+        isActive: editingChannel.isActive,
+      });
+    } else {
+      createChannelMutation.mutate({
+        name: editingChannel.name,
+        platform: editingChannel.platform as "facebook" | "instagram" | "zalo" | "tiktok" | "youtube" | "website",
+        accountId: editingChannel.accountId || undefined,
+        accountUrl: editingChannel.accountUrl || undefined,
+        avatarUrl: editingChannel.avatarUrl || undefined,
+        description: editingChannel.description || undefined,
+        isActive: editingChannel.isActive,
+      });
+    }
+  };
+
+  const getChannelIcon = (platform: string) => {
+    const icons: Record<string, string> = {
+      facebook: "🔵",
+      instagram: "📸",
+      zalo: "💙",
+      tiktok: "🎵",
+      youtube: "🔴",
+      website: "🌐",
+    };
+    return icons[platform] || "📱";
   };
 
   // --- Helpers ---
@@ -563,6 +802,18 @@ export default function SettingsPage() {
               Task Templates
             </TabsTrigger>
           )}
+          {isAdmin && (
+            <TabsTrigger value="channels">
+              <Link2 className="w-4 h-4 mr-2" />
+              Channels
+            </TabsTrigger>
+          )}
+          {isAdmin && (
+            <TabsTrigger value="platforms">
+              <Globe className="w-4 h-4 mr-2" />
+              Platforms
+            </TabsTrigger>
+          )}
         </TabsList>
 
         {/* Profile Tab */}
@@ -595,7 +846,7 @@ export default function SettingsPage() {
                 <div>
                   <h3 className="font-semibold mb-1">{currentUser?.name || profile?.name || "User"}</h3>
                   <p className="text-sm text-muted-foreground mb-2">
-                    {getRoleDisplay(currentUser?.role || profile?.role || "")} - {getTeamDisplay(profile?.team || "")}
+                    {getRoleDisplay(currentUser?.role || profile?.role || "")} - {getTeamDisplay(currentUser?.team || profile?.team || "")}
                   </p>
                   <p className="text-xs text-muted-foreground">
                     {t.settings.profile.memberSince} {currentUser?.createdAt ? new Date(currentUser.createdAt).toLocaleDateString() : "N/A"}
@@ -631,9 +882,9 @@ export default function SettingsPage() {
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="department">{t.settings.profile.department}</Label>
-                  <Select defaultValue={profile?.team || "marketing"} disabled>
+                  <Select value={currentUser?.team || profile?.team || "marketing"} disabled>
                     <SelectTrigger>
-                      <SelectValue />
+                      <SelectValue placeholder={t.settings.profile.department} />
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="admin">Administration</SelectItem>
@@ -645,17 +896,20 @@ export default function SettingsPage() {
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="role">{t.settings.profile.role}</Label>
-                  <Select defaultValue={currentUser?.role || profile?.role || "content_creator"} disabled>
+                  <Select value={currentUser?.role || profile?.role || "content_creator"} disabled>
                     <SelectTrigger>
-                      <SelectValue />
+                      <SelectValue placeholder={t.settings.profile.role} />
                     </SelectTrigger>
                     <SelectContent>
+                      <SelectItem value="super_admin">Super Admin</SelectItem>
                       <SelectItem value="admin">Admin</SelectItem>
                       <SelectItem value="marketing_manager">Marketing Manager</SelectItem>
                       <SelectItem value="content_creator">Content Creator</SelectItem>
                       <SelectItem value="digital_marketing">Digital Marketing</SelectItem>
                       <SelectItem value="graphic_designer">Graphic Designer</SelectItem>
                       <SelectItem value="video_producer">Video Producer</SelectItem>
+                      <SelectItem value="sales_manager">Sales Manager</SelectItem>
+                      <SelectItem value="sales_consultant">Sales Consultant</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -1460,7 +1714,423 @@ export default function SettingsPage() {
             </Card>
           </TabsContent>
         )}
+
+        {/* Channels Tab */}
+        {isAdmin && (
+          <TabsContent value="channels" className="space-y-6">
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between">
+                <div>
+                  <CardTitle>Social Channels</CardTitle>
+                  <CardDescription>
+                    Quản lý các kênh social media của bạn. Mỗi platform có thể có nhiều accounts/pages khác nhau.
+                  </CardDescription>
+                </div>
+                <Button onClick={handleAddChannel}>
+                  <Plus className="w-4 h-4 mr-2" />
+                  Thêm Channel
+                </Button>
+              </CardHeader>
+              <CardContent>
+                {channelsLoading ? (
+                  <div className="flex items-center justify-center py-8">
+                    <Loader2 className="w-6 h-6 animate-spin" />
+                  </div>
+                ) : socialChannels && socialChannels.length > 0 ? (
+                  <div className="space-y-4">
+                    {["facebook", "instagram", "zalo", "tiktok", "youtube", "website"].map((platform) => {
+                      const platformChannels = socialChannels.filter((c) => c.platform === platform);
+                      if (platformChannels.length === 0) return null;
+                      return (
+                        <div key={platform} className="space-y-2">
+                          <h4 className="font-medium flex items-center gap-2">
+                            {getChannelIcon(platform)} {platform.charAt(0).toUpperCase() + platform.slice(1)}
+                            <Badge variant="outline">{platformChannels.length}</Badge>
+                          </h4>
+                          <div className="space-y-2 pl-6">
+                            {platformChannels.map((channel) => (
+                              <div
+                                key={channel.id}
+                                className="flex items-center justify-between p-3 border rounded-lg"
+                              >
+                                <div className="flex items-center gap-3">
+                                  {channel.avatarUrl ? (
+                                    // eslint-disable-next-line @next/next/no-img-element
+                                    <img
+                                      src={channel.avatarUrl}
+                                      alt={channel.name}
+                                      className="w-10 h-10 rounded-full object-cover"
+                                    />
+                                  ) : (
+                                    <div className="w-10 h-10 rounded-full bg-muted flex items-center justify-center text-lg">
+                                      {getChannelIcon(channel.platform)}
+                                    </div>
+                                  )}
+                                  <div>
+                                    <p className="font-medium">{channel.name}</p>
+                                    {channel.description && (
+                                      <p className="text-sm text-muted-foreground">{channel.description}</p>
+                                    )}
+                                    {channel.accountUrl && (
+                                      <a
+                                        href={channel.accountUrl}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="text-xs text-primary hover:underline"
+                                      >
+                                        {channel.accountUrl}
+                                      </a>
+                                    )}
+                                  </div>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                  <Badge variant={channel.isActive ? "default" : "secondary"}>
+                                    {channel.isActive ? "Active" : "Inactive"}
+                                  </Badge>
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => handleEditChannel(channel)}
+                                  >
+                                    <Edit className="w-4 h-4" />
+                                  </Button>
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    className="text-destructive"
+                                    onClick={() => {
+                                      if (confirm("Are you sure you want to delete this channel?")) {
+                                        deleteChannelMutation.mutate({ id: channel.id });
+                                      }
+                                    }}
+                                  >
+                                    <Trash2 className="w-4 h-4" />
+                                  </Button>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <div className="text-center py-8 text-muted-foreground">
+                    <p>Chưa có channel nào.</p>
+                    <p className="text-sm">Thêm channel đầu tiên để bắt đầu quản lý nội dung.</p>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+        )}
+
+        {/* Platforms Tab */}
+        {isAdmin && (
+          <TabsContent value="platforms" className="space-y-6">
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between">
+                <div>
+                  <CardTitle>Platforms</CardTitle>
+                  <CardDescription>
+                    Manage available platforms for content creation and analytics. Custom platforms can be added dynamically.
+                  </CardDescription>
+                </div>
+                <Button onClick={handleAddPlatform}>
+                  <Plus className="w-4 h-4 mr-2" />
+                  Add Platform
+                </Button>
+              </CardHeader>
+              <CardContent>
+                {platformsLoading ? (
+                  <div className="flex items-center justify-center py-8">
+                    <Loader2 className="w-6 h-6 animate-spin" />
+                  </div>
+                ) : allPlatforms && allPlatforms.length > 0 ? (
+                  <div className="space-y-4">
+                    {["social", "advertising", "analytics", "website"].map((category) => {
+                      const categoryPlatforms = allPlatforms.filter((p) => p.category === category);
+                      if (categoryPlatforms.length === 0) return null;
+                      return (
+                        <div key={category} className="space-y-2">
+                          <h4 className="font-medium flex items-center gap-2">
+                            {getCategoryDisplay(category)}
+                            <Badge variant="outline">{categoryPlatforms.length}</Badge>
+                          </h4>
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                            {categoryPlatforms.map((platform) => (
+                              <div
+                                key={platform.id}
+                                className={`flex items-center justify-between p-3 border rounded-lg ${!platform.isActive ? "opacity-60" : ""}`}
+                              >
+                                <div className="flex items-center gap-3">
+                                  <div
+                                    className="w-10 h-10 rounded-full flex items-center justify-center text-white font-bold"
+                                    style={{ backgroundColor: platform.color }}
+                                  >
+                                    {platform.icon || platform.displayName.charAt(0).toUpperCase()}
+                                  </div>
+                                  <div>
+                                    <p className="font-medium">{platform.displayName}</p>
+                                    <p className="text-xs text-muted-foreground">Code: {platform.code}</p>
+                                  </div>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                  <Badge variant={platform.isActive ? "default" : "secondary"}>
+                                    {platform.isActive ? "Active" : "Inactive"}
+                                  </Badge>
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => handleEditPlatform(platform)}
+                                  >
+                                    <Edit className="w-4 h-4" />
+                                  </Button>
+                                  {platform.isActive && (
+                                    <Button
+                                      variant="outline"
+                                      size="sm"
+                                      className="text-destructive"
+                                      onClick={() => {
+                                        if (confirm("Are you sure you want to deactivate this platform?")) {
+                                          deletePlatformMutation.mutate({ id: platform.id });
+                                        }
+                                      }}
+                                    >
+                                      <Trash2 className="w-4 h-4" />
+                                    </Button>
+                                  )}
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <div className="text-center py-8 text-muted-foreground">
+                    <p>No platforms configured.</p>
+                    <p className="text-sm">Add your first platform to start managing content across channels.</p>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+        )}
       </Tabs>
+
+      {/* Edit Platform Dialog */}
+      <Dialog open={platformDialogOpen} onOpenChange={setPlatformDialogOpen}>
+        <DialogContent className="max-w-[100vw] sm:max-w-md w-full">
+          <DialogHeader>
+            <DialogTitle>{editingPlatform?.id ? "Edit Platform" : "Add New Platform"}</DialogTitle>
+            <DialogDescription>
+              {editingPlatform?.id ? "Update platform settings" : "Add a new platform for content management"}
+            </DialogDescription>
+          </DialogHeader>
+          {editingPlatform && (
+            <div className="space-y-4">
+              {!editingPlatform.id && (
+                <div className="space-y-2">
+                  <Label>Code *</Label>
+                  <Input
+                    value={editingPlatform.code}
+                    onChange={(e) => setEditingPlatform({ ...editingPlatform, code: e.target.value.toLowerCase().replace(/[^a-z_]/g, "_") })}
+                    placeholder="e.g., linkedin, twitter"
+                    disabled={!!editingPlatform.id}
+                  />
+                  <p className="text-xs text-muted-foreground">Lowercase letters and underscores only. Cannot be changed later.</p>
+                </div>
+              )}
+              <div className="space-y-2">
+                <Label>Display Name *</Label>
+                <Input
+                  value={editingPlatform.displayName}
+                  onChange={(e) => setEditingPlatform({ ...editingPlatform, displayName: e.target.value })}
+                  placeholder="e.g., LinkedIn, Twitter/X"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Icon (Emoji)</Label>
+                <Input
+                  value={editingPlatform.icon}
+                  onChange={(e) => setEditingPlatform({ ...editingPlatform, icon: e.target.value })}
+                  placeholder="e.g., 🔗"
+                  maxLength={4}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Color *</Label>
+                <div className="flex items-center gap-2">
+                  <Input
+                    type="color"
+                    value={editingPlatform.color}
+                    onChange={(e) => setEditingPlatform({ ...editingPlatform, color: e.target.value })}
+                    className="w-16 h-10 p-1"
+                  />
+                  <Input
+                    value={editingPlatform.color}
+                    onChange={(e) => setEditingPlatform({ ...editingPlatform, color: e.target.value })}
+                    placeholder="#3B82F6"
+                    className="flex-1"
+                  />
+                </div>
+              </div>
+              <div className="space-y-2">
+                <Label>Category *</Label>
+                <Select
+                  value={editingPlatform.category}
+                  onValueChange={(value) => setEditingPlatform({ ...editingPlatform, category: value })}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="social">Social Media</SelectItem>
+                    <SelectItem value="advertising">Advertising</SelectItem>
+                    <SelectItem value="analytics">Analytics</SelectItem>
+                    <SelectItem value="website">Website</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label>Sort Order</Label>
+                <Input
+                  type="number"
+                  value={editingPlatform.sortOrder}
+                  onChange={(e) => setEditingPlatform({ ...editingPlatform, sortOrder: parseInt(e.target.value) || 0 })}
+                  placeholder="0"
+                />
+                <p className="text-xs text-muted-foreground">Lower numbers appear first</p>
+              </div>
+              <div className="flex items-center gap-2">
+                <Switch
+                  checked={editingPlatform.isActive}
+                  onCheckedChange={(checked) => setEditingPlatform({ ...editingPlatform, isActive: checked })}
+                />
+                <Label>Active</Label>
+              </div>
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setPlatformDialogOpen(false)}>
+              Cancel
+            </Button>
+            <Button
+              onClick={handleSavePlatform}
+              disabled={!editingPlatform?.displayName || (!editingPlatform?.id && !editingPlatform?.code) || createPlatformMutation.isPending || updatePlatformMutation.isPending}
+            >
+              {(createPlatformMutation.isPending || updatePlatformMutation.isPending) ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  Saving...
+                </>
+              ) : (
+                <>
+                  <Save className="w-4 h-4 mr-2" />
+                  {editingPlatform?.id ? "Save Changes" : "Create Platform"}
+                </>
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit Channel Dialog */}
+      <Dialog open={channelDialogOpen} onOpenChange={setChannelDialogOpen}>
+        <DialogContent className="max-w-[100vw] sm:max-w-md w-full">
+          <DialogHeader>
+            <DialogTitle>{editingChannel?.id ? "Edit Channel" : "Add New Channel"}</DialogTitle>
+            <DialogDescription>
+              {editingChannel?.id ? "Chỉnh sửa thông tin channel" : "Thêm một channel mới để đăng nội dung"}
+            </DialogDescription>
+          </DialogHeader>
+          {editingChannel && (
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <Label>Tên Channel *</Label>
+                <Input
+                  value={editingChannel.name}
+                  onChange={(e) => setEditingChannel({ ...editingChannel, name: e.target.value })}
+                  placeholder="VD: Greenfield Dental - Trang chính"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Platform *</Label>
+                <Select
+                  value={editingChannel.platform}
+                  onValueChange={(value) => setEditingChannel({ ...editingChannel, platform: value })}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="facebook">🔵 Facebook</SelectItem>
+                    <SelectItem value="instagram">📸 Instagram</SelectItem>
+                    <SelectItem value="zalo">💙 Zalo</SelectItem>
+                    <SelectItem value="tiktok">🎵 TikTok</SelectItem>
+                    <SelectItem value="youtube">🔴 YouTube</SelectItem>
+                    <SelectItem value="website">🌐 Website</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label>Account/Page URL</Label>
+                <Input
+                  value={editingChannel.accountUrl}
+                  onChange={(e) => setEditingChannel({ ...editingChannel, accountUrl: e.target.value })}
+                  placeholder="https://facebook.com/yourpage"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Avatar URL</Label>
+                <Input
+                  value={editingChannel.avatarUrl}
+                  onChange={(e) => setEditingChannel({ ...editingChannel, avatarUrl: e.target.value })}
+                  placeholder="https://..."
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Mô tả</Label>
+                <Input
+                  value={editingChannel.description}
+                  onChange={(e) => setEditingChannel({ ...editingChannel, description: e.target.value })}
+                  placeholder="Mô tả ngắn về channel"
+                />
+              </div>
+              <div className="flex items-center gap-2">
+                <Switch
+                  checked={editingChannel.isActive}
+                  onCheckedChange={(checked) => setEditingChannel({ ...editingChannel, isActive: checked })}
+                />
+                <Label>Active</Label>
+              </div>
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setChannelDialogOpen(false)}>
+              Cancel
+            </Button>
+            <Button
+              onClick={handleSaveChannel}
+              disabled={!editingChannel?.name || createChannelMutation.isPending || updateChannelMutation.isPending}
+            >
+              {(createChannelMutation.isPending || updateChannelMutation.isPending) ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  Saving...
+                </>
+              ) : (
+                <>
+                  <Save className="w-4 h-4 mr-2" />
+                  {editingChannel?.id ? "Save Changes" : "Create Channel"}
+                </>
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Edit Template Dialog */}
       <Dialog open={editTemplateDialogOpen} onOpenChange={setEditTemplateDialogOpen}>
