@@ -18,19 +18,36 @@ interface Session {
 export const createTRPCContext = async (opts: { headers: Headers }) => {
   const supabase = await createClient();
 
-  const { data: { user: authUser } } = await supabase.auth.getUser();
+  // Log cookies for debugging (only cookie names, not values)
+  const cookieHeader = opts.headers.get('cookie');
+  const cookieNames = cookieHeader
+    ? cookieHeader.split(';').map(c => c.trim().split('=')[0]).filter(n => n.startsWith('sb-'))
+    : [];
+  console.log('[TRPC Context] Supabase cookies present:', cookieNames.length > 0 ? cookieNames : 'none');
+
+  const { data: { user: authUser }, error: authError } = await supabase.auth.getUser();
+
+  if (authError) {
+    console.log('[TRPC Context] Auth error:', authError.message);
+  }
 
   let session: Session = { user: null };
 
   if (authUser) {
+    console.log('[TRPC Context] Auth user found:', authUser.id.substring(0, 8) + '...');
     const profile = await prisma.user.findUnique({
       where: { authId: authUser.id },
       select: { id: true, email: true, name: true, role: true },
     });
 
     if (profile) {
+      console.log('[TRPC Context] Profile found:', profile.email);
       session = { user: profile };
+    } else {
+      console.log('[TRPC Context] No profile found for authId:', authUser.id.substring(0, 8) + '...');
     }
+  } else {
+    console.log('[TRPC Context] No auth user - session will be null');
   }
 
   return {

@@ -199,6 +199,17 @@ export default function DashboardPage() {
     retry: false,
   });
 
+  // Debug logging
+  if (typeof window !== 'undefined') {
+    console.log('[Dashboard] Auth state:', { authLoading, isAuthenticated, userName });
+    console.log('[Dashboard] Query states:', {
+      taskStats: { loading: loadingTaskStats, error: taskStatsError?.message, hasData: !!taskStats },
+      points: { loading: loadingPoints, error: pointsError?.message, hasData: !!myPoints },
+      calendar: { loading: loadingCalendar, error: calendarError?.message, count: calendarItems.length },
+      alerts: { loading: loadingAlerts, error: alertsError?.message, count: recentAlerts.length },
+    });
+  }
+
   const currentDate = new Date().toLocaleDateString(language === "vi" ? "vi-VN" : "en-US", {
     weekday: "long",
     year: "numeric",

@@ -22,20 +22,24 @@ async function withTimeout<T>(
 }
 
 export async function updateSession(request: NextRequest) {
+  const pathname = request.nextUrl.pathname
+  const isApiRoute = pathname.startsWith('/api/')
+
+  // Only log for API routes to reduce noise
+  if (isApiRoute) {
+    console.log(`[Middleware] ${pathname}`)
+  }
+
   // Public routes that don't need any auth check
   const publicRoutes = ['/login', '/unauthorized']
   const isPublicRoute = publicRoutes.some(route =>
-    request.nextUrl.pathname === route ||
-    request.nextUrl.pathname.startsWith(route + '/')
+    pathname === route || pathname.startsWith(route + '/')
   )
 
   // For public routes, just pass through without any Supabase calls
   if (isPublicRoute) {
     return NextResponse.next({ request })
   }
-
-  // API routes need session refresh but handle their own auth/redirects
-  const isApiRoute = request.nextUrl.pathname.startsWith('/api/')
 
   let supabaseResponse = NextResponse.next({
     request,
@@ -65,6 +69,18 @@ export async function updateSession(request: NextRequest) {
   // Check if user is authenticated (with 3s timeout)
   const authResult = await withTimeout(supabase.auth.getUser(), 3000)
   const user = authResult?.data?.user ?? null
+
+  if (isApiRoute) {
+    if (authResult === null) {
+      console.log('[Middleware] Auth timeout (3s)')
+    } else if (authResult.error) {
+      console.log('[Middleware] Auth error:', authResult.error.message)
+    } else if (user) {
+      console.log('[Middleware] User authenticated:', user.id.substring(0, 8) + '...')
+    } else {
+      console.log('[Middleware] No user in session')
+    }
+  }
 
   // Protected routes - redirect to login if not authenticated
   const protectedRoutes = [
