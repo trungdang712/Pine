@@ -64,7 +64,6 @@ export function useAuth() {
 
     // Get initial session with timeout
     const getInitialSession = async () => {
-      console.log("[useAuth] Getting initial session...");
       try {
         // Add 5 second timeout to prevent infinite loading
         const result = await withTimeout(supabase.auth.getUser(), 5000);
@@ -72,7 +71,6 @@ export function useAuth() {
         if (!isMounted) return;
 
         if (!result) {
-          console.error("[useAuth] Auth timeout - no response in 5s");
           setState({ user: null, profile: null, loading: false, isDemoMode: false });
           return;
         }
@@ -80,13 +78,11 @@ export function useAuth() {
         const { data: { user }, error: authError } = result;
 
         if (authError) {
-          console.error("[useAuth] Auth error:", authError.message, authError.status);
           setState({ user: null, profile: null, loading: false, isDemoMode: false });
           return;
         }
 
         if (user) {
-          console.log("[useAuth] User found:", user.id.substring(0, 8) + "...", "email:", user.email);
           // Also add timeout for profile fetch
           const profileResult = await withTimeout(
             supabase
@@ -100,11 +96,6 @@ export function useAuth() {
           if (!isMounted) return;
 
           const profile = profileResult?.data ?? null;
-          if (profileResult?.error) {
-            console.error("[useAuth] Profile error:", profileResult.error.message);
-          } else if (profile) {
-            console.log("[useAuth] Profile loaded:", profile.name, "team:", profile.team, "role:", profile.role);
-          }
 
           setState({
             user,
@@ -112,13 +103,10 @@ export function useAuth() {
             loading: false,
             isDemoMode: false,
           });
-          console.log("[useAuth] Auth complete - isAuthenticated: true");
         } else {
-          console.log("[useAuth] No user found - isAuthenticated: false");
           setState({ user: null, profile: null, loading: false, isDemoMode: false });
         }
       } catch (error) {
-        console.error("[useAuth] Session error:", error);
         if (isMounted) {
           setState({ user: null, profile: null, loading: false, isDemoMode: false });
         }

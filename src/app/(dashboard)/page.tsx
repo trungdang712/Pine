@@ -173,42 +173,23 @@ export default function DashboardPage() {
     const now = new Date();
     const twoWeeksFromNow = new Date(now.getTime() + 14 * 24 * 60 * 60 * 1000);
     return {
-      startDate: now.toISOString(),
-      endDate: twoWeeksFromNow.toISOString(),
+      calendarStartDate: now.toISOString(),
+      calendarEndDate: twoWeeksFromNow.toISOString(),
+      alertsLimit: 5,
     };
   });
 
-  // Fetch real data - enabled when authenticated, no retry on errors
-  const { data: taskStats, isLoading: loadingTaskStats, error: taskStatsError, isError: isTaskStatsError } = trpc.task.getTaskStats.useQuery(undefined, {
-    enabled: isAuthenticated,
-    retry: false,
-  });
-
-  const { data: recentAlerts = [], isLoading: loadingAlerts, error: alertsError, isError: isAlertsError } = trpc.alerts.getMyAlerts.useQuery(
-    { limit: 5 },
-    { enabled: isAuthenticated, retry: false }
-  );
-
-  const { data: calendarItems = [], isLoading: loadingCalendar, error: calendarError, isError: isCalendarError } = trpc.calendar.getItems.useQuery(
+  // Single combined query for all dashboard data - much faster than 4 separate calls
+  const { data: dashboardData, isLoading: isLoadingData, isError: hasError } = trpc.dashboard.getData.useQuery(
     dateRange,
-    { enabled: isAuthenticated, retry: false }
+    { enabled: isAuthenticated, retry: false, staleTime: 60000 }
   );
 
-  const { data: myPoints, isLoading: loadingPoints, error: pointsError, isError: isPointsError } = trpc.gamification.getMyPoints.useQuery(undefined, {
-    enabled: isAuthenticated,
-    retry: false,
-  });
-
-  // Debug logging
-  if (typeof window !== 'undefined') {
-    console.log('[Dashboard] Auth state:', { authLoading, isAuthenticated, userName });
-    console.log('[Dashboard] Query states:', {
-      taskStats: { loading: loadingTaskStats, error: taskStatsError?.message, hasData: !!taskStats },
-      points: { loading: loadingPoints, error: pointsError?.message, hasData: !!myPoints },
-      calendar: { loading: loadingCalendar, error: calendarError?.message, count: calendarItems.length },
-      alerts: { loading: loadingAlerts, error: alertsError?.message, count: recentAlerts.length },
-    });
-  }
+  // Extract data from combined response
+  const taskStats = dashboardData?.taskStats;
+  const calendarItems = dashboardData?.calendarItems ?? [];
+  const recentAlerts = dashboardData?.alerts ?? [];
+  const myPoints = dashboardData?.points;
 
   const currentDate = new Date().toLocaleDateString(language === "vi" ? "vi-VN" : "en-US", {
     weekday: "long",
@@ -235,8 +216,8 @@ export default function DashboardPage() {
     const completedCount = taskStats?.completed ?? 0;
     const overdueCount = taskStats?.overdue ?? 0;
     const pendingCount = totalTasks - inProgressCount - completedCount;
-    const totalPoints = myPoints?.points?.totalPoints ?? 0;
-    const weeklyPoints = myPoints?.points?.weeklyPoints ?? 0;
+    const totalPoints = myPoints?.totalPoints ?? 0;
+    const weeklyPoints = myPoints?.weeklyPoints ?? 0;
 
     switch (effectiveRole) {
       case "Admin":
@@ -288,13 +269,11 @@ export default function DashboardPage() {
 
   const kpis = generateKPIs();
 
-  // Check if any query has auth error (UNAUTHORIZED)
-  const hasAuthError = isTaskStatsError || isPointsError || isCalendarError || isAlertsError;
+  // Check if query has auth error (UNAUTHORIZED)
+  const hasAuthError = hasError;
 
-  // Loading states: auth loading OR (query loading AND no error)
-  const isLoadingKPIs = authLoading || ((loadingTaskStats && !taskStatsError) || (loadingPoints && !pointsError));
-  const isLoadingCalendar = authLoading || (loadingCalendar && !calendarError);
-  const isLoadingAlerts = authLoading || (loadingAlerts && !alertsError);
+  // Loading state: auth loading OR data loading
+  const isLoading = authLoading || isLoadingData;
 
   return (
     <div className="p-4 md:p-6 space-y-4 md:space-y-6">
@@ -349,7 +328,7 @@ export default function DashboardPage() {
 
       {/* KPI Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        {isLoadingKPIs ? (
+        {isLoading ? (
           Array(4).fill(0).map((_, i) => (
             <Card key={i} className="p-4">
               <LoadingSpinner size="sm" />
@@ -378,9 +357,9 @@ export default function DashboardPage() {
             <CardTitle>{t.dashboard.upcomingContent}</CardTitle>
           </CardHeader>
           <CardContent>
-            {isLoadingCalendar ? (
+            {isLoading ? (
               <LoadingSpinner size="sm" />
-            ) : calendarError ? (
+            ) : hasError ? (
               <div className="text-center py-8 text-muted-foreground text-sm">
                 {t.errors.generic}
               </div>
@@ -440,9 +419,9 @@ export default function DashboardPage() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            {isLoadingAlerts ? (
+            {isLoading ? (
               <LoadingSpinner size="sm" />
-            ) : alertsError ? (
+            ) : hasError ? (
               <div className="text-center py-8 text-muted-foreground text-sm">
                 {t.errors.generic}
               </div>
