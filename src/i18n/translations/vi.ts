@@ -261,6 +261,13 @@ export const vi: Translations = {
       linkedin: "LinkedIn",
       twitter: "Twitter",
     },
+    stats: {
+      totalContent: "Tổng nội dung",
+      planned: "Đã lên kế hoạch",
+      inProduction: "Đang sản xuất",
+      ready: "Sẵn sàng",
+      published: "Đã xuất bản",
+    },
   },
   analytics: {
     title: "Phân tích Marketing",
@@ -448,6 +455,9 @@ export const vi: Translations = {
       teamCollaboration: "Hợp tác nhóm",
       contentProduced: "Nội dung đã tạo",
       engagement: "Mức độ tương tác",
+      postsPublished: "Bài đã đăng",
+      proposalsApproved: "Đề xuất được duyệt",
+      avgRating: "Đánh giá TB",
     },
     team: {
       title: "Hiệu suất nhóm",
@@ -462,6 +472,38 @@ export const vi: Translations = {
       thisQuarter: "Quý này",
       thisYear: "Năm nay",
       custom: "Tùy chọn",
+    },
+    scoreLabels: {
+      excellent: "Xuất sắc",
+      good: "Tốt",
+      fair: "Khá",
+      needsWork: "Cần cải thiện",
+    },
+    descriptions: {
+      myPerformance: "Chỉ số hiệu suất và thành tích cá nhân của bạn",
+      teamPerformance: "Tổng quan hiệu suất và xếp hạng nhóm",
+      leaderboard: "Bảng xếp hạng, thành tích và hệ thống phần thưởng",
+    },
+    table: {
+      tasks: "Công việc",
+      completion: "Hoàn thành",
+      rating: "Đánh giá",
+      points: "Điểm",
+    },
+    misc: {
+      tasksCompletedSuffix: "việc hoàn thành",
+      badgesSuffix: "huy hiệu",
+      pointsThisWeek: "điểm tuần này",
+      yourScore: "Điểm của bạn",
+      target: "Mục tiêu",
+      earned: "Đạt được",
+      progress: "Tiến độ",
+    },
+    rarity: {
+      legendary: "Huyền thoại",
+      epic: "Sử thi",
+      rare: "Hiếm",
+      common: "Thường",
     },
   },
   gamification: {

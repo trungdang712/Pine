@@ -127,44 +127,44 @@ export default function PerformancePage() {
     const data = myPerformanceQuery.data;
     if (!data) {
       return [
-        { label: "Posts Published", value: "-", percentage: 0, change: 0, isPositive: true },
-        { label: "On-Time Rate", value: "-", percentage: 0, change: 0, isPositive: true },
-        { label: "Tasks Completed", value: "-", percentage: 0, change: 0, isPositive: true },
-        { label: "Avg Rating", value: "-", percentage: 0, change: 0, isPositive: true },
+        { label: t.performance.metrics.postsPublished, value: "-", percentage: 0, change: 0, isPositive: true },
+        { label: t.performance.metrics.onTimeDelivery, value: "-", percentage: 0, change: 0, isPositive: true },
+        { label: t.performance.metrics.tasksCompleted, value: "-", percentage: 0, change: 0, isPositive: true },
+        { label: t.performance.metrics.avgRating, value: "-", percentage: 0, change: 0, isPositive: true },
       ];
     }
     const { taskStats, proposalStats, crossTeamRating } = data;
     return [
       {
-        label: "Tasks Completed",
+        label: t.performance.metrics.tasksCompleted,
         value: `${taskStats.completed}/${taskStats.total}`,
         percentage: taskStats.total > 0 ? Math.round((taskStats.completed / taskStats.total) * 100) : 0,
         change: taskStats.completed,
         isPositive: true,
       },
       {
-        label: "On-Time Rate",
+        label: t.performance.metrics.onTimeDelivery,
         value: `${Math.round(taskStats.onTimeRate)}%`,
         percentage: Math.round(taskStats.onTimeRate),
         change: 0,
         isPositive: taskStats.onTimeRate >= 80,
       },
       {
-        label: "Proposals Approved",
+        label: t.performance.metrics.proposalsApproved,
         value: `${proposalStats.approved}/${proposalStats.submitted}`,
         percentage: Math.round(proposalStats.approvalRate),
         change: proposalStats.approved,
         isPositive: true,
       },
       {
-        label: "Avg Rating",
+        label: t.performance.metrics.avgRating,
         value: crossTeamRating.average > 0 ? `${crossTeamRating.average.toFixed(1)}/5` : "N/A",
         percentage: Math.round((crossTeamRating.average / 5) * 100),
         change: 0,
         isPositive: crossTeamRating.average >= 3.5,
       },
     ];
-  }, [myPerformanceQuery.data]);
+  }, [myPerformanceQuery.data, t]);
 
   // Overall score derived from KPIs
   const overallScore = useMemo(() => {
@@ -173,7 +173,7 @@ export default function PerformancePage() {
     return Math.round(kpiPercentages.reduce((a, b) => a + b, 0) / kpiPercentages.length);
   }, [myPerformanceQuery.data, myKPIs]);
 
-  const overallScoreLabel = overallScore >= 90 ? "Excellent" : overallScore >= 75 ? "Good" : overallScore >= 50 ? "Fair" : "Needs Work";
+  const overallScoreLabel = overallScore >= 90 ? t.performance.scoreLabels.excellent : overallScore >= 75 ? t.performance.scoreLabels.good : overallScore >= 50 ? t.performance.scoreLabels.fair : t.performance.scoreLabels.needsWork;
 
   // Team members from teamPerformanceQuery
   const teamMembers = useMemo(() => {
@@ -309,13 +309,13 @@ export default function PerformancePage() {
   const getRarityLabel = (rarity: string) => {
     switch (rarity) {
       case "legendary":
-        return "Legendary";
+        return t.performance.rarity.legendary;
       case "epic":
-        return "Epic";
+        return t.performance.rarity.epic;
       case "rare":
-        return "Rare";
+        return t.performance.rarity.rare;
       default:
-        return "Common";
+        return t.performance.rarity.common;
     }
   };
 
@@ -374,7 +374,7 @@ export default function PerformancePage() {
                   <div className="flex items-center gap-2 mt-2 text-sm">
                     <TrendingUp className="w-4 h-4 text-green-500" />
                     <span className="text-green-500 font-medium">
-                      {myPerformanceQuery.data?.taskStats.completed ?? 0} tasks completed
+                      {myPerformanceQuery.data?.taskStats.completed ?? 0} {t.performance.misc.tasksCompletedSuffix}
                     </span>
                   </div>
                 </div>
@@ -396,12 +396,12 @@ export default function PerformancePage() {
                       </div>
                     </div>
                     <Badge variant="secondary" className="text-base px-3 py-1">
-                      {achievements.filter((a) => a.earned).length} badges
+                      {achievements.filter((a) => a.earned).length} {t.performance.misc.badgesSuffix}
                     </Badge>
                   </div>
                   <div className="flex items-center gap-2 mt-2 text-sm">
                     <ArrowUpRight className="w-4 h-4 text-green-500" />
-                    <span className="text-green-500 font-medium">+{weeklyPoints} points this week</span>
+                    <span className="text-green-500 font-medium">+{weeklyPoints} {t.performance.misc.pointsThisWeek}</span>
                   </div>
                 </div>
               </div>
@@ -457,8 +457,8 @@ export default function PerformancePage() {
                   <YAxis domain={[0, 100]} />
                   <Tooltip />
                   <Legend />
-                  <Line type="monotone" dataKey="score" stroke="#0d9488" name="Your Score" strokeWidth={2} />
-                  <Line type="monotone" dataKey="target" stroke="#94a3b8" name="Target" strokeDasharray="5 5" />
+                  <Line type="monotone" dataKey="score" stroke="#0d9488" name={t.performance.misc.yourScore} strokeWidth={2} />
+                  <Line type="monotone" dataKey="target" stroke="#94a3b8" name={t.performance.misc.target} strokeDasharray="5 5" />
                 </LineChart>
               </ResponsiveContainer>
             </div>
@@ -498,7 +498,7 @@ export default function PerformancePage() {
                         </p>
                         {achievement.earned && achievement.earnedDate && (
                           <Badge variant="secondary" className="text-xs">
-                            Earned {achievement.earnedDate}
+                            {t.performance.misc.earned} {achievement.earnedDate}
                           </Badge>
                         )}
                         {!achievement.earned && achievement.progress !== undefined && achievement.total !== undefined && (
@@ -632,22 +632,22 @@ export default function PerformancePage() {
                     </div>
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-center">
                       <div>
-                        <p className="text-xs text-muted-foreground">Tasks</p>
+                        <p className="text-xs text-muted-foreground">{t.performance.table.tasks}</p>
                         <p className="font-medium">{member.tasksCompleted}</p>
                       </div>
                       <div>
-                        <p className="text-xs text-muted-foreground">Completion</p>
+                        <p className="text-xs text-muted-foreground">{t.performance.table.completion}</p>
                         <p className="font-medium">{member.onTimeRate}</p>
                       </div>
                       <div>
-                        <p className="text-xs text-muted-foreground">Rating</p>
+                        <p className="text-xs text-muted-foreground">{t.performance.table.rating}</p>
                         <p className="font-medium flex items-center justify-center gap-1">
                           <Star className="w-3 h-3 fill-amber-400 text-amber-400" />
                           {member.rating}
                         </p>
                       </div>
                       <div>
-                        <p className="text-xs text-muted-foreground">Points</p>
+                        <p className="text-xs text-muted-foreground">{t.performance.table.points}</p>
                         <p className="font-bold text-primary">{member.points}</p>
                       </div>
                     </div>
@@ -779,7 +779,7 @@ export default function PerformancePage() {
                         </div>
                         <div className="text-right">
                           <p className="text-2xl font-bold text-primary">{member.points}</p>
-                          <p className="text-xs text-muted-foreground">points</p>
+                          <p className="text-xs text-muted-foreground">{t.performance.table.points}</p>
                         </div>
                       </div>
                     ))}
@@ -825,13 +825,13 @@ export default function PerformancePage() {
                               {achievement.description}
                             </p>
                             {achievement.earned && achievement.earnedDate && (
-                              <p className="text-xs text-white/80">Earned {achievement.earnedDate}</p>
+                              <p className="text-xs text-white/80">{t.performance.misc.earned} {achievement.earnedDate}</p>
                             )}
                             {!achievement.earned && achievement.progress !== undefined && achievement.total !== undefined && (
                               <div className="space-y-1">
                                 <Progress value={(achievement.progress / achievement.total) * 100} className="h-2" />
                                 <p className="text-xs text-muted-foreground">
-                                  Progress: {achievement.progress} / {achievement.total}
+                                  {t.performance.misc.progress}: {achievement.progress} / {achievement.total}
                                 </p>
                               </div>
                             )}
@@ -904,10 +904,10 @@ export default function PerformancePage() {
         <h1 className="text-2xl font-semibold mb-1">{getViewTitle()}</h1>
         <p className="text-muted-foreground">
           {currentView === "my"
-            ? "Your personal performance metrics and achievements"
+            ? t.performance.descriptions.myPerformance
             : currentView === "team"
-            ? "Team performance overview and rankings"
-            : "Leaderboard, achievements, and rewards system"}
+            ? t.performance.descriptions.teamPerformance
+            : t.performance.descriptions.leaderboard}
         </p>
       </div>
 

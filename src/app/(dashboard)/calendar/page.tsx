@@ -409,55 +409,55 @@ export default function CalendarPage() {
 
       {/* Statistics */}
       <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
-        <Card>
+        <Card className="border">
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-muted-foreground">Total Content</p>
+                <p className="text-sm text-muted-foreground">{t.calendar.stats.totalContent}</p>
                 <p className="text-2xl font-semibold">{statsData.total}</p>
               </div>
               <BarChart3 className="w-8 h-8 text-muted-foreground" />
             </div>
           </CardContent>
         </Card>
-        <Card>
+        <Card className="border">
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-muted-foreground">Planned</p>
+                <p className="text-sm text-muted-foreground">{t.calendar.stats.planned}</p>
                 <p className="text-2xl font-semibold">{statsData.planned}</p>
               </div>
               <Clock className="w-8 h-8 text-gray-500" />
             </div>
           </CardContent>
         </Card>
-        <Card>
+        <Card className="border">
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-muted-foreground">In Production</p>
+                <p className="text-sm text-muted-foreground">{t.calendar.stats.inProduction}</p>
                 <p className="text-2xl font-semibold">{statsData.inProduction}</p>
               </div>
               <Clock className="w-8 h-8 text-warning" />
             </div>
           </CardContent>
         </Card>
-        <Card>
+        <Card className="border">
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-muted-foreground">Ready</p>
+                <p className="text-sm text-muted-foreground">{t.calendar.stats.ready}</p>
                 <p className="text-2xl font-semibold">{statsData.ready}</p>
               </div>
               <Clock className="w-8 h-8 text-success" />
             </div>
           </CardContent>
         </Card>
-        <Card>
+        <Card className="border">
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-muted-foreground">Published</p>
+                <p className="text-sm text-muted-foreground">{t.calendar.stats.published}</p>
                 <p className="text-2xl font-semibold">{statsData.published}</p>
               </div>
               <CalendarIcon className="w-8 h-8 text-info" />

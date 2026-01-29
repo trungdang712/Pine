@@ -261,6 +261,13 @@ export const en: Translations = {
       linkedin: "LinkedIn",
       twitter: "Twitter",
     },
+    stats: {
+      totalContent: "Total Content",
+      planned: "Planned",
+      inProduction: "In Production",
+      ready: "Ready",
+      published: "Published",
+    },
   },
   analytics: {
     title: "Marketing Analytics",
@@ -448,6 +455,9 @@ export const en: Translations = {
       teamCollaboration: "Team Collaboration",
       contentProduced: "Content Produced",
       engagement: "Engagement",
+      postsPublished: "Posts Published",
+      proposalsApproved: "Proposals Approved",
+      avgRating: "Avg Rating",
     },
     team: {
       title: "Team Performance",
@@ -462,6 +472,38 @@ export const en: Translations = {
       thisQuarter: "This Quarter",
       thisYear: "This Year",
       custom: "Custom",
+    },
+    scoreLabels: {
+      excellent: "Excellent",
+      good: "Good",
+      fair: "Fair",
+      needsWork: "Needs Work",
+    },
+    descriptions: {
+      myPerformance: "Your personal performance metrics and achievements",
+      teamPerformance: "Team performance overview and rankings",
+      leaderboard: "Leaderboard, achievements, and rewards system",
+    },
+    table: {
+      tasks: "Tasks",
+      completion: "Completion",
+      rating: "Rating",
+      points: "Points",
+    },
+    misc: {
+      tasksCompletedSuffix: "tasks completed",
+      badgesSuffix: "badges",
+      pointsThisWeek: "points this week",
+      yourScore: "Your Score",
+      target: "Target",
+      earned: "Earned",
+      progress: "Progress",
+    },
+    rarity: {
+      legendary: "Legendary",
+      epic: "Epic",
+      rare: "Rare",
+      common: "Common",
     },
   },
   gamification: {

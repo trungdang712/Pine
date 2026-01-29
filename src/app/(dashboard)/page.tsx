@@ -138,7 +138,7 @@ const statusLabelsData: Record<string, { labelKey: string; variant: "default" | 
 export default function DashboardPage() {
   const { profile, isAuthenticated, loading: authLoading } = useAuth();
   const { t, language } = useLanguage();
-  const userName = profile?.name?.split(" ")[0] ?? "User";
+  const userName = profile?.name?.split(" ")[0] || "";
   const isAdmin = profile?.role === "super_admin" || profile?.role === "admin" || profile?.role === "marketing_manager";
   const dateLocale = language === "vi" ? viLocale : enUS;
 

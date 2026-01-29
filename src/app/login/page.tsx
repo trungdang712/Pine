@@ -54,12 +54,23 @@ export default function LoginPage() {
     <div className="flex min-h-screen items-center justify-center bg-background px-4">
       <Card className="w-full max-w-md">
         <CardHeader className="text-center">
-          <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-xl bg-primary">
-            <span className="text-2xl font-bold text-primary-foreground">GF</span>
+          <div className="mx-auto mb-4">
+            <img
+              src="/logo.png"
+              alt="Greenfield Dental"
+              className="h-16 w-auto mx-auto"
+              onError={(e) => {
+                // Fallback to text if logo doesn't exist
+                e.currentTarget.style.display = 'none';
+                e.currentTarget.nextElementSibling?.classList.remove('hidden');
+              }}
+            />
+            <div className="hidden h-12 w-12 mx-auto items-center justify-center rounded-xl bg-primary">
+              <span className="text-2xl font-bold text-primary-foreground">GF</span>
+            </div>
           </div>
-          <CardTitle className="text-2xl">Greenfield Dental</CardTitle>
-          <CardDescription>
-            {t.auth.marketingCommandCenter}
+          <CardDescription className="italic text-base">
+            "Information is the currency of the digital age, and we are all its unwitting subjects"
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -96,29 +107,6 @@ export default function LoginPage() {
 
             <Button type="submit" className="w-full" disabled={loading}>
               {loading ? t.auth.signingIn : t.auth.signIn}
-            </Button>
-
-            <div className="relative my-4">
-              <div className="absolute inset-0 flex items-center">
-                <span className="w-full border-t" />
-              </div>
-              <div className="relative flex justify-center text-xs uppercase">
-                <span className="bg-card px-2 text-muted-foreground">{t.common.or}</span>
-              </div>
-            </div>
-
-            <Button
-              type="button"
-              variant="outline"
-              className="w-full"
-              onClick={() => {
-                // Set demo mode in localStorage and redirect
-                localStorage.setItem("demo_mode", "true");
-                router.push("/");
-                router.refresh();
-              }}
-            >
-              {t.auth.continueDemo}
             </Button>
           </form>
         </CardContent>

@@ -35,12 +35,14 @@ export function Header() {
     isDemoMode,
   });
 
-  const userName = profile?.name ?? "User";
-  const userInitials = userName
+  // Use first name for display, fallback to full name, then empty string
+  const fullName = profile?.name ?? "";
+  const firstName = fullName.split(" ")[0] || fullName;
+  const userInitials = fullName
     .split(" ")
     .map((n) => n[0])
     .join("")
-    .toUpperCase();
+    .toUpperCase() || "U";
 
   const dateLocale = language === "vi" ? viLocale : enUS;
 
@@ -204,7 +206,7 @@ export function Header() {
                       {userInitials}
                     </AvatarFallback>
                   </Avatar>
-                  <span className="hidden md:inline">{userName}</span>
+                  <span className="hidden md:inline">{firstName}</span>
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-56">

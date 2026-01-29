@@ -263,6 +263,13 @@ export interface Translations {
       linkedin: string;
       twitter: string;
     };
+    stats: {
+      totalContent: string;
+      planned: string;
+      inProduction: string;
+      ready: string;
+      published: string;
+    };
   };
   analytics: {
     title: string;
@@ -450,6 +457,9 @@ export interface Translations {
       teamCollaboration: string;
       contentProduced: string;
       engagement: string;
+      postsPublished: string;
+      proposalsApproved: string;
+      avgRating: string;
     };
     team: {
       title: string;
@@ -464,6 +474,38 @@ export interface Translations {
       thisQuarter: string;
       thisYear: string;
       custom: string;
+    };
+    scoreLabels: {
+      excellent: string;
+      good: string;
+      fair: string;
+      needsWork: string;
+    };
+    descriptions: {
+      myPerformance: string;
+      teamPerformance: string;
+      leaderboard: string;
+    };
+    table: {
+      tasks: string;
+      completion: string;
+      rating: string;
+      points: string;
+    };
+    misc: {
+      tasksCompletedSuffix: string;
+      badgesSuffix: string;
+      pointsThisWeek: string;
+      yourScore: string;
+      target: string;
+      earned: string;
+      progress: string;
+    };
+    rarity: {
+      legendary: string;
+      epic: string;
+      rare: string;
+      common: string;
     };
   };
   gamification: {
