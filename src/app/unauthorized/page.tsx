@@ -5,9 +5,11 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { ShieldX } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { useRouter } from "next/navigation";
+import { useLanguage } from "@/i18n";
 
 export default function UnauthorizedPage() {
   const router = useRouter();
+  const { t } = useLanguage();
 
   const handleSignOut = async () => {
     const supabase = createClient();
@@ -22,17 +24,17 @@ export default function UnauthorizedPage() {
           <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-destructive/10">
             <ShieldX className="h-8 w-8 text-destructive" />
           </div>
-          <CardTitle className="text-2xl">Access Denied</CardTitle>
+          <CardTitle className="text-2xl">{t.auth.accessDenied}</CardTitle>
           <CardDescription>
-            You don&apos;t have permission to access the Marketing Command Center.
+            {t.auth.accessDeniedDescription}
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <p className="text-sm text-muted-foreground">
-            This application is only available to the Marketing team. If you believe you should have access, please contact your administrator.
+            {t.auth.contactAdmin}
           </p>
           <Button onClick={handleSignOut} variant="outline" className="w-full">
-            Sign out and try another account
+            {t.auth.tryAnotherAccount}
           </Button>
         </CardContent>
       </Card>

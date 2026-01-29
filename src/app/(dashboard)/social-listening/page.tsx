@@ -73,8 +73,10 @@ import {
   Bar,
 } from "recharts";
 import { trpc } from "@/lib/trpc";
+import { useLanguage } from "@/i18n";
 
 export default function SocialListeningPage() {
+  const { t } = useLanguage();
   const [selectedLeadFilter, setSelectedLeadFilter] = useState("all");
   const [selectedSubreddit, setSelectedSubreddit] = useState("all");
   const [searchQuery, setSearchQuery] = useState("");
@@ -454,10 +456,9 @@ export default function SocialListeningPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-semibold mb-1">Social Listening</h1>
+        <h1 className="text-2xl font-semibold mb-1">{t.socialListening.title}</h1>
         <p className="text-muted-foreground">
-          Theo dõi và phân tích conversations về Greenfield Dental trên mạng xã
-          hội
+          {t.socialListening.subtitle}
         </p>
       </div>
 
@@ -465,7 +466,7 @@ export default function SocialListeningPage() {
         <TabsList className="flex-wrap">
           <TabsTrigger value="reddit">
             <Bot className="w-4 h-4 mr-2" />
-            Reddit Leads
+            {t.socialListening.redditLeads}
             {redditStats && redditStats.newPosts > 0 && (
               <Badge variant="destructive" className="ml-2">
                 {redditStats.newPosts}
@@ -474,23 +475,23 @@ export default function SocialListeningPage() {
           </TabsTrigger>
           <TabsTrigger value="overview">
             <Activity className="w-4 h-4 mr-2" />
-            Tổng Quan
+            {t.performance.overview}
           </TabsTrigger>
           <TabsTrigger value="mentions">
             <MessageCircle className="w-4 h-4 mr-2" />
-            Mentions
+            {t.socialListening.mentions}
           </TabsTrigger>
           <TabsTrigger value="trending">
             <TrendingUp className="w-4 h-4 mr-2" />
-            Trending Topics
+            {t.socialListening.keywords}
           </TabsTrigger>
           <TabsTrigger value="competitors">
             <Target className="w-4 h-4 mr-2" />
-            Competitors
+            {t.analytics.campaigns.title}
           </TabsTrigger>
           <TabsTrigger value="influencers">
             <Star className="w-4 h-4 mr-2" />
-            Influencers
+            {t.performance.metrics.engagement}
           </TabsTrigger>
         </TabsList>
 
@@ -500,10 +501,10 @@ export default function SocialListeningPage() {
             <div>
               <h2 className="text-xl font-semibold flex items-center gap-2">
                 <Bot className="w-6 h-6 text-primary" />
-                Reddit Lead Detection
+                {t.socialListening.redditLeads}
               </h2>
               <p className="text-sm text-muted-foreground">
-                AI-powered monitoring of dental tourism discussions on Reddit
+                {t.socialListening.subtitle}
               </p>
             </div>
             <div className="flex items-center gap-2">
@@ -527,33 +528,33 @@ export default function SocialListeningPage() {
             <Card>
               <CardContent className="p-4">
                 <div className="flex items-center justify-between mb-2">
-                  <p className="text-sm text-muted-foreground">Total Posts</p>
+                  <p className="text-sm text-muted-foreground">{t.socialListening.mentions}</p>
                   <Target className="w-4 h-4 text-muted-foreground" />
                 </div>
                 <p className="text-2xl font-bold">
                   {statsLoading ? "-" : redditStats?.totalPosts ?? 0}
                 </p>
-                <p className="text-xs text-muted-foreground mt-1">All time</p>
+                <p className="text-xs text-muted-foreground mt-1">{t.performance.periods.thisYear}</p>
               </CardContent>
             </Card>
 
             <Card className="border-2 border-red-200">
               <CardContent className="p-4">
                 <div className="flex items-center justify-between mb-2">
-                  <p className="text-sm text-muted-foreground">New Leads</p>
+                  <p className="text-sm text-muted-foreground">{t.socialListening.redditLeads}</p>
                   <Zap className="w-4 h-4 text-red-500" />
                 </div>
                 <p className="text-2xl font-bold text-red-500">
                   {statsLoading ? "-" : redditStats?.newPosts ?? 0}
                 </p>
-                <p className="text-xs text-red-600 mt-1">Needs attention</p>
+                <p className="text-xs text-red-600 mt-1">{t.common.pending}</p>
               </CardContent>
             </Card>
 
             <Card>
               <CardContent className="p-4">
                 <div className="flex items-center justify-between mb-2">
-                  <p className="text-sm text-muted-foreground">High Score</p>
+                  <p className="text-sm text-muted-foreground">{t.performance.metrics.qualityScore}</p>
                   <Activity className="w-4 h-4 text-muted-foreground" />
                 </div>
                 <p className="text-2xl font-bold text-orange-500">
@@ -566,26 +567,26 @@ export default function SocialListeningPage() {
             <Card>
               <CardContent className="p-4">
                 <div className="flex items-center justify-between mb-2">
-                  <p className="text-sm text-muted-foreground">Avg Score</p>
+                  <p className="text-sm text-muted-foreground">{t.performance.metrics.qualityScore}</p>
                   <DollarSign className="w-4 h-4 text-muted-foreground" />
                 </div>
                 <p className="text-lg font-bold text-primary">
                   {statsLoading ? "-" : redditStats?.avgLeadScore ?? 0}/100
                 </p>
-                <p className="text-xs text-muted-foreground mt-1">Lead quality</p>
+                <p className="text-xs text-muted-foreground mt-1">{t.socialListening.sentiment}</p>
               </CardContent>
             </Card>
 
             <Card className="border-2 border-green-200">
               <CardContent className="p-4">
                 <div className="flex items-center justify-between mb-2">
-                  <p className="text-sm text-muted-foreground">Responded</p>
+                  <p className="text-sm text-muted-foreground">{t.common.completed}</p>
                   <CheckCircle className="w-4 h-4 text-green-600" />
                 </div>
                 <p className="text-2xl font-bold text-green-600">
                   {statsLoading ? "-" : redditStats?.respondedPosts ?? 0}
                 </p>
-                <p className="text-xs text-green-600 mt-1">Engaged</p>
+                <p className="text-xs text-green-600 mt-1">{t.common.active}</p>
               </CardContent>
             </Card>
           </div>
@@ -654,10 +655,9 @@ export default function SocialListeningPage() {
             <Card>
               <CardContent className="p-12 text-center">
                 <Bot className="w-12 h-12 mx-auto text-muted-foreground mb-4" />
-                <h3 className="text-lg font-semibold mb-2">No Reddit Posts Yet</h3>
+                <h3 className="text-lg font-semibold mb-2">{t.socialListening.noLeads}</h3>
                 <p className="text-muted-foreground mb-4">
-                  Click &quot;Refresh&quot; to fetch new posts from monitored subreddits,
-                  or configure monitoring in settings.
+                  {t.common.noData}
                 </p>
                 <Button
                   onClick={() => refreshMutation.mutate()}
@@ -884,13 +884,13 @@ export default function SocialListeningPage() {
             <Card>
               <CardContent className="p-4">
                 <div className="flex items-center justify-between mb-2">
-                  <p className="text-sm text-muted-foreground">Total Mentions</p>
+                  <p className="text-sm text-muted-foreground">{t.socialListening.mentions}</p>
                   <MessageCircle className="w-4 h-4 text-muted-foreground" />
                 </div>
                 <p className="text-2xl font-bold">3,359</p>
                 <div className="flex items-center gap-1 text-sm text-green-600 mt-1">
                   <TrendingUp className="w-3 h-3" />
-                  <span>+14.2% vs last week</span>
+                  <span>+14.2% vs {t.common.thisWeek}</span>
                 </div>
               </CardContent>
             </Card>
@@ -898,13 +898,13 @@ export default function SocialListeningPage() {
             <Card>
               <CardContent className="p-4">
                 <div className="flex items-center justify-between mb-2">
-                  <p className="text-sm text-muted-foreground">Avg Sentiment</p>
+                  <p className="text-sm text-muted-foreground">{t.socialListening.sentiment}</p>
                   <Heart className="w-4 h-4 text-muted-foreground" />
                 </div>
                 <p className="text-2xl font-bold">4.3/5.0</p>
                 <div className="flex items-center gap-1 text-sm text-green-600 mt-1">
                   <TrendingUp className="w-3 h-3" />
-                  <span>+0.2 vs last week</span>
+                  <span>+0.2 vs {t.common.thisWeek}</span>
                 </div>
               </CardContent>
             </Card>
@@ -912,7 +912,7 @@ export default function SocialListeningPage() {
             <Card>
               <CardContent className="p-4">
                 <div className="flex items-center justify-between mb-2">
-                  <p className="text-sm text-muted-foreground">Response Rate</p>
+                  <p className="text-sm text-muted-foreground">{t.performance.metrics.engagement}</p>
                   <Activity className="w-4 h-4 text-muted-foreground" />
                 </div>
                 <p className="text-2xl font-bold">
@@ -920,7 +920,7 @@ export default function SocialListeningPage() {
                 </p>
                 <div className="flex items-center gap-1 text-sm text-green-600 mt-1">
                   <TrendingUp className="w-3 h-3" />
-                  <span>+3% vs last week</span>
+                  <span>+3% vs {t.common.thisWeek}</span>
                 </div>
               </CardContent>
             </Card>
@@ -929,7 +929,7 @@ export default function SocialListeningPage() {
               <CardContent className="p-4">
                 <div className="flex items-center justify-between mb-2">
                   <p className="text-sm text-muted-foreground">
-                    Avg Response Time
+                    {t.performance.metrics.onTimeDelivery}
                   </p>
                   <Clock className="w-4 h-4 text-muted-foreground" />
                 </div>
@@ -938,7 +938,7 @@ export default function SocialListeningPage() {
                 </p>
                 <div className="flex items-center gap-1 text-sm text-green-600 mt-1">
                   <TrendingDown className="w-3 h-3" />
-                  <span>-8min vs last week</span>
+                  <span>-8min vs {t.common.thisWeek}</span>
                 </div>
               </CardContent>
             </Card>
@@ -947,7 +947,7 @@ export default function SocialListeningPage() {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             <Card className="md:col-span-2">
               <CardHeader>
-                <CardTitle>Sentiment Trend</CardTitle>
+                <CardTitle>{t.socialListening.sentiment}</CardTitle>
               </CardHeader>
               <CardContent>
                 <ResponsiveContainer width="100%" height={300}>
@@ -991,7 +991,7 @@ export default function SocialListeningPage() {
 
             <Card>
               <CardHeader>
-                <CardTitle>Sentiment Distribution</CardTitle>
+                <CardTitle>{t.socialListening.sentiment}</CardTitle>
               </CardHeader>
               <CardContent>
                 <ResponsiveContainer width="100%" height={300}>
@@ -1019,7 +1019,7 @@ export default function SocialListeningPage() {
 
           <Card>
             <CardHeader>
-              <CardTitle>Platform Breakdown</CardTitle>
+              <CardTitle>{t.socialListening.mentions}</CardTitle>
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
@@ -1069,16 +1069,16 @@ export default function SocialListeningPage() {
         {/* Mentions Tab */}
         <TabsContent value="mentions" className="space-y-6">
           <div className="flex items-center gap-4">
-            <Input placeholder="Search mentions..." className="flex-1" />
+            <Input placeholder={t.common.search} className="flex-1" />
             <Select defaultValue="all">
               <SelectTrigger className="w-[180px]">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">All Sentiments</SelectItem>
-                <SelectItem value="positive">Positive</SelectItem>
-                <SelectItem value="neutral">Neutral</SelectItem>
-                <SelectItem value="negative">Negative</SelectItem>
+                <SelectItem value="all">{t.common.all}</SelectItem>
+                <SelectItem value="positive">{t.socialListening.sentiments.positive}</SelectItem>
+                <SelectItem value="neutral">{t.socialListening.sentiments.neutral}</SelectItem>
+                <SelectItem value="negative">{t.socialListening.sentiments.negative}</SelectItem>
               </SelectContent>
             </Select>
             <Select defaultValue="all-platforms">
@@ -1181,7 +1181,7 @@ export default function SocialListeningPage() {
         <TabsContent value="trending" className="space-y-6">
           <Card>
             <CardHeader>
-              <CardTitle>Trending Keywords & Topics</CardTitle>
+              <CardTitle>{t.socialListening.keywords}</CardTitle>
             </CardHeader>
             <CardContent>
               <div className="space-y-3">
@@ -1484,7 +1484,7 @@ export default function SocialListeningPage() {
         <TabsContent value="influencers" className="space-y-6">
           <Card>
             <CardHeader>
-              <CardTitle>Influencer Mentions</CardTitle>
+              <CardTitle>{t.socialListening.mentions}</CardTitle>
             </CardHeader>
             <CardContent>
               <div className="space-y-4">

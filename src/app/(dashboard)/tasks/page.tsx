@@ -63,6 +63,7 @@ import { PageError } from "@/components/ui/error-display";
 import { PageEmpty } from "@/components/ui/empty-state";
 import { toast } from "sonner";
 import { format } from "date-fns";
+import { useLanguage } from "@/i18n";
 
 type TaskStatus = "todo" | "in_progress" | "review" | "done";
 type TaskPriority = "urgent" | "high" | "normal" | "low";
@@ -88,11 +89,12 @@ interface TaskCardProps {
 }
 
 function TaskCard({ task, isDragging, onClick }: TaskCardProps) {
+  const { t } = useLanguage();
   const priorityLabels: Record<string, string> = {
-    urgent: "Khẩn cấp",
-    high: "Cao",
-    normal: "Bình thường",
-    low: "Thấp",
+    urgent: t.tasks.priorities.urgent,
+    high: t.tasks.priorities.high,
+    normal: t.tasks.priorities.medium,
+    low: t.tasks.priorities.low,
   };
 
   const priorityEmoji: Record<string, string> = {
@@ -118,7 +120,7 @@ function TaskCard({ task, isDragging, onClick }: TaskCardProps) {
             {isOverdue && (
               <Badge variant="destructive" className="text-xs">
                 <AlertTriangle className="w-3 h-3 mr-1" />
-                Quá hạn
+                {t.common.overdue}
               </Badge>
             )}
           </div>
@@ -191,9 +193,10 @@ interface KanbanColumnProps {
   status: TaskStatus;
   tasks: Task[];
   onTaskClick?: (task: Task) => void;
+  noTasksLabel: string;
 }
 
-function KanbanColumn({ title, count, status, tasks, onTaskClick }: KanbanColumnProps) {
+function KanbanColumn({ title, count, status, tasks, onTaskClick, noTasksLabel }: KanbanColumnProps) {
   return (
     <div className="flex-1 min-w-[280px]">
       <Card>
@@ -205,7 +208,7 @@ function KanbanColumn({ title, count, status, tasks, onTaskClick }: KanbanColumn
         </CardHeader>
         <CardContent className="min-h-[200px]">
           <SortableContext
-            items={tasks.map((t) => t.id)}
+            items={tasks.map((task) => task.id)}
             strategy={verticalListSortingStrategy}
           >
             {tasks.map((task) => (
@@ -218,7 +221,7 @@ function KanbanColumn({ title, count, status, tasks, onTaskClick }: KanbanColumn
           </SortableContext>
           {tasks.length === 0 && (
             <div className="text-center py-8 text-muted-foreground text-sm">
-              Không có task nào
+              {noTasksLabel}
             </div>
           )}
         </CardContent>
@@ -231,9 +234,11 @@ function KanbanColumn({ title, count, status, tasks, onTaskClick }: KanbanColumn
 function MobileTaskList({
   groups,
   onTaskClick,
+  noTasksLabel,
 }: {
   groups: { title: string; status: TaskStatus; tasks: Task[] }[];
   onTaskClick: (task: Task) => void;
+  noTasksLabel: string;
 }) {
   return (
     <div className="space-y-4">
@@ -248,7 +253,7 @@ function MobileTaskList({
           <CardContent className="px-4 pb-4">
             {group.tasks.length === 0 ? (
               <p className="text-sm text-muted-foreground text-center py-4">
-                Không có task nào
+                {noTasksLabel}
               </p>
             ) : (
               <div className="space-y-2">
@@ -269,6 +274,7 @@ function MobileTaskList({
 }
 
 export default function TasksPage() {
+  const { t } = useLanguage();
   const isMobile = useIsMobile();
   const [activeId, setActiveId] = useState<string | null>(null);
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
@@ -319,7 +325,7 @@ export default function TasksPage() {
       utils.task.getKanbanBoard.invalidate();
       setIsNewTaskOpen(false);
       resetNewTaskForm();
-      toast.success("Task đã được tạo thành công");
+      toast.success(t.common.success);
     },
     onError: (error) => {
       toast.error(error.message);
@@ -329,7 +335,7 @@ export default function TasksPage() {
   const updateTask = trpc.task.update.useMutation({
     onSuccess: () => {
       utils.task.getKanbanBoard.invalidate();
-      toast.success("Task đã được cập nhật");
+      toast.success(t.common.success);
     },
     onError: (error) => {
       toast.error(error.message);
@@ -340,7 +346,7 @@ export default function TasksPage() {
     onSuccess: () => {
       utils.task.getById.invalidate();
       setNewComment("");
-      toast.success("Comment đã được thêm");
+      toast.success(t.common.success);
     },
     onError: (error) => {
       toast.error(error.message);
@@ -407,7 +413,7 @@ export default function TasksPage() {
 
   const handleCreateTask = () => {
     if (!newTaskTitle.trim()) {
-      toast.error("Vui lòng nhập tiêu đề task");
+      toast.error(t.common.required);
       return;
     }
 
@@ -448,7 +454,7 @@ export default function TasksPage() {
     ? [...todoTasks, ...inProgressTasks, ...reviewTasks, ...doneTasks].find((t) => t.id === activeId)
     : null;
 
-  if (isLoading) return <PageLoading text="Đang tải tasks..." />;
+  if (isLoading) return <PageLoading text={t.common.loading} />;
   if (error) return <PageError error={error} onRetry={refetch} />;
 
   return (
@@ -456,8 +462,8 @@ export default function TasksPage() {
       {/* Header with Statistics */}
       <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-semibold mb-1">My Tasks</h1>
-          <p className="text-muted-foreground">Quản lý và theo dõi công việc</p>
+          <h1 className="text-2xl font-semibold mb-1">{t.tasks.title}</h1>
+          <p className="text-muted-foreground">{t.tasks.subtitle}</p>
         </div>
         <div className="flex gap-3">
           <Button
@@ -466,7 +472,7 @@ export default function TasksPage() {
             onClick={() => setShowFilters(!showFilters)}
           >
             <Filter className="w-4 h-4" />
-            Filters
+            {t.common.filter}
             {activeFiltersCount > 0 && (
               <Badge variant="secondary" className="ml-1">
                 {activeFiltersCount}
@@ -475,7 +481,7 @@ export default function TasksPage() {
           </Button>
           <Button className="gap-2" onClick={() => setIsNewTaskOpen(true)}>
             <Plus className="w-4 h-4" />
-            Tạo Task mới
+            {t.tasks.createTask}
           </Button>
         </div>
       </div>
@@ -534,13 +540,13 @@ export default function TasksPage() {
           <CardContent className="p-4">
             <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
               <div className="flex-1 w-full sm:w-auto">
-                <Label className="text-sm mb-2 block">Assignee</Label>
+                <Label className="text-sm mb-2 block">{t.tasks.assignee}</Label>
                 <Select value={filterAssignee} onValueChange={setFilterAssignee}>
                   <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="all">Tất cả</SelectItem>
+                    <SelectItem value="all">{t.common.all}</SelectItem>
                     {users.map((user) => (
                       <SelectItem key={user.id} value={user.id}>
                         {user.name}
@@ -550,17 +556,17 @@ export default function TasksPage() {
                 </Select>
               </div>
               <div className="flex-1 w-full sm:w-auto">
-                <Label className="text-sm mb-2 block">Priority</Label>
+                <Label className="text-sm mb-2 block">{t.tasks.priority}</Label>
                 <Select value={filterPriority} onValueChange={setFilterPriority}>
                   <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="all">Tất cả</SelectItem>
-                    <SelectItem value="urgent">Khẩn cấp</SelectItem>
-                    <SelectItem value="high">Cao</SelectItem>
-                    <SelectItem value="normal">Bình thường</SelectItem>
-                    <SelectItem value="low">Thấp</SelectItem>
+                    <SelectItem value="all">{t.common.all}</SelectItem>
+                    <SelectItem value="urgent">{t.tasks.priorities.urgent}</SelectItem>
+                    <SelectItem value="high">{t.tasks.priorities.high}</SelectItem>
+                    <SelectItem value="normal">{t.tasks.priorities.medium}</SelectItem>
+                    <SelectItem value="low">{t.tasks.priorities.low}</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -571,7 +577,7 @@ export default function TasksPage() {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="all">Tất cả</SelectItem>
+                    <SelectItem value="all">{t.common.all}</SelectItem>
                     <SelectItem value="content">Content</SelectItem>
                     <SelectItem value="design">Design</SelectItem>
                     <SelectItem value="video">Video</SelectItem>
@@ -591,7 +597,7 @@ export default function TasksPage() {
                   }}
                 >
                   <X className="w-4 h-4 mr-2" />
-                  Clear
+                  {t.common.clear}
                 </Button>
               </div>
             </div>
@@ -601,26 +607,27 @@ export default function TasksPage() {
 
       {totalTasks === 0 ? (
         <PageEmpty
-          title="Chưa có task nào"
-          description="Tạo task đầu tiên để bắt đầu quản lý công việc"
-          action={{ label: "Tạo Task mới", onClick: () => setIsNewTaskOpen(true) }}
+          title={t.tasks.noTasks}
+          description={t.tasks.subtitle}
+          action={{ label: t.tasks.createTask, onClick: () => setIsNewTaskOpen(true) }}
         />
       ) : isMobile ? (
         /* Mobile: show grouped list view instead of Kanban */
         <MobileTaskList
           groups={[
-            { title: "TO DO", status: "todo", tasks: todoTasks },
-            { title: "IN PROGRESS", status: "in_progress", tasks: inProgressTasks },
-            { title: "REVIEW", status: "review", tasks: reviewTasks },
-            { title: "DONE", status: "done", tasks: doneTasks },
+            { title: t.tasks.statuses.todo, status: "todo", tasks: todoTasks },
+            { title: t.tasks.statuses.inProgress, status: "in_progress", tasks: inProgressTasks },
+            { title: t.tasks.statuses.review, status: "review", tasks: reviewTasks },
+            { title: t.tasks.statuses.done, status: "done", tasks: doneTasks },
           ]}
           onTaskClick={handleTaskClick}
+          noTasksLabel={t.tasks.noTasks}
         />
       ) : (
         <Tabs defaultValue="kanban" className="space-y-4">
           <TabsList>
-            <TabsTrigger value="kanban">Kanban Board</TabsTrigger>
-            <TabsTrigger value="list">Danh sách</TabsTrigger>
+            <TabsTrigger value="kanban">Kanban</TabsTrigger>
+            <TabsTrigger value="list">List</TabsTrigger>
           </TabsList>
 
           <TabsContent value="kanban" className="space-y-4">
@@ -632,32 +639,36 @@ export default function TasksPage() {
             >
               <div className="flex gap-4 overflow-x-auto pb-4">
                 <KanbanColumn
-                  title="TO DO"
+                  title={t.tasks.statuses.todo}
                   count={todoTasks.length}
                   status="todo"
                   tasks={todoTasks}
                   onTaskClick={handleTaskClick}
+                  noTasksLabel={t.tasks.noTasks}
                 />
                 <KanbanColumn
-                  title="IN PROGRESS"
+                  title={t.tasks.statuses.inProgress}
                   count={inProgressTasks.length}
                   status="in_progress"
                   tasks={inProgressTasks}
                   onTaskClick={handleTaskClick}
+                  noTasksLabel={t.tasks.noTasks}
                 />
                 <KanbanColumn
-                  title="REVIEW"
+                  title={t.tasks.statuses.review}
                   count={reviewTasks.length}
                   status="review"
                   tasks={reviewTasks}
                   onTaskClick={handleTaskClick}
+                  noTasksLabel={t.tasks.noTasks}
                 />
                 <KanbanColumn
-                  title="DONE"
+                  title={t.tasks.statuses.done}
                   count={doneTasks.length}
                   status="done"
                   tasks={doneTasks}
                   onTaskClick={handleTaskClick}
+                  noTasksLabel={t.tasks.noTasks}
                 />
               </div>
 
@@ -700,7 +711,7 @@ export default function TasksPage() {
                 {/* Task Info */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
-                    <Label className="text-sm text-muted-foreground">Status</Label>
+                    <Label className="text-sm text-muted-foreground">{t.tasks.status}</Label>
                     <div className="mt-1">
                       <Select
                         value={taskDetails?.status ?? selectedTask.status}
@@ -710,16 +721,16 @@ export default function TasksPage() {
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="todo">TO DO</SelectItem>
-                          <SelectItem value="in_progress">IN PROGRESS</SelectItem>
-                          <SelectItem value="review">REVIEW</SelectItem>
-                          <SelectItem value="done">DONE</SelectItem>
+                          <SelectItem value="todo">{t.tasks.statuses.todo}</SelectItem>
+                          <SelectItem value="in_progress">{t.tasks.statuses.inProgress}</SelectItem>
+                          <SelectItem value="review">{t.tasks.statuses.review}</SelectItem>
+                          <SelectItem value="done">{t.tasks.statuses.done}</SelectItem>
                         </SelectContent>
                       </Select>
                     </div>
                   </div>
                   <div>
-                    <Label className="text-sm text-muted-foreground">Priority</Label>
+                    <Label className="text-sm text-muted-foreground">{t.tasks.priority}</Label>
                     <div className="mt-1">
                       <Select
                         value={taskDetails?.priority ?? selectedTask.priority}
@@ -729,22 +740,22 @@ export default function TasksPage() {
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="urgent">Khẩn cấp</SelectItem>
-                          <SelectItem value="high">Cao</SelectItem>
-                          <SelectItem value="normal">Bình thường</SelectItem>
-                          <SelectItem value="low">Thấp</SelectItem>
+                          <SelectItem value="urgent">{t.tasks.priorities.urgent}</SelectItem>
+                          <SelectItem value="high">{t.tasks.priorities.high}</SelectItem>
+                          <SelectItem value="normal">{t.tasks.priorities.medium}</SelectItem>
+                          <SelectItem value="low">{t.tasks.priorities.low}</SelectItem>
                         </SelectContent>
                       </Select>
                     </div>
                   </div>
                   <div>
-                    <Label className="text-sm text-muted-foreground">Assignee</Label>
+                    <Label className="text-sm text-muted-foreground">{t.tasks.assignee}</Label>
                     <div className="mt-1 p-2 border rounded-md bg-muted/50">
                       {selectedTask.assignee?.name ?? "Unassigned"}
                     </div>
                   </div>
                   <div>
-                    <Label className="text-sm text-muted-foreground">Due Date</Label>
+                    <Label className="text-sm text-muted-foreground">{t.tasks.dueDate}</Label>
                     <div className="mt-1 p-2 border rounded-md bg-muted/50">
                       {selectedTask.dueDate
                         ? format(new Date(selectedTask.dueDate), "MMM d, yyyy")
@@ -755,9 +766,9 @@ export default function TasksPage() {
 
                 {/* Description */}
                 <div>
-                  <Label className="text-sm text-muted-foreground">Description</Label>
+                  <Label className="text-sm text-muted-foreground">{t.tasks.description}</Label>
                   <div className="mt-2 p-3 border rounded-md bg-muted/50 min-h-[80px]">
-                    {taskDetails?.description ?? selectedTask.description ?? "No description"}
+                    {taskDetails?.description ?? selectedTask.description ?? t.common.noData}
                   </div>
                 </div>
 
@@ -765,7 +776,7 @@ export default function TasksPage() {
                 {taskDetails?.attachments && taskDetails.attachments.length > 0 && (
                   <div>
                     <Label className="text-sm text-muted-foreground mb-2 block">
-                      Attachments ({taskDetails.attachments.length})
+                      {t.tasks.attachments} ({taskDetails.attachments.length})
                     </Label>
                     <div className="space-y-2">
                       {taskDetails.attachments.map((attachment) => (
@@ -792,7 +803,7 @@ export default function TasksPage() {
                 {/* Comments */}
                 <div>
                   <Label className="text-sm text-muted-foreground mb-3 block">
-                    Comments ({taskDetails?.comments?.length ?? 0})
+                    {t.tasks.comments} ({taskDetails?.comments?.length ?? 0})
                   </Label>
                   <div className="space-y-4 mb-4 max-h-[200px] overflow-y-auto">
                     {taskDetails?.comments?.map((comment) => (
@@ -813,7 +824,7 @@ export default function TasksPage() {
                     ))}
                     {(!taskDetails?.comments || taskDetails.comments.length === 0) && (
                       <p className="text-sm text-muted-foreground text-center py-4">
-                        Chưa có comment nào
+                        {t.common.noData}
                       </p>
                     )}
                   </div>
@@ -821,7 +832,7 @@ export default function TasksPage() {
                   {/* Add Comment */}
                   <div className="flex gap-2">
                     <Input
-                      placeholder="Viết comment..."
+                      placeholder={t.tasks.addComment}
                       value={newComment}
                       onChange={(e) => setNewComment(e.target.value)}
                       onKeyDown={(e) => e.key === "Enter" && handleAddComment()}
@@ -833,7 +844,7 @@ export default function TasksPage() {
                       disabled={addComment.isPending}
                     >
                       <Send className="w-4 h-4" />
-                      Gửi
+                      {t.common.submit}
                     </Button>
                   </div>
                 </div>
@@ -841,7 +852,7 @@ export default function TasksPage() {
 
               <DialogFooter>
                 <Button variant="outline" onClick={() => setIsTaskDetailOpen(false)}>
-                  Đóng
+                  {t.common.close}
                 </Button>
               </DialogFooter>
             </>
@@ -853,17 +864,17 @@ export default function TasksPage() {
       <Dialog open={isNewTaskOpen} onOpenChange={setIsNewTaskOpen}>
         <DialogContent className="max-w-[100vw] sm:max-w-2xl w-full max-h-[100dvh] sm:max-h-[80vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>Tạo Task mới</DialogTitle>
+            <DialogTitle>{t.tasks.createTask}</DialogTitle>
             <DialogDescription>
-              Thêm task mới vào hệ thống quản lý công việc
+              {t.tasks.subtitle}
             </DialogDescription>
           </DialogHeader>
 
           <div className="space-y-4">
             <div>
-              <Label>Tiêu đề *</Label>
+              <Label>{t.tasks.title} *</Label>
               <Input
-                placeholder="Nhập tiêu đề task..."
+                placeholder={t.tasks.title}
                 className="mt-1"
                 value={newTaskTitle}
                 onChange={(e) => setNewTaskTitle(e.target.value)}
@@ -871,9 +882,9 @@ export default function TasksPage() {
             </div>
 
             <div>
-              <Label>Mô tả</Label>
+              <Label>{t.tasks.description}</Label>
               <Textarea
-                placeholder="Mô tả chi tiết về task..."
+                placeholder={t.tasks.description}
                 rows={4}
                 className="mt-1"
                 value={newTaskDescription}
@@ -883,16 +894,16 @@ export default function TasksPage() {
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
-                <Label>Priority</Label>
+                <Label>{t.tasks.priority}</Label>
                 <Select value={newTaskPriority} onValueChange={(v) => setNewTaskPriority(v as TaskPriority)}>
                   <SelectTrigger className="mt-1">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="urgent">Khẩn cấp</SelectItem>
-                    <SelectItem value="high">Cao</SelectItem>
-                    <SelectItem value="normal">Bình thường</SelectItem>
-                    <SelectItem value="low">Thấp</SelectItem>
+                    <SelectItem value="urgent">{t.tasks.priorities.urgent}</SelectItem>
+                    <SelectItem value="high">{t.tasks.priorities.high}</SelectItem>
+                    <SelectItem value="normal">{t.tasks.priorities.medium}</SelectItem>
+                    <SelectItem value="low">{t.tasks.priorities.low}</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -916,10 +927,10 @@ export default function TasksPage() {
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
-                <Label>Assignee</Label>
+                <Label>{t.tasks.assignee}</Label>
                 <Select value={newTaskAssignee} onValueChange={setNewTaskAssignee}>
                   <SelectTrigger className="mt-1">
-                    <SelectValue placeholder="Chọn người làm..." />
+                    <SelectValue placeholder={t.tasks.assignee} />
                   </SelectTrigger>
                   <SelectContent>
                     {users.map((user) => (
@@ -932,7 +943,7 @@ export default function TasksPage() {
               </div>
 
               <div>
-                <Label>Due Date</Label>
+                <Label>{t.tasks.dueDate}</Label>
                 <Input
                   type="date"
                   className="mt-1"
@@ -945,10 +956,10 @@ export default function TasksPage() {
 
           <DialogFooter>
             <Button variant="outline" onClick={() => setIsNewTaskOpen(false)}>
-              Hủy
+              {t.common.cancel}
             </Button>
             <Button onClick={handleCreateTask} disabled={createTask.isPending}>
-              {createTask.isPending ? "Đang tạo..." : "Tạo Task"}
+              {createTask.isPending ? t.common.loading : t.tasks.createTask}
             </Button>
           </DialogFooter>
         </DialogContent>

@@ -57,10 +57,12 @@ import {
   Settings,
 } from "lucide-react";
 import { toast } from "sonner";
+import { useLanguage, type Language } from "@/i18n";
 
 export default function SettingsPage() {
   const { profile, isAuthenticated } = useAuth();
   const utils = trpc.useUtils();
+  const { t, language, setLanguage } = useLanguage();
 
   // Profile form state
   const [profileForm, setProfileForm] = useState({
@@ -79,7 +81,6 @@ export default function SettingsPage() {
 
   // Appearance state (client-side only)
   const [theme, setTheme] = useState<"light" | "dark" | "system">("light");
-  const [language, setLanguage] = useState("vi");
 
   // Team invite dialog
   const [inviteDialogOpen, setInviteDialogOpen] = useState(false);
@@ -448,39 +449,39 @@ export default function SettingsPage() {
   return (
     <div className="p-6">
       <div className="mb-6">
-        <h1 className="text-2xl font-semibold mb-1">Settings</h1>
-        <p className="text-muted-foreground">Quan ly tai khoan, team, va cau hinh he thong</p>
+        <h1 className="text-2xl font-semibold mb-1">{t.settings.title}</h1>
+        <p className="text-muted-foreground">{t.settings.subtitle}</p>
       </div>
 
       <Tabs defaultValue="profile" className="space-y-6">
         <TabsList className="h-auto flex-wrap">
           <TabsTrigger value="profile">
             <User className="w-4 h-4 mr-2" />
-            Profile
+            {t.settings.tabs.profile}
           </TabsTrigger>
           <TabsTrigger value="notifications">
             <Bell className="w-4 h-4 mr-2" />
-            Notifications
+            {t.settings.tabs.notifications}
           </TabsTrigger>
           <TabsTrigger value="team">
             <Users className="w-4 h-4 mr-2" />
-            Team
+            {t.settings.tabs.team}
           </TabsTrigger>
           <TabsTrigger value="integrations">
             <Link2 className="w-4 h-4 mr-2" />
-            Integrations
+            {t.settings.tabs.integrations}
           </TabsTrigger>
           <TabsTrigger value="security">
             <Lock className="w-4 h-4 mr-2" />
-            Security
+            {t.settings.tabs.security}
           </TabsTrigger>
           <TabsTrigger value="workspace">
             <Building className="w-4 h-4 mr-2" />
-            Workspace
+            {t.settings.tabs.workspace}
           </TabsTrigger>
           <TabsTrigger value="appearance">
             <Palette className="w-4 h-4 mr-2" />
-            Appearance
+            {t.settings.tabs.appearance}
           </TabsTrigger>
         </TabsList>
 
@@ -488,8 +489,8 @@ export default function SettingsPage() {
         <TabsContent value="profile" className="space-y-6">
           <Card>
             <CardHeader>
-              <CardTitle>Personal Information</CardTitle>
-              <CardDescription>Update your personal details and profile picture</CardDescription>
+              <CardTitle>{t.settings.profile.title}</CardTitle>
+              <CardDescription>{t.settings.profile.subtitle}</CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
               {/* Avatar Section */}
@@ -517,7 +518,7 @@ export default function SettingsPage() {
                     {getRoleDisplay(currentUser?.role || profile?.role || "")} - {getTeamDisplay(profile?.team || "")}
                   </p>
                   <p className="text-xs text-muted-foreground">
-                    Member since {currentUser?.createdAt ? new Date(currentUser.createdAt).toLocaleDateString() : "N/A"}
+                    {t.settings.profile.memberSince} {currentUser?.createdAt ? new Date(currentUser.createdAt).toLocaleDateString() : "N/A"}
                   </p>
                 </div>
               </div>
@@ -525,7 +526,7 @@ export default function SettingsPage() {
               {/* Form Fields */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="firstName">First Name</Label>
+                  <Label htmlFor="firstName">{t.settings.profile.firstName}</Label>
                   <Input
                     id="firstName"
                     value={profileForm.firstName}
@@ -533,7 +534,7 @@ export default function SettingsPage() {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="lastName">Last Name</Label>
+                  <Label htmlFor="lastName">{t.settings.profile.lastName}</Label>
                   <Input
                     id="lastName"
                     value={profileForm.lastName}
@@ -541,15 +542,15 @@ export default function SettingsPage() {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="email">Email</Label>
+                  <Label htmlFor="email">{t.settings.profile.email}</Label>
                   <Input id="email" type="email" value={currentUser?.email || profile?.email || ""} disabled />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="phone">Phone Number</Label>
+                  <Label htmlFor="phone">{t.settings.profile.phone}</Label>
                   <Input id="phone" placeholder="+84 xxx xxx xxx" />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="department">Department</Label>
+                  <Label htmlFor="department">{t.settings.profile.department}</Label>
                   <Select defaultValue={profile?.team || "marketing"} disabled>
                     <SelectTrigger>
                       <SelectValue />
@@ -563,7 +564,7 @@ export default function SettingsPage() {
                   </Select>
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="role">Role</Label>
+                  <Label htmlFor="role">{t.settings.profile.role}</Label>
                   <Select defaultValue={currentUser?.role || profile?.role || "content_creator"} disabled>
                     <SelectTrigger>
                       <SelectValue />
@@ -581,11 +582,11 @@ export default function SettingsPage() {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="bio">Bio</Label>
+                <Label htmlFor="bio">{t.settings.profile.bio}</Label>
                 <Textarea
                   id="bio"
                   rows={4}
-                  placeholder="Tell us about yourself..."
+                  placeholder={language === "vi" ? "Giới thiệu về bản thân..." : "Tell us about yourself..."}
                   value={profileForm.bio}
                   onChange={(e) => setProfileForm((f) => ({ ...f, bio: e.target.value }))}
                 />
@@ -598,7 +599,7 @@ export default function SettingsPage() {
                   ) : (
                     <Save className="w-4 h-4 mr-2" />
                   )}
-                  Save Changes
+                  {t.settings.profile.saveChanges}
                 </Button>
                 <Button
                   variant="outline"
@@ -611,7 +612,7 @@ export default function SettingsPage() {
                     });
                   }}
                 >
-                  Cancel
+                  {t.common.cancel}
                 </Button>
               </div>
             </CardContent>
@@ -622,24 +623,24 @@ export default function SettingsPage() {
         <TabsContent value="notifications" className="space-y-6">
           <Card>
             <CardHeader>
-              <CardTitle>Notification Preferences</CardTitle>
-              <CardDescription>Choose how you want to be notified about updates</CardDescription>
+              <CardTitle>{t.settings.notifications.title}</CardTitle>
+              <CardDescription>{t.settings.notifications.subtitle}</CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
               {/* Global Settings */}
               <div className="space-y-4 pb-6 border-b">
-                <h3 className="font-semibold">Global Settings</h3>
+                <h3 className="font-semibold">{t.settings.notifications.globalSettings}</h3>
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="font-medium">Email Notifications</p>
-                    <p className="text-sm text-muted-foreground">Receive notifications via email</p>
+                    <p className="font-medium">{t.settings.notifications.emailNotifications}</p>
+                    <p className="text-sm text-muted-foreground">{t.settings.notifications.emailNotificationsDesc}</p>
                   </div>
                   <Switch checked={emailNotifications} onCheckedChange={setEmailNotifications} />
                 </div>
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="font-medium">Push Notifications</p>
-                    <p className="text-sm text-muted-foreground">Receive push notifications on your devices</p>
+                    <p className="font-medium">{t.settings.notifications.pushNotifications}</p>
+                    <p className="text-sm text-muted-foreground">{t.settings.notifications.pushNotificationsDesc}</p>
                   </div>
                   <Switch checked={pushNotifications} onCheckedChange={setPushNotifications} />
                 </div>
@@ -674,12 +675,12 @@ export default function SettingsPage() {
               ))}
 
               <div className="flex items-center gap-2 pt-4 border-t">
-                <Button onClick={() => toast.success("Notification preferences saved")}>
+                <Button onClick={() => toast.success(language === "vi" ? "Đã lưu tùy chọn thông báo" : "Notification preferences saved")}>
                   <Save className="w-4 h-4 mr-2" />
-                  Save Preferences
+                  {t.settings.notifications.savePreferences}
                 </Button>
-                <Button variant="outline" onClick={() => toast.info("Preferences reset to defaults")}>
-                  Reset to Default
+                <Button variant="outline" onClick={() => toast.info(language === "vi" ? "Đã đặt lại mặc định" : "Preferences reset to defaults")}>
+                  {t.settings.notifications.resetToDefault}
                 </Button>
               </div>
             </CardContent>
@@ -693,14 +694,14 @@ export default function SettingsPage() {
               <CardHeader>
                 <div className="flex items-center justify-between">
                   <div>
-                    <CardTitle>Team Members</CardTitle>
+                    <CardTitle>{t.settings.team.title}</CardTitle>
                     <CardDescription>
-                      {teamMembers ? `${teamMembers.length} active members` : "Manage your team members and their roles"}
+                      {teamMembers ? `${teamMembers.length} ${t.settings.team.activeMembers}` : t.settings.team.subtitle}
                     </CardDescription>
                   </div>
                   <Button onClick={() => setInviteDialogOpen(true)}>
                     <UserPlus className="w-4 h-4 mr-2" />
-                    Invite Member
+                    {t.settings.team.inviteMember}
                   </Button>
                 </div>
               </CardHeader>
@@ -823,8 +824,8 @@ export default function SettingsPage() {
           {/* Roles & Permissions */}
           <Card>
             <CardHeader>
-              <CardTitle>Roles & Permissions</CardTitle>
-              <CardDescription>Overview of available roles and their permissions</CardDescription>
+              <CardTitle>{t.settings.team.rolesPermissions}</CardTitle>
+              <CardDescription>{t.settings.team.rolesDescription}</CardDescription>
             </CardHeader>
             <CardContent>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -862,8 +863,8 @@ export default function SettingsPage() {
         <TabsContent value="integrations" className="space-y-6">
           <Card>
             <CardHeader>
-              <CardTitle>Connected Integrations</CardTitle>
-              <CardDescription>Manage your connected social media and analytics tools</CardDescription>
+              <CardTitle>{t.settings.integrations.title}</CardTitle>
+              <CardDescription>{t.settings.integrations.subtitle}</CardDescription>
             </CardHeader>
             <CardContent>
               {integrationsLoading ? (
@@ -1015,19 +1016,19 @@ export default function SettingsPage() {
         <TabsContent value="security" className="space-y-6">
           <Card>
             <CardHeader>
-              <CardTitle>Security Settings</CardTitle>
-              <CardDescription>Manage your password and security preferences</CardDescription>
+              <CardTitle>{t.settings.security.title}</CardTitle>
+              <CardDescription>{t.settings.security.subtitle}</CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
               {/* Change Password */}
               <div className="space-y-4">
                 <h3 className="font-semibold flex items-center gap-2">
                   <Key className="w-4 h-4" />
-                  Change Password
+                  {t.settings.security.changePassword}
                 </h3>
                 <div className="space-y-3">
                   <div className="space-y-2">
-                    <Label htmlFor="currentPassword">Current Password</Label>
+                    <Label htmlFor="currentPassword">{t.settings.security.currentPassword}</Label>
                     <Input
                       id="currentPassword"
                       type="password"
@@ -1036,7 +1037,7 @@ export default function SettingsPage() {
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="newPassword">New Password</Label>
+                    <Label htmlFor="newPassword">{t.settings.security.newPassword}</Label>
                     <Input
                       id="newPassword"
                       type="password"
@@ -1044,11 +1045,11 @@ export default function SettingsPage() {
                       onChange={(e) => setPasswordForm((f) => ({ ...f, newPassword: e.target.value }))}
                     />
                     {passwordForm.newPassword && passwordForm.newPassword.length < 8 && (
-                      <p className="text-xs text-destructive">Password must be at least 8 characters</p>
+                      <p className="text-xs text-destructive">{t.settings.security.passwordMinLength}</p>
                     )}
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="confirmPassword">Confirm New Password</Label>
+                    <Label htmlFor="confirmPassword">{t.settings.security.confirmPassword}</Label>
                     <Input
                       id="confirmPassword"
                       type="password"
@@ -1056,7 +1057,7 @@ export default function SettingsPage() {
                       onChange={(e) => setPasswordForm((f) => ({ ...f, confirmPassword: e.target.value }))}
                     />
                     {passwordForm.confirmPassword && passwordForm.newPassword !== passwordForm.confirmPassword && (
-                      <p className="text-xs text-destructive">Passwords do not match</p>
+                      <p className="text-xs text-destructive">{t.settings.security.passwordsDoNotMatch}</p>
                     )}
                   </div>
                   <Button
@@ -1066,7 +1067,7 @@ export default function SettingsPage() {
                     {changePasswordMutation.isPending ? (
                       <Loader2 className="w-4 h-4 mr-2 animate-spin" />
                     ) : null}
-                    Update Password
+                    {t.settings.security.updatePassword}
                   </Button>
                 </div>
               </div>
@@ -1077,22 +1078,22 @@ export default function SettingsPage() {
                   <div>
                     <h3 className="font-semibold flex items-center gap-2 mb-1">
                       <Shield className="w-4 h-4" />
-                      Two-Factor Authentication
+                      {t.settings.security.twoFactor}
                     </h3>
                     <p className="text-sm text-muted-foreground">
-                      Add an extra layer of security to your account
+                      {t.settings.security.twoFactorDesc}
                     </p>
                   </div>
                   <Switch checked={twoFactorEnabled} onCheckedChange={setTwoFactorEnabled} />
                 </div>
                 {twoFactorEnabled && (
                   <div className="bg-accent/50 p-4 rounded-lg space-y-2">
-                    <p className="text-sm font-medium">Two-Factor Authentication is enabled</p>
+                    <p className="text-sm font-medium">{t.settings.security.twoFactorEnabled}</p>
                     <p className="text-xs text-muted-foreground">
-                      You will be asked for a verification code when signing in
+                      {t.settings.security.twoFactorEnabledDesc}
                     </p>
                     <Button variant="outline" size="sm">
-                      View Recovery Codes
+                      {t.settings.security.viewRecoveryCodes}
                     </Button>
                   </div>
                 )}
@@ -1102,21 +1103,21 @@ export default function SettingsPage() {
               <div className="space-y-4 pt-6 border-t">
                 <h3 className="font-semibold flex items-center gap-2">
                   <Smartphone className="w-4 h-4" />
-                  Active Sessions
+                  {t.settings.security.activeSessions}
                 </h3>
                 <div className="space-y-3">
                   <div className="flex items-start justify-between p-3 border rounded-lg">
                     <div className="flex items-start gap-3">
                       <Monitor className="w-5 h-5 text-muted-foreground mt-1" />
                       <div>
-                        <p className="font-medium">Current Browser Session</p>
+                        <p className="font-medium">{t.settings.security.currentSession}</p>
                         <p className="text-xs text-muted-foreground">
-                          Logged in as {currentUser?.email || profile?.email || "unknown"}
+                          {currentUser?.email || profile?.email || "unknown"}
                         </p>
-                        <p className="text-xs text-muted-foreground">Last active: Now</p>
+                        <p className="text-xs text-muted-foreground">{t.settings.security.lastActive}: {language === "vi" ? "Hiện tại" : "Now"}</p>
                       </div>
                     </div>
-                    <Badge variant="default">Current</Badge>
+                    <Badge variant="default">{language === "vi" ? "Hiện tại" : "Current"}</Badge>
                   </div>
                 </div>
               </div>
@@ -1128,31 +1129,31 @@ export default function SettingsPage() {
         <TabsContent value="workspace" className="space-y-6">
           <Card>
             <CardHeader>
-              <CardTitle>Workspace Settings</CardTitle>
-              <CardDescription>Manage your organization information and branding</CardDescription>
+              <CardTitle>{t.settings.workspace.title}</CardTitle>
+              <CardDescription>{t.settings.workspace.subtitle}</CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="companyName">Company Name</Label>
+                  <Label htmlFor="companyName">{t.settings.workspace.companyName}</Label>
                   <Input id="companyName" defaultValue="Greenfield Dental Clinic" />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="website">Website</Label>
+                  <Label htmlFor="website">{t.settings.workspace.website}</Label>
                   <Input id="website" defaultValue="https://greenfielddental.vn" />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="companyEmail">Company Email</Label>
+                  <Label htmlFor="companyEmail">{t.settings.workspace.companyEmail}</Label>
                   <Input id="companyEmail" type="email" defaultValue="info@greenfielddental.vn" />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="companyPhone">Company Phone</Label>
+                  <Label htmlFor="companyPhone">{t.settings.workspace.companyPhone}</Label>
                   <Input id="companyPhone" defaultValue="+84 28 1234 5678" />
                 </div>
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="address">Address</Label>
+                <Label htmlFor="address">{t.settings.workspace.address}</Label>
                 <Textarea
                   id="address"
                   rows={2}
@@ -1161,9 +1162,9 @@ export default function SettingsPage() {
               </div>
 
               <div className="space-y-2">
-                <Label>Brand Colors</Label>
+                <Label>{t.settings.workspace.brandColors}</Label>
                 {colorsLoading ? (
-                  <div className="text-sm text-muted-foreground">Loading brand colors...</div>
+                  <div className="text-sm text-muted-foreground">{t.settings.workspace.loadingColors}</div>
                 ) : brandColors && brandColors.length > 0 ? (
                   <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
                     {brandColors.map((color) => (
@@ -1185,21 +1186,21 @@ export default function SettingsPage() {
                 ) : (
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                     <div className="space-y-2">
-                      <Label className="text-xs">Primary Color</Label>
+                      <Label className="text-xs">{t.settings.workspace.primaryColor}</Label>
                       <div className="flex items-center gap-2">
                         <div className="w-12 h-12 rounded-lg bg-[#0D9488] border-2"></div>
                         <Input defaultValue="#0D9488" className="flex-1" />
                       </div>
                     </div>
                     <div className="space-y-2">
-                      <Label className="text-xs">Accent Color</Label>
+                      <Label className="text-xs">{t.settings.workspace.accentColor}</Label>
                       <div className="flex items-center gap-2">
                         <div className="w-12 h-12 rounded-lg bg-[#F59E0B] border-2"></div>
                         <Input defaultValue="#F59E0B" className="flex-1" />
                       </div>
                     </div>
                     <div className="space-y-2">
-                      <Label className="text-xs">Background</Label>
+                      <Label className="text-xs">{t.settings.workspace.backgroundColor}</Label>
                       <div className="flex items-center gap-2">
                         <div className="w-12 h-12 rounded-lg bg-white border-2"></div>
                         <Input defaultValue="#FFFFFF" className="flex-1" />
@@ -1210,11 +1211,11 @@ export default function SettingsPage() {
               </div>
 
               <div className="flex items-center gap-2 pt-4 border-t">
-                <Button onClick={() => toast.success("Workspace settings saved")}>
+                <Button onClick={() => toast.success(language === "vi" ? "Đã lưu cài đặt workspace" : "Workspace settings saved")}>
                   <Save className="w-4 h-4 mr-2" />
-                  Save Changes
+                  {t.settings.profile.saveChanges}
                 </Button>
-                <Button variant="outline">Cancel</Button>
+                <Button variant="outline">{t.common.cancel}</Button>
               </div>
             </CardContent>
           </Card>
@@ -1224,13 +1225,13 @@ export default function SettingsPage() {
         <TabsContent value="appearance" className="space-y-6">
           <Card>
             <CardHeader>
-              <CardTitle>Appearance Settings</CardTitle>
-              <CardDescription>Customize how the app looks and feels</CardDescription>
+              <CardTitle>{t.settings.appearance.title}</CardTitle>
+              <CardDescription>{t.settings.appearance.subtitle}</CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
               {/* Theme */}
               <div className="space-y-4">
-                <h3 className="font-semibold">Theme</h3>
+                <h3 className="font-semibold">{t.settings.appearance.theme}</h3>
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                   <Card
                     className={`cursor-pointer border-2 ${theme === "light" ? "border-primary" : "hover:border-primary"} transition-colors`}
@@ -1238,8 +1239,8 @@ export default function SettingsPage() {
                   >
                     <CardContent className="p-4 text-center">
                       <Sun className="w-8 h-8 mx-auto mb-2" />
-                      <p className="font-medium">Light</p>
-                      {theme === "light" && <Badge variant="default" className="mt-2">Active</Badge>}
+                      <p className="font-medium">{t.settings.appearance.light}</p>
+                      {theme === "light" && <Badge variant="default" className="mt-2">{t.common.active}</Badge>}
                     </CardContent>
                   </Card>
                   <Card
@@ -1248,8 +1249,8 @@ export default function SettingsPage() {
                   >
                     <CardContent className="p-4 text-center">
                       <Moon className="w-8 h-8 mx-auto mb-2" />
-                      <p className="font-medium">Dark</p>
-                      {theme === "dark" && <Badge variant="default" className="mt-2">Active</Badge>}
+                      <p className="font-medium">{t.settings.appearance.dark}</p>
+                      {theme === "dark" && <Badge variant="default" className="mt-2">{t.common.active}</Badge>}
                     </CardContent>
                   </Card>
                   <Card
@@ -1258,8 +1259,8 @@ export default function SettingsPage() {
                   >
                     <CardContent className="p-4 text-center">
                       <Monitor className="w-8 h-8 mx-auto mb-2" />
-                      <p className="font-medium">System</p>
-                      {theme === "system" && <Badge variant="default" className="mt-2">Active</Badge>}
+                      <p className="font-medium">{t.settings.appearance.system}</p>
+                      {theme === "system" && <Badge variant="default" className="mt-2">{t.common.active}</Badge>}
                     </CardContent>
                   </Card>
                 </div>
@@ -1269,14 +1270,14 @@ export default function SettingsPage() {
               <div className="space-y-4 pt-6 border-t">
                 <h3 className="font-semibold flex items-center gap-2">
                   <Languages className="w-4 h-4" />
-                  Language
+                  {t.settings.appearance.language}
                 </h3>
-                <Select value={language} onValueChange={setLanguage}>
+                <Select value={language} onValueChange={(value) => setLanguage(value as Language)}>
                   <SelectTrigger className="w-full md:w-64">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="vi">Tieng Viet</SelectItem>
+                    <SelectItem value="vi">Tiếng Việt</SelectItem>
                     <SelectItem value="en">English</SelectItem>
                   </SelectContent>
                 </Select>
@@ -1285,8 +1286,8 @@ export default function SettingsPage() {
               {/* Compact Mode */}
               <div className="flex items-center justify-between pt-6 border-t">
                 <div>
-                  <p className="font-medium">Compact Mode</p>
-                  <p className="text-sm text-muted-foreground">Use a more condensed layout</p>
+                  <p className="font-medium">{t.settings.appearance.compactMode}</p>
+                  <p className="text-sm text-muted-foreground">{t.settings.appearance.compactModeDesc}</p>
                 </div>
                 <Switch />
               </div>
@@ -1294,19 +1295,19 @@ export default function SettingsPage() {
               {/* Animations */}
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="font-medium">Animations</p>
-                  <p className="text-sm text-muted-foreground">Enable smooth transitions and animations</p>
+                  <p className="font-medium">{t.settings.appearance.animations}</p>
+                  <p className="text-sm text-muted-foreground">{t.settings.appearance.animationsDesc}</p>
                 </div>
                 <Switch defaultChecked />
               </div>
 
               <div className="flex items-center gap-2 pt-4 border-t">
-                <Button onClick={() => toast.success("Appearance preferences saved")}>
+                <Button onClick={() => toast.success(language === "vi" ? "Đã lưu tùy chọn giao diện" : "Appearance preferences saved")}>
                   <Save className="w-4 h-4 mr-2" />
-                  Save Preferences
+                  {t.settings.appearance.savePreferences}
                 </Button>
-                <Button variant="outline" onClick={() => { setTheme("light"); setLanguage("vi"); toast.info("Preferences reset to defaults"); }}>
-                  Reset to Default
+                <Button variant="outline" onClick={() => { setTheme("light"); setLanguage("vi"); toast.info(language === "vi" ? "Đã đặt lại mặc định" : "Preferences reset to defaults"); }}>
+                  {t.settings.appearance.resetToDefault}
                 </Button>
               </div>
             </CardContent>

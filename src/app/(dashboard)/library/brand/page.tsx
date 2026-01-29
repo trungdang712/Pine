@@ -25,6 +25,7 @@ import { trpc } from "@/lib/trpc";
 import { PageLoading } from "@/components/ui/loading-spinner";
 import { PageError } from "@/components/ui/error-display";
 import { toast } from "sonner";
+import { useLanguage } from "@/i18n";
 
 function formatFileSize(bytes: number | null | undefined): string {
   if (!bytes) return "N/A";
@@ -44,6 +45,7 @@ function parseFormats(formatsJson: string | null): string[] {
 }
 
 export default function BrandLibraryPage() {
+  const { t } = useLanguage();
   const [copiedColor, setCopiedColor] = useState<string | null>(null);
   const [searchBrand, setSearchBrand] = useState("");
   const [searchMedia, setSearchMedia] = useState("");
@@ -165,7 +167,7 @@ export default function BrandLibraryPage() {
     downloadMutation.mutate({ id });
   };
 
-  if (isLoading) return <PageLoading text="Loading brand library..." />;
+  if (isLoading) return <PageLoading text={t.common.loading} />;
   if (error) {
     return (
       <PageError
@@ -194,9 +196,9 @@ export default function BrandLibraryPage() {
   return (
     <div className="p-6">
       <div className="mb-6">
-        <h1 className="text-2xl font-semibold mb-1">Library</h1>
+        <h1 className="text-2xl font-semibold mb-1">{t.library.title}</h1>
         <p className="text-muted-foreground">
-          Greenfield Dental brand guidelines va media assets
+          {t.library.subtitle}
         </p>
       </div>
 
@@ -204,11 +206,11 @@ export default function BrandLibraryPage() {
         <TabsList>
           <TabsTrigger value="brand">
             <Sparkles className="w-4 h-4 mr-2" />
-            Brand Guidelines
+            {t.library.brand.guidelines}
           </TabsTrigger>
           <TabsTrigger value="assets">
             <Folder className="w-4 h-4 mr-2" />
-            Media Assets
+            {t.library.assets.title}
           </TabsTrigger>
         </TabsList>
 
@@ -216,14 +218,14 @@ export default function BrandLibraryPage() {
         <TabsContent value="brand" className="space-y-6">
           <div className="flex items-center justify-between">
             <div>
-              <h2 className="text-xl font-semibold">Brand Guidelines</h2>
+              <h2 className="text-xl font-semibold">{t.library.brand.title}</h2>
               <p className="text-sm text-muted-foreground">
-                Logo, mau sac, typography va brand standards
+                {t.library.brand.subtitle}
               </p>
             </div>
             <div className="flex items-center gap-2">
               <Input
-                placeholder="Tim kiem..."
+                placeholder={t.common.search}
                 className="w-64"
                 value={searchBrand}
                 onChange={(e) => setSearchBrand(e.target.value)}
@@ -278,7 +280,7 @@ export default function BrandLibraryPage() {
                 <div className="flex items-center justify-between">
                   <CardTitle className="flex items-center gap-2">
                     <Palette className="w-5 h-5" />
-                    Brand Colors
+                    {t.library.brand.colors}
                   </CardTitle>
                   <Button
                     variant="outline"
@@ -426,10 +428,10 @@ export default function BrandLibraryPage() {
             <div>
               <div className="flex items-center justify-between mb-3">
                 <h3 className="font-semibold flex items-center gap-2">
-                  LOGO SUITE
+                  {t.library.brand.logos}
                 </h3>
                 <Button variant="ghost" size="sm">
-                  Download All
+                  {t.library.brand.downloadAll}
                 </Button>
               </div>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -499,7 +501,7 @@ export default function BrandLibraryPage() {
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <BookOpen className="w-5 h-5" />
-                  Typography
+                  {t.library.brand.fonts}
                 </CardTitle>
               </CardHeader>
               <CardContent>
@@ -543,7 +545,7 @@ export default function BrandLibraryPage() {
                             onClick={() => handleDownload(font.id)}
                           >
                             <Download className="w-4 h-4 mr-2" />
-                            Download Font Files
+                            {t.library.brand.downloadAll}
                           </Button>
                         </CardContent>
                       </Card>
@@ -559,7 +561,7 @@ export default function BrandLibraryPage() {
             <div>
               <div className="flex items-center justify-between mb-3">
                 <h3 className="font-semibold flex items-center gap-2">
-                  BRAND GUIDELINES & DOCUMENTATION
+                  {t.library.brand.guidelines}
                 </h3>
               </div>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -617,8 +619,8 @@ export default function BrandLibraryPage() {
                 <Palette className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
                 <p className="text-muted-foreground">
                   {searchBrand
-                    ? "Khong tim thay ket qua"
-                    : "Chua co brand assets nao"}
+                    ? t.common.noData
+                    : t.library.assets.noAssets}
                 </p>
               </div>
             )}
@@ -628,14 +630,14 @@ export default function BrandLibraryPage() {
         <TabsContent value="assets" className="space-y-6">
           <div className="flex items-center justify-between">
             <div>
-              <h2 className="text-xl font-semibold">Media Assets</h2>
+              <h2 className="text-xl font-semibold">{t.library.assets.title}</h2>
               <p className="text-sm text-muted-foreground">
-                Photos, videos, templates va documents cho marketing
+                {t.library.assets.subtitle}
               </p>
             </div>
             <div className="flex items-center gap-2">
               <Input
-                placeholder="Tim kiem..."
+                placeholder={t.common.search}
                 className="w-64"
                 value={searchMedia}
                 onChange={(e) => setSearchMedia(e.target.value)}
@@ -645,7 +647,7 @@ export default function BrandLibraryPage() {
               </Button>
               <Button className="gap-2">
                 <Upload className="w-4 h-4" />
-                Upload Assets
+                {t.library.assets.uploadAsset}
               </Button>
             </div>
           </div>
@@ -655,7 +657,7 @@ export default function BrandLibraryPage() {
             <div>
               <div className="flex items-center justify-between mb-3">
                 <h3 className="font-semibold flex items-center gap-2">
-                  PHOTOGRAPHY
+                  {t.library.assets.images}
                 </h3>
               </div>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -698,7 +700,7 @@ export default function BrandLibraryPage() {
             <div>
               <div className="flex items-center justify-between mb-3">
                 <h3 className="font-semibold flex items-center gap-2">
-                  VIDEO CONTENT
+                  {t.library.assets.videos}
                 </h3>
               </div>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -744,7 +746,7 @@ export default function BrandLibraryPage() {
             <div>
               <div className="flex items-center justify-between mb-3">
                 <h3 className="font-semibold flex items-center gap-2">
-                  DESIGN TEMPLATES
+                  {t.library.brand.templates}
                 </h3>
               </div>
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
@@ -786,7 +788,7 @@ export default function BrandLibraryPage() {
             <div>
               <div className="flex items-center justify-between mb-3">
                 <h3 className="font-semibold flex items-center gap-2">
-                  DOCUMENTS & REPORTS
+                  {t.library.assets.documents}
                 </h3>
               </div>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -838,8 +840,8 @@ export default function BrandLibraryPage() {
                 <Folder className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
                 <p className="text-muted-foreground">
                   {searchMedia
-                    ? "Khong tim thay ket qua"
-                    : "Chua co media assets nao"}
+                    ? t.common.noData
+                    : t.library.assets.noAssets}
                 </p>
               </div>
             )}

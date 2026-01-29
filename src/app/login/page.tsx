@@ -6,9 +6,11 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
+import { useLanguage } from "@/i18n";
 
 export default function LoginPage() {
   const router = useRouter();
+  const { t } = useLanguage();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
@@ -57,7 +59,7 @@ export default function LoginPage() {
           </div>
           <CardTitle className="text-2xl">Greenfield Dental</CardTitle>
           <CardDescription>
-            Marketing Command Center
+            {t.auth.marketingCommandCenter}
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -69,7 +71,7 @@ export default function LoginPage() {
             )}
 
             <div className="space-y-2">
-              <Label htmlFor="email">Email</Label>
+              <Label htmlFor="email">{t.auth.email}</Label>
               <Input
                 id="email"
                 type="email"
@@ -81,11 +83,11 @@ export default function LoginPage() {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="password">Password</Label>
+              <Label htmlFor="password">{t.auth.password}</Label>
               <Input
                 id="password"
                 type="password"
-                placeholder="Enter your password"
+                placeholder={t.auth.password}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
@@ -93,7 +95,7 @@ export default function LoginPage() {
             </div>
 
             <Button type="submit" className="w-full" disabled={loading}>
-              {loading ? "Signing in..." : "Sign In"}
+              {loading ? t.auth.signingIn : t.auth.signIn}
             </Button>
 
             <div className="relative my-4">
@@ -101,7 +103,7 @@ export default function LoginPage() {
                 <span className="w-full border-t" />
               </div>
               <div className="relative flex justify-center text-xs uppercase">
-                <span className="bg-card px-2 text-muted-foreground">Or</span>
+                <span className="bg-card px-2 text-muted-foreground">{t.common.or}</span>
               </div>
             </div>
 
@@ -116,7 +118,7 @@ export default function LoginPage() {
                 router.refresh();
               }}
             >
-              Continue in Demo Mode
+              {t.auth.continueDemo}
             </Button>
           </form>
         </CardContent>

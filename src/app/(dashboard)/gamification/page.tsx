@@ -10,10 +10,12 @@ import { trpc } from "@/lib/trpc";
 import { LoadingSpinner, PageLoading } from "@/components/ui/loading-spinner";
 import { ErrorDisplay, PageError } from "@/components/ui/error-display";
 import { toast } from "sonner";
+import { useLanguage } from "@/i18n";
 
 type LeaderboardPeriod = "weekly" | "monthly" | "allTime";
 
 export default function GamificationPage() {
+  const { t } = useLanguage();
   const [activeTab, setActiveTab] = useState("leaderboard");
   const [leaderboardPeriod, setLeaderboardPeriod] = useState<LeaderboardPeriod>("monthly");
 
@@ -129,7 +131,7 @@ export default function GamificationPage() {
 
   const renderLeaderboard = () => {
     if (activeLeaderboardQuery.isLoading || myPointsQuery.isLoading) {
-      return <PageLoading text="Loading leaderboard..." />;
+      return <PageLoading text={t.common.loading} />;
     }
 
     if (activeLeaderboardQuery.error) {
@@ -162,15 +164,15 @@ export default function GamificationPage() {
     return (
       <div className="space-y-6">
         <div className="flex items-center justify-between">
-          <h2 className="text-xl font-semibold">Leaderboard</h2>
+          <h2 className="text-xl font-semibold">{t.gamification.leaderboard.title}</h2>
           <Tabs
             value={leaderboardPeriod}
             onValueChange={(value) => setLeaderboardPeriod(value as LeaderboardPeriod)}
           >
             <TabsList>
-              <TabsTrigger value="weekly">This Week</TabsTrigger>
-              <TabsTrigger value="monthly">This Month</TabsTrigger>
-              <TabsTrigger value="allTime">All Time</TabsTrigger>
+              <TabsTrigger value="weekly">{t.performance.periods.thisWeek}</TabsTrigger>
+              <TabsTrigger value="monthly">{t.performance.periods.thisMonth}</TabsTrigger>
+              <TabsTrigger value="allTime">{t.performance.periods.thisYear}</TabsTrigger>
             </TabsList>
           </Tabs>
         </div>
@@ -193,7 +195,7 @@ export default function GamificationPage() {
                     <div className="text-2xl font-bold text-primary">
                       {getPointsForPeriod(leaderboard[1])}
                     </div>
-                    <div className="text-sm text-muted-foreground">points</div>
+                    <div className="text-sm text-muted-foreground">{t.gamification.leaderboard.points}</div>
                   </div>
                 </div>
 
@@ -210,7 +212,7 @@ export default function GamificationPage() {
                     <div className="text-3xl font-bold text-primary">
                       {getPointsForPeriod(leaderboard[0])}
                     </div>
-                    <div className="text-sm text-muted-foreground">points</div>
+                    <div className="text-sm text-muted-foreground">{t.gamification.leaderboard.points}</div>
                   </div>
                 </div>
 
@@ -227,7 +229,7 @@ export default function GamificationPage() {
                     <div className="text-2xl font-bold text-primary">
                       {getPointsForPeriod(leaderboard[2])}
                     </div>
-                    <div className="text-sm text-muted-foreground">points</div>
+                    <div className="text-sm text-muted-foreground">{t.gamification.leaderboard.points}</div>
                   </div>
                 </div>
               </div>
@@ -238,23 +240,23 @@ export default function GamificationPage() {
         {/* Full Rankings */}
         <Card>
           <CardHeader>
-            <CardTitle>Full Rankings</CardTitle>
+            <CardTitle>{t.performance.team.rankings}</CardTitle>
           </CardHeader>
           <CardContent>
             {leaderboard.length === 0 ? (
               <div className="text-center py-8 text-muted-foreground">
-                No leaderboard data available yet.
+                {t.common.noData}
               </div>
             ) : (
               <div className="overflow-x-auto">
                 <table className="w-full">
                   <thead>
                     <tr className="border-b">
-                      <th className="text-left p-3 font-medium">Rank</th>
-                      <th className="text-left p-3 font-medium">Name</th>
-                      <th className="text-left p-3 font-medium">Role</th>
-                      <th className="text-center p-3 font-medium">Points</th>
-                      <th className="text-center p-3 font-medium">Level</th>
+                      <th className="text-left p-3 font-medium">{t.gamification.leaderboard.rank}</th>
+                      <th className="text-left p-3 font-medium">{t.gamification.leaderboard.member}</th>
+                      <th className="text-left p-3 font-medium">{t.settings.profile.role}</th>
+                      <th className="text-center p-3 font-medium">{t.gamification.leaderboard.points}</th>
+                      <th className="text-center p-3 font-medium">{t.gamification.leaderboard.level}</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -301,15 +303,15 @@ export default function GamificationPage() {
               <Trophy className="w-8 h-8 text-primary" />
               <div>
                 <p className="font-semibold">
-                  Your Position: {userRank > 0 ? `Rank #${userRank}` : "Not ranked yet"}
+                  {t.gamification.leaderboard.rank}: {userRank > 0 ? `#${userRank}` : t.common.noData}
                 </p>
                 <p className="text-sm text-muted-foreground">
-                  You earned {currentUserPoints} points{" "}
+                  {t.gamification.points.earned}: {currentUserPoints} {t.gamification.leaderboard.points}{" "}
                   {leaderboardPeriod === "weekly"
-                    ? "this week"
+                    ? t.performance.periods.thisWeek
                     : leaderboardPeriod === "monthly"
-                    ? "this month"
-                    : "total"}
+                    ? t.performance.periods.thisMonth
+                    : t.gamification.points.total}
                 </p>
               </div>
             </div>
@@ -321,7 +323,7 @@ export default function GamificationPage() {
 
   const renderAchievements = () => {
     if (myAchievementsQuery.isLoading) {
-      return <PageLoading text="Loading achievements..." />;
+      return <PageLoading text={t.common.loading} />;
     }
 
     if (myAchievementsQuery.error) {
@@ -339,9 +341,9 @@ export default function GamificationPage() {
     return (
       <div className="space-y-6">
         <div className="flex items-center justify-between">
-          <h2 className="text-xl font-semibold">Achievements</h2>
+          <h2 className="text-xl font-semibold">{t.gamification.achievements.title}</h2>
           <div className="text-sm text-muted-foreground">
-            {earned.length} earned / {earned.length + available.length} total
+            {earned.length} {t.gamification.achievements.unlocked} / {earned.length + available.length} {t.gamification.points.total.toLowerCase()}
           </div>
         </div>
 
@@ -370,11 +372,11 @@ export default function GamificationPage() {
 
         {/* Your Badges */}
         <div>
-          <h3 className="font-semibold mb-3">Your Badges ({earned.length})</h3>
+          <h3 className="font-semibold mb-3">{t.gamification.achievements.unlocked} ({earned.length})</h3>
           {earned.length === 0 ? (
             <Card>
               <CardContent className="p-8 text-center text-muted-foreground">
-                You haven&apos;t earned any achievements yet. Keep working to unlock badges!
+                {t.gamification.achievements.noAchievements}
               </CardContent>
             </Card>
           ) : (
@@ -404,7 +406,7 @@ export default function GamificationPage() {
         {/* Available Achievements */}
         {available.length > 0 && (
           <div>
-            <h3 className="font-semibold mb-3">Available to Unlock ({available.length})</h3>
+            <h3 className="font-semibold mb-3">{t.gamification.achievements.locked} ({available.length})</h3>
             <div className="space-y-4">
               {available.slice(0, 5).map((achievement) => (
                 <Card key={achievement.id}>
@@ -443,7 +445,7 @@ export default function GamificationPage() {
 
   const renderRewards = () => {
     if (rewardsQuery.isLoading || myPointsQuery.isLoading) {
-      return <PageLoading text="Loading rewards..." />;
+      return <PageLoading text={t.common.loading} />;
     }
 
     if (rewardsQuery.error) {
@@ -461,13 +463,13 @@ export default function GamificationPage() {
       <div className="space-y-6">
         <div className="flex items-center justify-between">
           <div>
-            <h2 className="text-xl font-semibold">Rewards</h2>
-            <p className="text-sm text-muted-foreground">Exchange your points for rewards</p>
+            <h2 className="text-xl font-semibold">{t.gamification.rewards.title}</h2>
+            <p className="text-sm text-muted-foreground">{t.gamification.rewards.subtitle}</p>
           </div>
           <Card className="border-2 border-primary">
             <CardContent className="p-4">
               <div className="text-center">
-                <p className="text-sm text-muted-foreground">Your Points</p>
+                <p className="text-sm text-muted-foreground">{t.gamification.rewards.availablePoints}</p>
                 <p className="text-3xl font-bold text-primary">{currentPoints}</p>
               </div>
             </CardContent>
@@ -477,7 +479,7 @@ export default function GamificationPage() {
         {rewards.length === 0 ? (
           <Card>
             <CardContent className="p-8 text-center text-muted-foreground">
-              No rewards available at the moment. Check back later!
+              {t.gamification.rewards.noRewards}
             </CardContent>
           </Card>
         ) : (
@@ -494,7 +496,7 @@ export default function GamificationPage() {
                       <div className="flex items-center justify-center gap-2 mb-3">
                         <Star className="w-5 h-5 text-yellow-500" />
                         <span className="text-xl font-bold text-primary">{reward.pointsCost}</span>
-                        <span className="text-sm text-muted-foreground">points</span>
+                        <span className="text-sm text-muted-foreground">{t.gamification.leaderboard.points}</span>
                       </div>
                       {canAfford ? (
                         <Button
@@ -505,12 +507,12 @@ export default function GamificationPage() {
                           {redeemMutation.isPending ? (
                             <LoadingSpinner size="sm" className="p-0" />
                           ) : (
-                            "Redeem"
+                            t.gamification.rewards.redeem
                           )}
                         </Button>
                       ) : (
                         <Badge variant="secondary" className="w-full justify-center py-2">
-                          Need {reward.pointsCost - currentPoints} more points
+                          {reward.pointsCost - currentPoints} {t.gamification.leaderboard.points}
                         </Badge>
                       )}
                     </div>
@@ -528,9 +530,9 @@ export default function GamificationPage() {
     <div className="p-6">
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
         <TabsList>
-          <TabsTrigger value="leaderboard">Leaderboard</TabsTrigger>
-          <TabsTrigger value="achievements">Achievements</TabsTrigger>
-          <TabsTrigger value="rewards">Rewards</TabsTrigger>
+          <TabsTrigger value="leaderboard">{t.gamification.leaderboard.title}</TabsTrigger>
+          <TabsTrigger value="achievements">{t.gamification.achievements.title}</TabsTrigger>
+          <TabsTrigger value="rewards">{t.gamification.rewards.title}</TabsTrigger>
         </TabsList>
 
         <TabsContent value="leaderboard">{renderLeaderboard()}</TabsContent>

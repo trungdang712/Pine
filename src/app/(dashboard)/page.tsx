@@ -38,7 +38,8 @@ import { LucideIcon } from "lucide-react";
 import { trpc } from "@/lib/trpc";
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
 import { format } from "date-fns";
-import { vi } from "date-fns/locale";
+import { vi as viLocale, enUS } from "date-fns/locale";
+import { useLanguage } from "@/i18n";
 
 type RoleType = "Admin" | "Marketing Manager" | "Content Creator" | "Digital Marketing" | "Graphic Designer" | "Video Producer";
 
@@ -58,54 +59,61 @@ interface QuickAction {
   href: string;
 }
 
-// Role configurations
-const roleConfigs: Record<RoleType, { quickActions: QuickAction[] }> = {
+// Role configurations - now using translation keys
+interface RoleQuickActionConfig {
+  labelKey: string;
+  icon: LucideIcon;
+  variant: "default" | "outline";
+  href: string;
+}
+
+const roleConfigsData: Record<RoleType, { quickActions: RoleQuickActionConfig[] }> = {
   Admin: {
     quickActions: [
-      { label: "Thêm Team Member", icon: Plus, variant: "default", href: "/settings" },
-      { label: "Xem Budget Report", icon: DollarSign, variant: "outline", href: "/analytics/budget" },
-      { label: "Team Performance", icon: BarChart3, variant: "outline", href: "/performance/team" },
-      { label: "Duyệt Proposals", icon: CheckCircle, variant: "outline", href: "/proposals" },
+      { labelKey: "addTeamMember", icon: Plus, variant: "default", href: "/settings" },
+      { labelKey: "viewBudgetReport", icon: DollarSign, variant: "outline", href: "/analytics/budget" },
+      { labelKey: "teamPerformance", icon: BarChart3, variant: "outline", href: "/performance/team" },
+      { labelKey: "reviewProposals", icon: CheckCircle, variant: "outline", href: "/proposals" },
     ],
   },
   "Marketing Manager": {
     quickActions: [
-      { label: "Duyệt Proposals", icon: CheckCircle, variant: "default", href: "/proposals" },
-      { label: "Tạo Campaign mới", icon: Plus, variant: "outline", href: "/analytics/campaigns" },
-      { label: "Xem Analytics", icon: BarChart3, variant: "outline", href: "/analytics" },
-      { label: "Assign Tasks", icon: Users, variant: "outline", href: "/tasks" },
+      { labelKey: "reviewProposals", icon: CheckCircle, variant: "default", href: "/proposals" },
+      { labelKey: "createCampaign", icon: Plus, variant: "outline", href: "/analytics/campaigns" },
+      { labelKey: "viewAnalytics", icon: BarChart3, variant: "outline", href: "/analytics" },
+      { labelKey: "assignTasks", icon: Users, variant: "outline", href: "/tasks" },
     ],
   },
   "Content Creator": {
     quickActions: [
-      { label: "Tạo Content mới", icon: Plus, variant: "default", href: "/calendar" },
-      { label: "Xem Content Calendar", icon: CalendarIcon, variant: "outline", href: "/calendar" },
-      { label: "My Tasks", icon: CheckSquare, variant: "outline", href: "/tasks" },
-      { label: "Brand Library", icon: FileText, variant: "outline", href: "/library/brand" },
+      { labelKey: "createContent", icon: Plus, variant: "default", href: "/calendar" },
+      { labelKey: "viewCalendar", icon: CalendarIcon, variant: "outline", href: "/calendar" },
+      { labelKey: "myTasks", icon: CheckSquare, variant: "outline", href: "/tasks" },
+      { labelKey: "brandLibrary", icon: FileText, variant: "outline", href: "/library/brand" },
     ],
   },
   "Digital Marketing": {
     quickActions: [
-      { label: "Tạo Campaign mới", icon: Plus, variant: "default", href: "/analytics/campaigns" },
-      { label: "Xem Analytics", icon: BarChart3, variant: "outline", href: "/analytics" },
-      { label: "Manage Ads", icon: Megaphone, variant: "outline", href: "/analytics/campaigns" },
-      { label: "Landing Pages", icon: Target, variant: "outline", href: "/analytics/landing" },
+      { labelKey: "createCampaign", icon: Plus, variant: "default", href: "/analytics/campaigns" },
+      { labelKey: "viewAnalytics", icon: BarChart3, variant: "outline", href: "/analytics" },
+      { labelKey: "manageAds", icon: Megaphone, variant: "outline", href: "/analytics/campaigns" },
+      { labelKey: "landingPages", icon: Target, variant: "outline", href: "/analytics/landing" },
     ],
   },
   "Graphic Designer": {
     quickActions: [
-      { label: "Upload Design mới", icon: Plus, variant: "default", href: "/library/assets" },
-      { label: "Brand Library", icon: Palette, variant: "outline", href: "/library/brand" },
-      { label: "My Tasks", icon: CheckSquare, variant: "outline", href: "/tasks" },
-      { label: "Design Requests", icon: ImageIcon, variant: "outline", href: "/inbox" },
+      { labelKey: "uploadDesign", icon: Plus, variant: "default", href: "/library/assets" },
+      { labelKey: "brandLibrary", icon: Palette, variant: "outline", href: "/library/brand" },
+      { labelKey: "myTasks", icon: CheckSquare, variant: "outline", href: "/tasks" },
+      { labelKey: "designRequests", icon: ImageIcon, variant: "outline", href: "/inbox" },
     ],
   },
   "Video Producer": {
     quickActions: [
-      { label: "Tạo Video Project", icon: Plus, variant: "default", href: "/tasks" },
-      { label: "Production Timeline", icon: CalendarIcon, variant: "outline", href: "/calendar" },
-      { label: "My Tasks", icon: CheckSquare, variant: "outline", href: "/tasks" },
-      { label: "Video Assets", icon: Film, variant: "outline", href: "/library/assets" },
+      { labelKey: "createVideoProject", icon: Plus, variant: "default", href: "/tasks" },
+      { labelKey: "productionTimeline", icon: CalendarIcon, variant: "outline", href: "/calendar" },
+      { labelKey: "myTasks", icon: CheckSquare, variant: "outline", href: "/tasks" },
+      { labelKey: "videoAssets", icon: Film, variant: "outline", href: "/library/assets" },
     ],
   },
 };
@@ -120,17 +128,19 @@ const platformColors: Record<string, string> = {
   video: "bg-red-500",
 };
 
-const statusLabels: Record<string, { label: string; variant: "default" | "secondary" | "outline" }> = {
-  scheduled: { label: "Scheduled", variant: "default" },
-  in_production: { label: "Đang thực hiện", variant: "secondary" },
-  ready_for_review: { label: "Chờ review", variant: "outline" },
-  published: { label: "Đã xuất bản", variant: "default" },
+const statusLabelsData: Record<string, { labelKey: string; variant: "default" | "secondary" | "outline" }> = {
+  scheduled: { labelKey: "scheduled", variant: "default" },
+  in_production: { labelKey: "inProduction", variant: "secondary" },
+  ready_for_review: { labelKey: "readyForReview", variant: "outline" },
+  published: { labelKey: "published", variant: "default" },
 };
 
 export default function DashboardPage() {
   const { profile, isAuthenticated } = useAuth();
+  const { t, language } = useLanguage();
   const userName = profile?.name?.split(" ")[0] ?? "User";
   const isAdmin = profile?.role === "super_admin" || profile?.role === "admin" || profile?.role === "marketing_manager";
+  const dateLocale = language === "vi" ? viLocale : enUS;
 
   // Map user's actual role to dashboard role type
   const getUserRoleType = (): RoleType => {
@@ -147,6 +157,16 @@ export default function DashboardPage() {
   };
 
   const [selectedRole, setSelectedRole] = useState<RoleType>(getUserRoleType());
+
+  // Get action label from translations
+  const getActionLabel = (key: string): string => {
+    return (t.dashboard.actions as Record<string, string>)[key] || key;
+  };
+
+  // Get status label from translations
+  const getStatusLabel = (key: string): string => {
+    return (t.dashboard.status as Record<string, string>)[key] || key;
+  };
 
   // Fetch real data
   const { data: taskStats, isLoading: loadingTaskStats } = trpc.task.getTaskStats.useQuery(undefined, {
@@ -173,7 +193,7 @@ export default function DashboardPage() {
     enabled: isAuthenticated,
   });
 
-  const currentDate = new Date().toLocaleDateString("vi-VN", {
+  const currentDate = new Date().toLocaleDateString(language === "vi" ? "vi-VN" : "en-US", {
     weekday: "long",
     year: "numeric",
     month: "long",
@@ -182,14 +202,14 @@ export default function DashboardPage() {
 
   const getGreeting = () => {
     const hour = new Date().getHours();
-    if (hour < 12) return "Chào buổi sáng";
-    if (hour < 18) return "Chào buổi chiều";
-    return "Chào buổi tối";
+    if (hour < 12) return t.dashboard.greeting.morning;
+    if (hour < 18) return t.dashboard.greeting.afternoon;
+    return t.dashboard.greeting.evening;
   };
 
   // For non-admin users, always use their actual role
   const effectiveRole = isAdmin ? selectedRole : getUserRoleType();
-  const roleConfig = roleConfigs[effectiveRole];
+  const roleConfig = roleConfigsData[effectiveRole];
 
   // Generate KPIs based on real data
   const generateKPIs = (): KPIConfig[] => {
@@ -204,45 +224,45 @@ export default function DashboardPage() {
     switch (effectiveRole) {
       case "Admin":
         return [
-          { title: "Team Members", value: 8, icon: Users, color: "bg-primary", trend: { value: 2, isPositive: true } },
-          { title: "Ngân sách tháng này", value: "85M", subtitle: "/ 100M VND", icon: DollarSign, color: "bg-success" },
-          { title: "Active Tasks", value: pendingCount + inProgressCount, icon: Target, color: "bg-info" },
-          { title: "Team Performance", value: "92%", subtitle: "Hiệu suất", icon: BarChart3, color: "bg-amber-500" },
+          { title: t.dashboard.kpis.teamMembers, value: 8, icon: Users, color: "bg-primary", trend: { value: 2, isPositive: true } },
+          { title: t.dashboard.kpis.monthlyBudget, value: "85M", subtitle: "/ 100M VND", icon: DollarSign, color: "bg-success" },
+          { title: t.dashboard.kpis.activeTasks, value: pendingCount + inProgressCount, icon: Target, color: "bg-info" },
+          { title: t.dashboard.kpis.teamPerformance, value: "92%", subtitle: t.dashboard.kpis.performance, icon: BarChart3, color: "bg-amber-500" },
         ];
       case "Marketing Manager":
         return [
-          { title: "Tasks chờ review", value: overdueCount, icon: Clock, color: "bg-warning" },
-          { title: "Active Tasks", value: pendingCount + inProgressCount, icon: Target, color: "bg-primary" },
-          { title: "Hoàn thành tuần này", value: completedCount, icon: CheckCircle, color: "bg-success" },
-          { title: "Team Points", value: totalPoints, subtitle: `+${weeklyPoints} tuần này`, icon: Trophy, color: "bg-amber-500" },
+          { title: t.dashboard.kpis.tasksAwaitingReview, value: overdueCount, icon: Clock, color: "bg-warning" },
+          { title: t.dashboard.kpis.activeTasks, value: pendingCount + inProgressCount, icon: Target, color: "bg-primary" },
+          { title: t.dashboard.kpis.completedThisWeek, value: completedCount, icon: CheckCircle, color: "bg-success" },
+          { title: t.dashboard.kpis.teamPoints, value: totalPoints, subtitle: `+${weeklyPoints} ${t.dashboard.kpis.thisWeek}`, icon: Trophy, color: "bg-amber-500" },
         ];
       case "Content Creator":
         return [
-          { title: "Task hôm nay", value: pendingCount, icon: CheckSquare, color: "bg-primary" },
-          { title: "Đang thực hiện", value: inProgressCount, icon: Clock, color: "bg-info" },
-          { title: "Quá hạn", value: overdueCount, icon: FileText, color: "bg-warning" },
-          { title: "Điểm của tôi", value: totalPoints, subtitle: `+${weeklyPoints} tuần này`, icon: Trophy, color: "bg-amber-500" },
+          { title: t.dashboard.kpis.todayTasks, value: pendingCount, icon: CheckSquare, color: "bg-primary" },
+          { title: t.dashboard.kpis.inProgress, value: inProgressCount, icon: Clock, color: "bg-info" },
+          { title: t.dashboard.kpis.overdue, value: overdueCount, icon: FileText, color: "bg-warning" },
+          { title: t.dashboard.kpis.myPoints, value: totalPoints, subtitle: `+${weeklyPoints} ${t.dashboard.kpis.thisWeek}`, icon: Trophy, color: "bg-amber-500" },
         ];
       case "Graphic Designer":
         return [
-          { title: "Design Tasks", value: pendingCount, icon: Palette, color: "bg-primary" },
-          { title: "Đang thực hiện", value: inProgressCount, icon: Clock, color: "bg-info" },
-          { title: "Quá hạn", value: overdueCount, icon: Clock, color: "bg-warning" },
-          { title: "Design Points", value: totalPoints, subtitle: `+${weeklyPoints} tuần này`, icon: Trophy, color: "bg-amber-500" },
+          { title: t.dashboard.kpis.designTasks, value: pendingCount, icon: Palette, color: "bg-primary" },
+          { title: t.dashboard.kpis.inProgress, value: inProgressCount, icon: Clock, color: "bg-info" },
+          { title: t.dashboard.kpis.overdue, value: overdueCount, icon: Clock, color: "bg-warning" },
+          { title: t.dashboard.kpis.designPoints, value: totalPoints, subtitle: `+${weeklyPoints} ${t.dashboard.kpis.thisWeek}`, icon: Trophy, color: "bg-amber-500" },
         ];
       case "Video Producer":
         return [
-          { title: "Video Projects", value: pendingCount, icon: VideoIcon, color: "bg-primary" },
-          { title: "Đang sản xuất", value: inProgressCount, icon: Film, color: "bg-warning" },
-          { title: "Hoàn thành", value: completedCount, icon: CheckCircle, color: "bg-success" },
-          { title: "Video Points", value: totalPoints, subtitle: `+${weeklyPoints} tuần này`, icon: Trophy, color: "bg-amber-500" },
+          { title: t.dashboard.kpis.videoProjects, value: pendingCount, icon: VideoIcon, color: "bg-primary" },
+          { title: t.dashboard.kpis.inProduction, value: inProgressCount, icon: Film, color: "bg-warning" },
+          { title: t.dashboard.kpis.completed, value: completedCount, icon: CheckCircle, color: "bg-success" },
+          { title: t.dashboard.kpis.videoPoints, value: totalPoints, subtitle: `+${weeklyPoints} ${t.dashboard.kpis.thisWeek}`, icon: Trophy, color: "bg-amber-500" },
         ];
       case "Digital Marketing":
         return [
-          { title: "Active Campaigns", value: pendingCount + inProgressCount, icon: Megaphone, color: "bg-primary" },
-          { title: "Đang chạy", value: inProgressCount, icon: Target, color: "bg-info" },
-          { title: "Hoàn thành", value: completedCount, icon: CheckCircle, color: "bg-success" },
-          { title: "Marketing Points", value: totalPoints, subtitle: `+${weeklyPoints} tuần này`, icon: Trophy, color: "bg-amber-500" },
+          { title: t.dashboard.kpis.activeCampaigns, value: pendingCount + inProgressCount, icon: Megaphone, color: "bg-primary" },
+          { title: t.dashboard.kpis.running, value: inProgressCount, icon: Target, color: "bg-info" },
+          { title: t.dashboard.kpis.completed, value: completedCount, icon: CheckCircle, color: "bg-success" },
+          { title: t.dashboard.kpis.marketingPoints, value: totalPoints, subtitle: `+${weeklyPoints} ${t.dashboard.kpis.thisWeek}`, icon: Trophy, color: "bg-amber-500" },
         ];
       default:
         return [];
@@ -266,18 +286,18 @@ export default function DashboardPage() {
         {/* Role Selector - Only for Admin */}
         {isAdmin && (
           <div className="flex items-center gap-3">
-            <span className="text-sm text-muted-foreground">Xem dashboard với vai trò:</span>
+            <span className="text-sm text-muted-foreground">{t.dashboard.viewAsRole}</span>
             <Select value={selectedRole} onValueChange={(v) => setSelectedRole(v as RoleType)}>
               <SelectTrigger className="w-[200px]">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="Admin">Admin</SelectItem>
-                <SelectItem value="Marketing Manager">Marketing Manager</SelectItem>
-                <SelectItem value="Content Creator">Content Creator</SelectItem>
-                <SelectItem value="Digital Marketing">Digital Marketing</SelectItem>
-                <SelectItem value="Graphic Designer">Graphic Designer</SelectItem>
-                <SelectItem value="Video Producer">Video Producer</SelectItem>
+                <SelectItem value="Admin">{t.dashboard.roles.admin}</SelectItem>
+                <SelectItem value="Marketing Manager">{t.dashboard.roles.marketingManager}</SelectItem>
+                <SelectItem value="Content Creator">{t.dashboard.roles.contentCreator}</SelectItem>
+                <SelectItem value="Digital Marketing">{t.dashboard.roles.digitalMarketing}</SelectItem>
+                <SelectItem value="Graphic Designer">{t.dashboard.roles.graphicDesigner}</SelectItem>
+                <SelectItem value="Video Producer">{t.dashboard.roles.videoProducer}</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -312,14 +332,14 @@ export default function DashboardPage() {
         {/* Upcoming Content */}
         <Card>
           <CardHeader>
-            <CardTitle>Nội dung sắp tới</CardTitle>
+            <CardTitle>{t.dashboard.upcomingContent}</CardTitle>
           </CardHeader>
           <CardContent>
             {loadingCalendar ? (
               <LoadingSpinner size="sm" />
             ) : calendarItems.length === 0 ? (
               <div className="text-center py-8 text-muted-foreground">
-                Không có nội dung nào sắp tới
+                {t.dashboard.noUpcomingContent}
               </div>
             ) : (
               <div className="space-y-4">
@@ -336,7 +356,7 @@ export default function DashboardPage() {
                         {item.scheduledAt && (
                           <>
                             <span className="text-sm font-medium">
-                              {format(new Date(item.scheduledAt), "dd/MM", { locale: vi })}
+                              {format(new Date(item.scheduledAt), "dd/MM", { locale: dateLocale })}
                             </span>
                             <span className="text-sm text-muted-foreground">
                               {format(new Date(item.scheduledAt), "HH:mm")}
@@ -349,8 +369,8 @@ export default function DashboardPage() {
                       </div>
                       <p className="text-sm">{item.title}</p>
                       <div className="flex items-center gap-2 mt-2">
-                        <Badge variant={statusLabels[item.status]?.variant ?? "outline"} className="text-xs">
-                          {statusLabels[item.status]?.label ?? item.status}
+                        <Badge variant={statusLabelsData[item.status]?.variant ?? "outline"} className="text-xs">
+                          {statusLabelsData[item.status] ? getStatusLabel(statusLabelsData[item.status].labelKey) : item.status}
                         </Badge>
                         {item.creator && (
                           <span className="text-xs text-muted-foreground">{item.creator.name}</span>
@@ -369,7 +389,7 @@ export default function DashboardPage() {
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Bell className="w-5 h-5" />
-              Thông báo gần đây
+              {t.dashboard.recentNotifications}
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -377,7 +397,7 @@ export default function DashboardPage() {
               <LoadingSpinner size="sm" />
             ) : recentAlerts.length === 0 ? (
               <div className="text-center py-8 text-muted-foreground">
-                Không có thông báo mới
+                {t.dashboard.noNewNotifications}
               </div>
             ) : (
               <div className="space-y-4">
@@ -392,12 +412,12 @@ export default function DashboardPage() {
                       <p className="text-sm font-medium">{alert.title}</p>
                       <p className="text-sm text-muted-foreground line-clamp-2">{alert.message}</p>
                       <p className="text-xs text-muted-foreground mt-1">
-                        {format(new Date(alert.createdAt), "dd/MM HH:mm", { locale: vi })}
+                        {format(new Date(alert.createdAt), "dd/MM HH:mm", { locale: dateLocale })}
                       </p>
                     </div>
                     {alert.link && (
                       <Button variant="ghost" size="sm" asChild>
-                        <Link href={alert.link}>Xem</Link>
+                        <Link href={alert.link}>{t.common.view}</Link>
                       </Button>
                     )}
                   </div>
@@ -411,7 +431,7 @@ export default function DashboardPage() {
       {/* Quick Actions */}
       <Card>
         <CardHeader>
-          <CardTitle>Hành động nhanh</CardTitle>
+          <CardTitle>{t.dashboard.quickActions}</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="flex flex-wrap gap-3">
@@ -421,7 +441,7 @@ export default function DashboardPage() {
                 <Button key={index} variant={action.variant} className="gap-2" asChild>
                   <Link href={action.href}>
                     <Icon className="w-4 h-4" />
-                    {action.label}
+                    {getActionLabel(action.labelKey)}
                   </Link>
                 </Button>
               );

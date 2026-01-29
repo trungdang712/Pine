@@ -24,6 +24,7 @@ import { getInitials } from "@/lib/utils";
 import { trpc } from "@/lib/trpc";
 import { PageLoading } from "@/components/ui/loading-spinner";
 import { PageError } from "@/components/ui/error-display";
+import { useLanguage } from "@/i18n";
 
 const priorityColors: Record<string, string> = {
   urgent: "bg-red-100 text-red-700",
@@ -39,31 +40,32 @@ const statusColors: Record<string, string> = {
   done: "bg-green-100 text-green-700",
 };
 
-const statusLabels: Record<string, string> = {
-  todo: "Can lam",
-  in_progress: "Dang lam",
-  review: "Cho review",
-  done: "Hoan thanh",
-};
-
-const priorityLabels: Record<string, string> = {
-  urgent: "Khan cap",
-  high: "Cao",
-  normal: "Binh thuong",
-  low: "Thap",
-};
-
-const roleLabels: Record<string, string> = {
-  admin: "Admin",
-  marketing_manager: "Marketing Manager",
-  content_creator: "Content Creator",
-  digital_marketing: "Digital Marketing",
-  graphic_designer: "Graphic Designer",
-  video_producer: "Video Producer",
-};
-
 export default function TeamTasksPage() {
+  const { t } = useLanguage();
   const [selectedMember, setSelectedMember] = useState<string>("all");
+
+  const statusLabels: Record<string, string> = {
+    todo: t.tasks.statuses.todo,
+    in_progress: t.tasks.statuses.inProgress,
+    review: t.tasks.statuses.review,
+    done: t.tasks.statuses.done,
+  };
+
+  const priorityLabels: Record<string, string> = {
+    urgent: t.tasks.priorities.urgent,
+    high: t.tasks.priorities.high,
+    normal: t.tasks.priorities.medium,
+    low: t.tasks.priorities.low,
+  };
+
+  const roleLabels: Record<string, string> = {
+    admin: t.dashboard.roles.admin,
+    marketing_manager: t.dashboard.roles.marketingManager,
+    content_creator: t.dashboard.roles.contentCreator,
+    digital_marketing: t.dashboard.roles.digitalMarketing,
+    graphic_designer: t.dashboard.roles.graphicDesigner,
+    video_producer: t.dashboard.roles.videoProducer,
+  };
 
   const usersQuery = trpc.user.getTeamMembers.useQuery();
   const tasksQuery = trpc.task.getAll.useQuery();
@@ -112,7 +114,7 @@ export default function TeamTasksPage() {
     });
   }, [usersQuery.data, tasksQuery.data]);
 
-  if (isLoading) return <PageLoading text="Loading team tasks..." />;
+  if (isLoading) return <PageLoading text={t.common.loading} />;
   if (error) {
     return (
       <PageError
@@ -138,17 +140,17 @@ export default function TeamTasksPage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold">Team Tasks</h1>
+          <h1 className="text-2xl font-bold">{t.tasks.team.title}</h1>
           <p className="text-muted-foreground">
-            Tong quan workload va tasks cua team
+            {t.tasks.team.subtitle}
           </p>
         </div>
         <Select value={selectedMember} onValueChange={setSelectedMember}>
           <SelectTrigger className="w-[200px]">
-            <SelectValue placeholder="Tat ca thanh vien" />
+            <SelectValue placeholder={t.common.all} />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="all">Tat ca thanh vien</SelectItem>
+            <SelectItem value="all">{t.common.all}</SelectItem>
             {teamMembers.map((member) => (
               <SelectItem key={member.id} value={member.id}>
                 {member.name}
@@ -167,7 +169,7 @@ export default function TeamTasksPage() {
             </div>
             <div>
               <p className="text-2xl font-bold">{teamMembers.length}</p>
-              <p className="text-sm text-muted-foreground">Thanh vien</p>
+              <p className="text-sm text-muted-foreground">{t.dashboard.kpis.teamMembers}</p>
             </div>
           </CardContent>
         </Card>
@@ -178,7 +180,7 @@ export default function TeamTasksPage() {
             </div>
             <div>
               <p className="text-2xl font-bold">{totalStats.total}</p>
-              <p className="text-sm text-muted-foreground">Tong tasks</p>
+              <p className="text-sm text-muted-foreground">{t.tasks.title}</p>
             </div>
           </CardContent>
         </Card>
@@ -189,7 +191,7 @@ export default function TeamTasksPage() {
             </div>
             <div>
               <p className="text-2xl font-bold">{totalStats.completed}</p>
-              <p className="text-sm text-muted-foreground">Hoan thanh</p>
+              <p className="text-sm text-muted-foreground">{t.common.completed}</p>
             </div>
           </CardContent>
         </Card>
@@ -200,7 +202,7 @@ export default function TeamTasksPage() {
             </div>
             <div>
               <p className="text-2xl font-bold">{totalStats.inProgress}</p>
-              <p className="text-sm text-muted-foreground">Dang lam</p>
+              <p className="text-sm text-muted-foreground">{t.common.inProgress}</p>
             </div>
           </CardContent>
         </Card>
@@ -211,7 +213,7 @@ export default function TeamTasksPage() {
             </div>
             <div>
               <p className="text-2xl font-bold">{totalStats.overdue}</p>
-              <p className="text-sm text-muted-foreground">Qua han</p>
+              <p className="text-sm text-muted-foreground">{t.common.overdue}</p>
             </div>
           </CardContent>
         </Card>
@@ -241,7 +243,7 @@ export default function TeamTasksPage() {
                   </div>
                   <div className="flex items-center gap-4">
                     <div className="text-right">
-                      <p className="text-sm text-muted-foreground">Hoan thanh</p>
+                      <p className="text-sm text-muted-foreground">{t.common.completed}</p>
                       <p className="text-xl font-bold">
                         {member.stats.completed}/{member.stats.total}
                       </p>
@@ -260,12 +262,12 @@ export default function TeamTasksPage() {
                 <div className="flex items-center gap-2 mb-4">
                   <Badge variant="secondary">
                     <Clock className="h-3 w-3 mr-1" />
-                    {member.stats.inProgress} dang lam
+                    {member.stats.inProgress} {t.common.inProgress.toLowerCase()}
                   </Badge>
                   {member.stats.overdue > 0 && (
                     <Badge variant="destructive">
                       <AlertTriangle className="h-3 w-3 mr-1" />
-                      {member.stats.overdue} qua han
+                      {member.stats.overdue} {t.common.overdue.toLowerCase()}
                     </Badge>
                   )}
                 </div>
@@ -275,7 +277,7 @@ export default function TeamTasksPage() {
                   {member.tasks.length > 0 ? (
                     <>
                       <p className="text-sm font-medium text-muted-foreground mb-2">
-                        Tasks dang thuc hien:
+                        {t.tasks.team.assignedTasks}:
                       </p>
                       {member.tasks.map((task) => (
                         <div
@@ -315,7 +317,7 @@ export default function TeamTasksPage() {
                     </>
                   ) : (
                     <p className="text-sm text-muted-foreground italic">
-                      Khong co task nao dang thuc hien
+                      {t.tasks.noTasks}
                     </p>
                   )}
                 </div>
@@ -328,7 +330,7 @@ export default function TeamTasksPage() {
       {/* Workload Distribution Chart */}
       <Card>
         <CardHeader>
-          <CardTitle>Phan bo Workload</CardTitle>
+          <CardTitle>{t.tasks.team.workload}</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="space-y-4">

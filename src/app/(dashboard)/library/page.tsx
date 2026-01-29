@@ -21,6 +21,7 @@ import { trpc } from "@/lib/trpc";
 import { PageLoading } from "@/components/ui/loading-spinner";
 import { PageError } from "@/components/ui/error-display";
 import { toast } from "sonner";
+import { useLanguage } from "@/i18n";
 
 // Static category data (navigational, not from DB)
 const assetCategories = [
@@ -82,6 +83,7 @@ function formatFileSize(bytes: number | null | undefined): string {
 }
 
 export default function LibraryPage() {
+  const { t } = useLanguage();
   const brandAssetsQuery = trpc.library.getBrandAssets.useQuery();
   const assetsQuery = trpc.library.getAssets.useQuery();
   const recentQuery = trpc.library.getRecentlyUsedBrandAssets.useQuery();
@@ -109,7 +111,7 @@ export default function LibraryPage() {
     recentQuery.error ||
     popularQuery.error;
 
-  if (isLoading) return <PageLoading text="Loading library..." />;
+  if (isLoading) return <PageLoading text={t.common.loading} />;
   if (error) {
     return (
       <PageError
@@ -166,9 +168,9 @@ export default function LibraryPage() {
     <div className="space-y-6">
       {/* Header */}
       <div>
-        <h1 className="text-2xl font-bold">Library</h1>
+        <h1 className="text-2xl font-bold">{t.library.title}</h1>
         <p className="text-muted-foreground">
-          Quan ly brand assets va tai nguyen marketing cho Greenfield Dental
+          {t.library.subtitle}
         </p>
       </div>
 
@@ -182,10 +184,9 @@ export default function LibraryPage() {
                   <Palette className="h-8 w-8 text-white" />
                 </div>
                 <div className="flex-1">
-                  <h3 className="text-xl font-semibold mb-2">Brand Library</h3>
+                  <h3 className="text-xl font-semibold mb-2">{t.library.brand.title}</h3>
                   <p className="text-muted-foreground mb-4">
-                    Brand colors, logos, typography va guidelines chinh thuc cua
-                    Greenfield Dental.
+                    {t.library.brand.subtitle}
                   </p>
                   <div className="flex flex-wrap items-center gap-2 text-sm">
                     <Badge variant="secondary">{brandColors.length} mau</Badge>
@@ -212,10 +213,9 @@ export default function LibraryPage() {
                   <Image className="h-8 w-8 text-white" />
                 </div>
                 <div className="flex-1">
-                  <h3 className="text-xl font-semibold mb-2">Asset Library</h3>
+                  <h3 className="text-xl font-semibold mb-2">{t.library.assets.title}</h3>
                   <p className="text-muted-foreground mb-4">
-                    Hinh anh, video, templates va cac tai nguyen cho content
-                    marketing.
+                    {t.library.assets.subtitle}
                   </p>
                   <div className="flex flex-wrap items-center gap-2 text-sm">
                     <Badge variant="secondary">{imageCount} photos</Badge>
@@ -250,7 +250,7 @@ export default function LibraryPage() {
             </div>
             <div>
               <p className="text-2xl font-bold">{totalAssets}</p>
-              <p className="text-sm text-muted-foreground">Tong Assets</p>
+              <p className="text-sm text-muted-foreground">{t.library.assets.title}</p>
             </div>
           </CardContent>
         </Card>
@@ -286,17 +286,17 @@ export default function LibraryPage() {
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-lg flex items-center gap-2">
               <Clock className="h-5 w-5 text-blue-500" />
-              Tai gan day
+              {t.common.thisWeek}
             </CardTitle>
             <Button variant="ghost" size="sm" asChild>
-              <Link href="/library/assets">Xem tat ca</Link>
+              <Link href="/library/assets">{t.common.viewAll}</Link>
             </Button>
           </CardHeader>
           <CardContent>
             <div className="space-y-2">
               {recentDownloads.length === 0 ? (
                 <p className="text-sm text-muted-foreground italic py-4 text-center">
-                  Chua co tai nguyen nao duoc tai gan day
+                  {t.common.noData}
                 </p>
               ) : (
                 recentDownloads.map((item) => {
@@ -341,17 +341,17 @@ export default function LibraryPage() {
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-lg flex items-center gap-2">
               <Star className="h-5 w-5 text-yellow-500" />
-              Pho bien nhat
+              {t.common.more}
             </CardTitle>
             <Button variant="ghost" size="sm" asChild>
-              <Link href="/library/assets">Xem tat ca</Link>
+              <Link href="/library/assets">{t.common.viewAll}</Link>
             </Button>
           </CardHeader>
           <CardContent>
             <div className="space-y-2">
               {popularList.length === 0 ? (
                 <p className="text-sm text-muted-foreground italic py-4 text-center">
-                  Chua co du lieu pho bien
+                  {t.common.noData}
                 </p>
               ) : (
                 popularList.map((item) => (
@@ -397,7 +397,7 @@ export default function LibraryPage() {
       {/* Categories Overview */}
       <Card>
         <CardHeader>
-          <CardTitle className="text-lg">Danh muc Assets</CardTitle>
+          <CardTitle className="text-lg">{t.library.assets.title}</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="grid gap-4 md:grid-cols-4">
@@ -429,32 +429,32 @@ export default function LibraryPage() {
       {/* Quick Actions */}
       <Card>
         <CardHeader>
-          <CardTitle className="text-lg">Hanh dong nhanh</CardTitle>
+          <CardTitle className="text-lg">{t.dashboard.quickActions}</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="flex flex-wrap gap-3">
             <Button variant="outline" asChild>
               <Link href="/library/brand">
                 <Palette className="h-4 w-4 mr-2" />
-                Xem Brand Guidelines
+                {t.library.brand.guidelines}
               </Link>
             </Button>
             <Button variant="outline" asChild>
               <Link href="/library/assets?category=photos">
                 <Image className="h-4 w-4 mr-2" />
-                Duyet Photos
+                {t.library.assets.images}
               </Link>
             </Button>
             <Button variant="outline" asChild>
               <Link href="/library/assets?category=templates">
                 <FileText className="h-4 w-4 mr-2" />
-                Xem Templates
+                {t.library.brand.templates}
               </Link>
             </Button>
             <Button variant="outline" asChild>
               <Link href="/library/assets?category=videos">
                 <Video className="h-4 w-4 mr-2" />
-                Xem Videos
+                {t.library.assets.videos}
               </Link>
             </Button>
           </div>

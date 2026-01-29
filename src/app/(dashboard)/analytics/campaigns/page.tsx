@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useMemo } from "react";
+import { useLanguage } from "@/i18n";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -33,6 +34,7 @@ type PlatformFilter = "all" | "google_ads" | "facebook" | "instagram" | "zalo" |
 type TimeRange = "7d" | "30d" | "90d";
 
 export default function CampaignsPage() {
+  const { t } = useLanguage();
   const [platformFilter, setPlatformFilter] = useState<PlatformFilter>("all");
   const [timeRange, setTimeRange] = useState<TimeRange>("30d");
   const [searchQuery, setSearchQuery] = useState("");
@@ -133,15 +135,15 @@ export default function CampaignsPage() {
     return <Badge variant="secondary">{status}</Badge>;
   };
 
-  if (isLoading) return <PageLoading text="Dang tai du lieu campaigns..." />;
+  if (isLoading) return <PageLoading text={t.common.loading} />;
   if (error) return <PageError error={error} onRetry={refetch} />;
 
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-semibold mb-1">Campaigns Overview</h1>
+        <h1 className="text-2xl font-semibold mb-1">{t.analytics.campaigns.title}</h1>
         <p className="text-muted-foreground">
-          Phan tich va theo doi hieu qua cac chien dich marketing
+          {t.analytics.campaigns.subtitle}
         </p>
       </div>
 
@@ -155,7 +157,7 @@ export default function CampaignsPage() {
             <SelectValue placeholder="Platform" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="all">Tat ca</SelectItem>
+            <SelectItem value="all">{t.common.all}</SelectItem>
             <SelectItem value="facebook">Facebook</SelectItem>
             <SelectItem value="google_ads">Google Ads</SelectItem>
             <SelectItem value="instagram">Instagram</SelectItem>
@@ -179,7 +181,7 @@ export default function CampaignsPage() {
         <div className="relative flex-1 max-w-sm">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
           <Input
-            placeholder="Tim kiem campaign..."
+            placeholder={t.common.search}
             className="pl-10"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
@@ -194,13 +196,13 @@ export default function CampaignsPage() {
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <Card>
           <CardContent className="p-4">
-            <p className="text-sm text-muted-foreground mb-1">Tong chi</p>
+            <p className="text-sm text-muted-foreground mb-1">{t.analytics.campaigns.totalSpend}</p>
             <p className="text-2xl font-semibold">{formatCurrency(totals.spend)} VND</p>
           </CardContent>
         </Card>
         <Card>
           <CardContent className="p-4">
-            <p className="text-sm text-muted-foreground mb-1">Tong leads</p>
+            <p className="text-sm text-muted-foreground mb-1">{t.analytics.campaigns.conversions}</p>
             <p className="text-2xl font-semibold">{totals.leads}</p>
           </CardContent>
         </Card>
@@ -212,7 +214,7 @@ export default function CampaignsPage() {
         </Card>
         <Card>
           <CardContent className="p-4">
-            <p className="text-sm text-muted-foreground mb-1">ROAS trung binh</p>
+            <p className="text-sm text-muted-foreground mb-1">{t.analytics.campaigns.roas}</p>
             <p className="text-2xl font-semibold">{totals.avgRoas}x</p>
           </CardContent>
         </Card>
@@ -222,7 +224,7 @@ export default function CampaignsPage() {
       {spendTrendData.length > 0 && (
         <Card>
           <CardHeader>
-            <CardTitle>Xu huong chi tieu</CardTitle>
+            <CardTitle>{t.analytics.budget.dailySpend}</CardTitle>
           </CardHeader>
           <CardContent>
             <ResponsiveContainer width="100%" height={300}>
@@ -255,13 +257,13 @@ export default function CampaignsPage() {
       {/* Campaigns Table */}
       {filteredCampaigns.length === 0 ? (
         <PageEmpty
-          title="Chua co campaign nao"
-          description="Chua co marketing campaign nao duoc tao hoac khong co campaign phu hop voi bo loc."
+          title={t.analytics.campaigns.noCampaigns}
+          description={t.analytics.campaigns.noCampaigns}
         />
       ) : (
         <Card>
           <CardHeader>
-            <CardTitle>Danh sach Campaigns</CardTitle>
+            <CardTitle>{t.analytics.campaigns.title}</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="overflow-x-auto">

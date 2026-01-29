@@ -37,6 +37,7 @@ import {
 import { trpc } from "@/lib/trpc";
 import { PageLoading } from "@/components/ui/loading-spinner";
 import { PageError } from "@/components/ui/error-display";
+import { useLanguage } from "@/i18n";
 
 // Helper to get date range for a given period
 function getDateRange(period: string) {
@@ -63,6 +64,7 @@ function getCurrentMonth() {
 }
 
 export default function PerformancePage() {
+  const { t } = useLanguage();
   const [currentView, setCurrentView] = useState<"my" | "team" | "leaderboard">("my");
   const [period, setPeriod] = useState("this-month");
 
@@ -320,13 +322,13 @@ export default function PerformancePage() {
   const getViewTitle = () => {
     switch (currentView) {
       case "my":
-        return "My Performance";
+        return t.performance.myPerformance;
       case "team":
-        return "Team Performance";
+        return t.performance.team.title;
       case "leaderboard":
-        return "Leaderboard & Achievements";
+        return t.gamification.leaderboard.title;
       default:
-        return "Performance & Gamification";
+        return t.performance.title;
     }
   };
 
@@ -338,17 +340,17 @@ export default function PerformancePage() {
       <div className="space-y-6">
         <div className="flex items-center justify-between">
           <div>
-            <h2 className="text-xl font-semibold">My Performance</h2>
-            <p className="text-sm text-muted-foreground">Track your personal KPIs and achievements</p>
+            <h2 className="text-xl font-semibold">{t.performance.myPerformance}</h2>
+            <p className="text-sm text-muted-foreground">{t.performance.subtitle}</p>
           </div>
           <Select value={period} onValueChange={setPeriod}>
             <SelectTrigger className="w-[180px]">
               <SelectValue placeholder="Select period" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="this-month">This Month</SelectItem>
-              <SelectItem value="last-month">Last Month</SelectItem>
-              <SelectItem value="quarter">This Quarter</SelectItem>
+              <SelectItem value="this-month">{t.performance.periods.thisMonth}</SelectItem>
+              <SelectItem value="last-month">{t.common.thisMonth}</SelectItem>
+              <SelectItem value="quarter">{t.performance.periods.thisQuarter}</SelectItem>
             </SelectContent>
           </Select>
         </div>
@@ -359,7 +361,7 @@ export default function PerformancePage() {
             <CardContent className="p-6">
               <div className="space-y-4">
                 <div>
-                  <div className="text-sm text-muted-foreground mb-2">OVERALL SCORE</div>
+                  <div className="text-sm text-muted-foreground mb-2">{t.performance.overview.toUpperCase()}</div>
                   <div className="flex items-center gap-4">
                     <div className="text-4xl font-bold">{overallScore}/100</div>
                     <div className="flex-1">
@@ -384,7 +386,7 @@ export default function PerformancePage() {
             <CardContent className="p-6">
               <div className="space-y-4">
                 <div>
-                  <div className="text-sm text-muted-foreground mb-2">GAMIFICATION POINTS</div>
+                  <div className="text-sm text-muted-foreground mb-2">{t.gamification.leaderboard.points.toUpperCase()}</div>
                   <div className="flex items-center gap-4">
                     <Trophy className="w-10 h-10 text-accent" />
                     <div className="flex-1">
@@ -410,7 +412,7 @@ export default function PerformancePage() {
         {/* KPIs */}
         <Card>
           <CardHeader>
-            <CardTitle>Key Performance Indicators</CardTitle>
+            <CardTitle>{t.performance.metrics.tasksCompleted}</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -444,7 +446,7 @@ export default function PerformancePage() {
         {/* Performance Trend */}
         <Card>
           <CardHeader>
-            <CardTitle>Performance Trend</CardTitle>
+            <CardTitle>{t.performance.title}</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="w-full h-[300px]">
@@ -467,7 +469,7 @@ export default function PerformancePage() {
         <Card>
           <CardHeader>
             <div className="flex items-center justify-between">
-              <CardTitle>My Achievements</CardTitle>
+              <CardTitle>{t.gamification.achievements.title}</CardTitle>
               <Badge variant="secondary">
                 {achievements.filter((a) => a.earned).length} / {achievements.length}
               </Badge>
@@ -475,7 +477,7 @@ export default function PerformancePage() {
           </CardHeader>
           <CardContent>
             {achievements.length === 0 ? (
-              <p className="text-center text-muted-foreground py-8">No achievements available yet.</p>
+              <p className="text-center text-muted-foreground py-8">{t.gamification.achievements.noAchievements}</p>
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 {achievements.slice(0, 6).map((achievement) => (
@@ -527,17 +529,17 @@ export default function PerformancePage() {
       <div className="space-y-6">
         <div className="flex items-center justify-between">
           <div>
-            <h2 className="text-xl font-semibold">Team Performance</h2>
-            <p className="text-sm text-muted-foreground">Overview of team member performance and rankings</p>
+            <h2 className="text-xl font-semibold">{t.performance.team.title}</h2>
+            <p className="text-sm text-muted-foreground">{t.performance.team.subtitle}</p>
           </div>
           <Select value={period} onValueChange={setPeriod}>
             <SelectTrigger className="w-[180px]">
               <SelectValue placeholder="Select period" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="this-week">This Week</SelectItem>
-              <SelectItem value="this-month">This Month</SelectItem>
-              <SelectItem value="quarter">This Quarter</SelectItem>
+              <SelectItem value="this-week">{t.performance.periods.thisWeek}</SelectItem>
+              <SelectItem value="this-month">{t.performance.periods.thisMonth}</SelectItem>
+              <SelectItem value="quarter">{t.performance.periods.thisQuarter}</SelectItem>
             </SelectContent>
           </Select>
         </div>
@@ -547,7 +549,7 @@ export default function PerformancePage() {
           <Card>
             <CardContent className="p-4">
               <div className="flex items-center justify-between mb-2">
-                <p className="text-sm text-muted-foreground">Team Members</p>
+                <p className="text-sm text-muted-foreground">{t.gamification.leaderboard.member}</p>
                 <Users className="w-4 h-4 text-muted-foreground" />
               </div>
               <p className="text-2xl font-bold">{teamMembers.length}</p>
@@ -556,7 +558,7 @@ export default function PerformancePage() {
           <Card>
             <CardContent className="p-4">
               <div className="flex items-center justify-between mb-2">
-                <p className="text-sm text-muted-foreground">Avg Score</p>
+                <p className="text-sm text-muted-foreground">{t.performance.metrics.qualityScore}</p>
                 <Target className="w-4 h-4 text-muted-foreground" />
               </div>
               <p className="text-2xl font-bold">
@@ -569,7 +571,7 @@ export default function PerformancePage() {
           <Card>
             <CardContent className="p-4">
               <div className="flex items-center justify-between mb-2">
-                <p className="text-sm text-muted-foreground">Avg Completion</p>
+                <p className="text-sm text-muted-foreground">{t.performance.metrics.onTimeDelivery}</p>
                 <TrendingUp className="w-4 h-4 text-muted-foreground" />
               </div>
               <p className="text-2xl font-bold">
@@ -584,7 +586,7 @@ export default function PerformancePage() {
           <Card>
             <CardContent className="p-4">
               <div className="flex items-center justify-between mb-2">
-                <p className="text-sm text-muted-foreground">Total Points</p>
+                <p className="text-sm text-muted-foreground">{t.gamification.points.total}</p>
                 <Trophy className="w-4 h-4 text-muted-foreground" />
               </div>
               <p className="text-2xl font-bold">
@@ -597,11 +599,11 @@ export default function PerformancePage() {
         {/* Team Members Table */}
         <Card>
           <CardHeader>
-            <CardTitle>Team Members</CardTitle>
+            <CardTitle>{t.performance.team.memberPerformance}</CardTitle>
           </CardHeader>
           <CardContent>
             {teamMembers.length === 0 ? (
-              <p className="text-center text-muted-foreground py-8">No team members found.</p>
+              <p className="text-center text-muted-foreground py-8">{t.common.noData}</p>
             ) : (
               <div className="space-y-4">
                 {teamMembers.map((member, index) => (
@@ -671,9 +673,9 @@ export default function PerformancePage() {
     return (
       <div className="space-y-6">
         <div>
-          <h2 className="text-xl font-semibold mb-1">Leaderboard & Achievements</h2>
+          <h2 className="text-xl font-semibold mb-1">{t.gamification.leaderboard.title}</h2>
           <p className="text-sm text-muted-foreground">
-            Gamification system to motivate and reward team performance
+            {t.gamification.leaderboard.subtitle}
           </p>
         </div>
 
@@ -681,15 +683,15 @@ export default function PerformancePage() {
           <TabsList>
             <TabsTrigger value="leaderboard">
               <Trophy className="w-4 h-4 mr-2" />
-              Leaderboard
+              {t.gamification.leaderboard.title}
             </TabsTrigger>
             <TabsTrigger value="achievements">
               <Award className="w-4 h-4 mr-2" />
-              Achievements
+              {t.gamification.achievements.title}
             </TabsTrigger>
             <TabsTrigger value="rewards">
               <Gift className="w-4 h-4 mr-2" />
-              Rewards
+              {t.gamification.rewards.title}
             </TabsTrigger>
           </TabsList>
 
@@ -737,11 +739,11 @@ export default function PerformancePage() {
             {/* Full Leaderboard */}
             <Card>
               <CardHeader>
-                <CardTitle>Full Rankings</CardTitle>
+                <CardTitle>{t.performance.team.rankings}</CardTitle>
               </CardHeader>
               <CardContent>
                 {displayMembers.length === 0 ? (
-                  <p className="text-center text-muted-foreground py-8">No leaderboard data available.</p>
+                  <p className="text-center text-muted-foreground py-8">{t.common.noData}</p>
                 ) : (
                   <div className="space-y-3">
                     {displayMembers.map((member) => (
@@ -790,11 +792,11 @@ export default function PerformancePage() {
           <TabsContent value="achievements" className="space-y-6">
             <Card>
               <CardHeader>
-                <CardTitle>All Achievements</CardTitle>
+                <CardTitle>{t.gamification.achievements.title}</CardTitle>
               </CardHeader>
               <CardContent>
                 {displayAchievements.length === 0 ? (
-                  <p className="text-center text-muted-foreground py-8">No achievements available yet.</p>
+                  <p className="text-center text-muted-foreground py-8">{t.gamification.achievements.noAchievements}</p>
                 ) : (
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                     {displayAchievements.map((achievement) => (
@@ -848,7 +850,7 @@ export default function PerformancePage() {
               <CardContent className="p-6">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm text-muted-foreground">Your Available Points</p>
+                    <p className="text-sm text-muted-foreground">{t.gamification.rewards.availablePoints}</p>
                     <p className="text-3xl font-bold text-primary">{displayPoints}</p>
                   </div>
                   <Trophy className="w-12 h-12 text-accent" />
@@ -858,11 +860,11 @@ export default function PerformancePage() {
 
             <Card>
               <CardHeader>
-                <CardTitle>Redeem Rewards</CardTitle>
+                <CardTitle>{t.gamification.rewards.redeem}</CardTitle>
               </CardHeader>
               <CardContent>
                 {displayRewards.length === 0 ? (
-                  <p className="text-center text-muted-foreground py-8">No rewards available yet.</p>
+                  <p className="text-center text-muted-foreground py-8">{t.gamification.rewards.noRewards}</p>
                 ) : (
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     {displayRewards.map((reward) => (
@@ -878,7 +880,7 @@ export default function PerformancePage() {
                                   {reward.pointsCost} points
                                 </Badge>
                                 <Button size="sm" disabled={!reward.available || reward.pointsCost > displayPoints}>
-                                  {reward.available ? "Redeem" : "Out of Stock"}
+                                  {reward.available ? t.gamification.rewards.redeem : t.common.inactive}
                                 </Button>
                               </div>
                             </div>
@@ -913,9 +915,9 @@ export default function PerformancePage() {
       <div className="mb-6">
         <Tabs value={currentView} onValueChange={(v) => setCurrentView(v as "my" | "team" | "leaderboard")}>
           <TabsList>
-            <TabsTrigger value="my">My Performance</TabsTrigger>
-            <TabsTrigger value="team">Team Performance</TabsTrigger>
-            <TabsTrigger value="leaderboard">Leaderboard</TabsTrigger>
+            <TabsTrigger value="my">{t.performance.myPerformance}</TabsTrigger>
+            <TabsTrigger value="team">{t.performance.team.title}</TabsTrigger>
+            <TabsTrigger value="leaderboard">{t.gamification.leaderboard.title}</TabsTrigger>
           </TabsList>
         </Tabs>
       </div>

@@ -18,11 +18,13 @@ import { ArrowLeft, Save, Send, FileText } from "lucide-react";
 import Link from "next/link";
 import { trpc } from "@/lib/trpc";
 import { toast } from "sonner";
+import { useLanguage } from "@/i18n";
 
 type ProposalCategory = "content" | "design" | "video" | "campaign" | "event" | "partnership";
 type ProposalPriority = "urgent" | "high" | "normal" | "low";
 
 export default function NewProposalPage() {
+  const { t } = useLanguage();
   const router = useRouter();
   const [formData, setFormData] = useState({
     title: "",
@@ -140,9 +142,9 @@ export default function NewProposalPage() {
           </Button>
         </Link>
         <div>
-          <h1 className="text-2xl font-bold">Tao de xuat moi</h1>
+          <h1 className="text-2xl font-bold">{t.proposals.new.title}</h1>
           <p className="text-muted-foreground">
-            Dien thong tin chi tiet de gui de xuat
+            {t.proposals.new.subtitle}
           </p>
         </div>
       </div>
@@ -152,19 +154,19 @@ export default function NewProposalPage() {
         <CardHeader>
           <CardTitle className="text-lg flex items-center gap-2">
             <FileText className="h-5 w-5" />
-            Thong tin de xuat
+            {t.proposals.proposalDetails}
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-6">
           {/* Title */}
           <div className="grid gap-2">
             <Label htmlFor="title">
-              Tieu de <span className="text-red-500">*</span>
+              {t.proposals.new.proposalTitle} <span className="text-red-500">*</span>
             </Label>
             <Input
               id="title"
               name="title"
-              placeholder="Nhap tieu de de xuat..."
+              placeholder={t.proposals.new.proposalTitle}
               value={formData.title}
               onChange={handleInputChange}
             />
@@ -174,14 +176,14 @@ export default function NewProposalPage() {
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="grid gap-2">
               <Label>
-                Danh muc <span className="text-red-500">*</span>
+                {t.proposals.new.category} <span className="text-red-500">*</span>
               </Label>
               <Select
                 value={formData.category}
                 onValueChange={(v) => handleSelectChange("category", v)}
               >
                 <SelectTrigger>
-                  <SelectValue placeholder="Chon danh muc" />
+                  <SelectValue placeholder={t.proposals.new.category} />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="campaign">Campaign</SelectItem>
@@ -195,20 +197,20 @@ export default function NewProposalPage() {
             </div>
             <div className="grid gap-2">
               <Label>
-                Do uu tien <span className="text-red-500">*</span>
+                {t.tasks.priority} <span className="text-red-500">*</span>
               </Label>
               <Select
                 value={formData.priority}
                 onValueChange={(v) => handleSelectChange("priority", v)}
               >
                 <SelectTrigger>
-                  <SelectValue placeholder="Chon do uu tien" />
+                  <SelectValue placeholder={t.tasks.priority} />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="urgent">Khan cap - Can xu ly ngay</SelectItem>
-                  <SelectItem value="high">Cao</SelectItem>
-                  <SelectItem value="normal">Binh thuong</SelectItem>
-                  <SelectItem value="low">Thap - Co the cho</SelectItem>
+                  <SelectItem value="urgent">{t.tasks.priorities.urgent}</SelectItem>
+                  <SelectItem value="high">{t.tasks.priorities.high}</SelectItem>
+                  <SelectItem value="normal">{t.tasks.priorities.medium}</SelectItem>
+                  <SelectItem value="low">{t.tasks.priorities.low}</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -217,26 +219,23 @@ export default function NewProposalPage() {
           {/* Description */}
           <div className="grid gap-2">
             <Label htmlFor="description">
-              Mo ta chi tiet <span className="text-red-500">*</span>
+              {t.proposals.new.proposalDescription} <span className="text-red-500">*</span>
             </Label>
             <Textarea
               id="description"
               name="description"
-              placeholder="Mo ta muc tieu, pham vi va cac hoat dong chinh cua de xuat..."
+              placeholder={t.proposals.new.proposalDescription}
               rows={5}
               value={formData.description}
               onChange={handleInputChange}
             />
-            <p className="text-xs text-muted-foreground">
-              Mo ta cang chi tiet, de xuat cang de duoc phe duyet
-            </p>
           </div>
 
           {/* Budget & Due Date */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="grid gap-2">
               <Label htmlFor="budget">
-                Ngan sach du kien
+                {t.analytics.budget.title}
               </Label>
               <Input
                 id="budget"
@@ -245,11 +244,11 @@ export default function NewProposalPage() {
                 value={formData.budget}
                 onChange={handleInputChange}
               />
-              <p className="text-xs text-muted-foreground">Nhap so (VND)</p>
+              <p className="text-xs text-muted-foreground">(VND)</p>
             </div>
             <div className="grid gap-2">
               <Label htmlFor="dueDate">
-                Han hoan thanh
+                {t.tasks.dueDate}
               </Label>
               <Input
                 id="dueDate"
@@ -264,27 +263,16 @@ export default function NewProposalPage() {
           {/* Expected Outcome */}
           <div className="grid gap-2">
             <Label htmlFor="expectedOutcome">
-              Ket qua mong doi
+              {t.performance.goals}
             </Label>
             <Textarea
               id="expectedOutcome"
               name="expectedOutcome"
-              placeholder="Mo ta cac KPI, metrics hoac ket qua cu the mong doi dat duoc..."
+              placeholder={t.performance.goals}
               rows={3}
               value={formData.expectedOutcome}
               onChange={handleInputChange}
             />
-          </div>
-
-          {/* Tips */}
-          <div className="p-4 rounded-lg bg-blue-50 border border-blue-200">
-            <h4 className="font-medium text-blue-800 mb-2">Meo de de xuat duoc duyet nhanh</h4>
-            <ul className="text-sm text-blue-700 space-y-1">
-              <li>- Mo ta ro rang van de can giai quyet</li>
-              <li>- Dua ra cac so lieu cu the ve ket qua mong doi</li>
-              <li>- Giai thich tai sao ngan sach nay la hop ly</li>
-              <li>- Neu ro timeline va cac milestone quan trong</li>
-            </ul>
           </div>
         </CardContent>
       </Card>
@@ -292,7 +280,7 @@ export default function NewProposalPage() {
       {/* Actions */}
       <div className="flex items-center justify-between">
         <Link href="/proposals">
-          <Button variant="outline">Huy</Button>
+          <Button variant="outline">{t.common.cancel}</Button>
         </Link>
         <div className="flex items-center gap-3">
           <Button
@@ -302,8 +290,8 @@ export default function NewProposalPage() {
           >
             <Save className="h-4 w-4 mr-2" />
             {createProposal.isPending && !submitProposal.isPending
-              ? "Dang luu..."
-              : "Luu ban nhap"}
+              ? t.common.loading
+              : t.proposals.new.saveDraft}
           </Button>
           <Button
             onClick={handleSubmit}
@@ -311,8 +299,8 @@ export default function NewProposalPage() {
           >
             <Send className="h-4 w-4 mr-2" />
             {isSubmitting && submitProposal.isPending
-              ? "Dang gui..."
-              : "Gui duyet"}
+              ? t.common.loading
+              : t.proposals.new.submitForReview}
           </Button>
         </div>
       </div>

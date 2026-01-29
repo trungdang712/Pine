@@ -40,74 +40,89 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
+import { useLanguage } from "@/i18n";
+import type { LucideIcon } from "lucide-react";
 
-const navigationItems = [
+interface NavSubItem {
+  titleKey: string;
+  icon: LucideIcon;
+  url: string;
+}
+
+interface NavItem {
+  titleKey: string;
+  icon: LucideIcon;
+  url?: string;
+  items?: NavSubItem[];
+}
+
+const getNavigationItems = (): NavItem[] => [
   {
-    title: "Dashboard",
+    titleKey: "dashboard",
     icon: Home,
     url: "/",
   },
   {
-    title: "Marketing Analytics",
+    titleKey: "analytics",
     icon: BarChart3,
     items: [
-      { title: "Campaigns", icon: TrendingUp, url: "/analytics/campaigns" },
-      { title: "Post Performance", icon: FileText, url: "/analytics/posts" },
-      { title: "Landing Pages", icon: FileText, url: "/analytics/landing" },
-      { title: "Budget", icon: DollarSign, url: "/analytics/budget" },
+      { titleKey: "campaigns", icon: TrendingUp, url: "/analytics/campaigns" },
+      { titleKey: "postPerformance", icon: FileText, url: "/analytics/posts" },
+      { titleKey: "landingPages", icon: FileText, url: "/analytics/landing" },
+      { titleKey: "budget", icon: DollarSign, url: "/analytics/budget" },
     ],
   },
   {
-    title: "Social Listening",
+    titleKey: "socialListening",
     icon: Ear,
     url: "/social-listening",
   },
   {
-    title: "Content Calendar",
+    titleKey: "contentCalendar",
     icon: Calendar,
     url: "/calendar",
   },
   {
-    title: "Tasks",
+    titleKey: "tasks",
     icon: CheckSquare,
     items: [
-      { title: "My Tasks", icon: ListChecks, url: "/tasks" },
-      { title: "Team Tasks", icon: Users, url: "/tasks/team" },
+      { titleKey: "myTasks", icon: ListChecks, url: "/tasks" },
+      { titleKey: "teamTasks", icon: Users, url: "/tasks/team" },
     ],
   },
   {
-    title: "Proposals",
+    titleKey: "proposals",
     icon: Lightbulb,
     items: [
-      { title: "My Proposals", icon: FileText, url: "/proposals" },
-      { title: "Pending Approval", icon: ListChecks, url: "/proposals/pending" },
-      { title: "Innovation Ideas", icon: Lightbulb, url: "/proposals/ideas" },
+      { titleKey: "myProposals", icon: FileText, url: "/proposals" },
+      { titleKey: "pendingApproval", icon: ListChecks, url: "/proposals/pending" },
+      { titleKey: "innovationIdeas", icon: Lightbulb, url: "/proposals/ideas" },
     ],
   },
   {
-    title: "Inbox",
+    titleKey: "inbox",
     icon: Inbox,
     url: "/inbox",
   },
   {
-    title: "Library",
+    titleKey: "library",
     icon: FolderOpen,
     items: [
-      { title: "Brand Library", icon: Palette, url: "/library/brand" },
-      { title: "Asset Library", icon: FolderOpen, url: "/library/assets" },
+      { titleKey: "brandLibrary", icon: Palette, url: "/library/brand" },
+      { titleKey: "assetLibrary", icon: FolderOpen, url: "/library/assets" },
     ],
   },
   {
-    title: "Performance",
+    titleKey: "performance",
     icon: Award,
     items: [
-      { title: "My Performance", icon: Award, url: "/performance" },
-      { title: "Team Performance", icon: Users, url: "/performance/team" },
-      { title: "Leaderboard", icon: Trophy, url: "/gamification" },
+      { titleKey: "myPerformance", icon: Award, url: "/performance" },
+      { titleKey: "teamPerformance", icon: Users, url: "/performance/team" },
+      { titleKey: "leaderboard", icon: Trophy, url: "/gamification" },
     ],
   },
   {
-    title: "Settings",
+    titleKey: "settings",
     icon: Settings,
     url: "/settings",
   },
@@ -115,6 +130,8 @@ const navigationItems = [
 
 export function AppSidebar() {
   const pathname = usePathname();
+  const { t } = useLanguage();
+  const navigationItems = getNavigationItems();
 
   const isItemActive = (url: string) => {
     if (url === "/") {
@@ -132,6 +149,10 @@ export function AppSidebar() {
       return items.some((item) => isItemActive(item.url));
     }
     return false;
+  };
+
+  const getNavTitle = (key: string): string => {
+    return (t.nav as Record<string, string>)[key] || key;
   };
 
   return (
@@ -155,7 +176,7 @@ export function AppSidebar() {
               {navigationItems.map((item) =>
                 item.items ? (
                   <Collapsible
-                    key={item.title}
+                    key={item.titleKey}
                     defaultOpen={isGroupActive(item.items)}
                     className="group/collapsible"
                   >
@@ -163,21 +184,21 @@ export function AppSidebar() {
                       <CollapsibleTrigger asChild>
                         <SidebarMenuButton>
                           <item.icon className="w-4 h-4" />
-                          <span>{item.title}</span>
+                          <span>{getNavTitle(item.titleKey)}</span>
                           <ChevronDown className="ml-auto w-4 h-4 transition-transform group-data-[state=open]/collapsible:rotate-180" />
                         </SidebarMenuButton>
                       </CollapsibleTrigger>
                       <CollapsibleContent>
                         <SidebarMenuSub>
                           {item.items.map((subItem) => (
-                            <SidebarMenuSubItem key={subItem.title}>
+                            <SidebarMenuSubItem key={subItem.titleKey}>
                               <SidebarMenuSubButton
                                 asChild
                                 isActive={isItemActive(subItem.url)}
                               >
                                 <Link href={subItem.url}>
                                   <subItem.icon className="w-4 h-4" />
-                                  <span>{subItem.title}</span>
+                                  <span>{getNavTitle(subItem.titleKey)}</span>
                                 </Link>
                               </SidebarMenuSubButton>
                             </SidebarMenuSubItem>
@@ -187,14 +208,14 @@ export function AppSidebar() {
                     </SidebarMenuItem>
                   </Collapsible>
                 ) : (
-                  <SidebarMenuItem key={item.title}>
+                  <SidebarMenuItem key={item.titleKey}>
                     <SidebarMenuButton
                       asChild
-                      isActive={isItemActive(item.url)}
+                      isActive={isItemActive(item.url!)}
                     >
-                      <Link href={item.url}>
+                      <Link href={item.url!}>
                         <item.icon className="w-4 h-4" />
-                        <span>{item.title}</span>
+                        <span>{getNavTitle(item.titleKey)}</span>
                       </Link>
                     </SidebarMenuButton>
                   </SidebarMenuItem>

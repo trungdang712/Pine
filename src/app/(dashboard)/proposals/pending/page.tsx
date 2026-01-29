@@ -30,17 +30,20 @@ import { PageError } from "@/components/ui/error-display";
 import { PageEmpty } from "@/components/ui/empty-state";
 import { toast } from "sonner";
 import { format } from "date-fns";
+import { useLanguage } from "@/i18n";
 
 type ProposalPriority = "urgent" | "high" | "normal" | "low";
 
-const priorityConfig: Record<ProposalPriority, { label: string; color: string }> = {
-  urgent: { label: "Khẩn cấp", color: "border-red-500 text-red-500 bg-red-50" },
-  high: { label: "Uu tien cao", color: "border-red-500 text-red-500 bg-red-50" },
-  normal: { label: "Binh thuong", color: "border-blue-500 text-blue-500 bg-blue-50" },
-  low: { label: "Thap", color: "border-gray-500 text-gray-500 bg-gray-50" },
-};
+const getPriorityConfig = (t: ReturnType<typeof useLanguage>["t"]) => ({
+  urgent: { label: t.tasks.priorities.urgent, color: "border-red-500 text-red-500 bg-red-50" },
+  high: { label: t.tasks.priorities.high, color: "border-red-500 text-red-500 bg-red-50" },
+  normal: { label: t.tasks.priorities.medium, color: "border-blue-500 text-blue-500 bg-blue-50" },
+  low: { label: t.tasks.priorities.low, color: "border-gray-500 text-gray-500 bg-gray-50" },
+});
 
 export default function PendingApprovalPage() {
+  const { t } = useLanguage();
+  const priorityConfig = getPriorityConfig(t);
   const [selectedProposalId, setSelectedProposalId] = useState<string | null>(null);
   const [isDetailOpen, setIsDetailOpen] = useState(false);
   const [feedback, setFeedback] = useState("");
@@ -108,7 +111,7 @@ export default function PendingApprovalPage() {
     });
   };
 
-  if (isLoading) return <PageLoading text="Dang tai danh sach cho duyet..." />;
+  if (isLoading) return <PageLoading text={t.common.loading} />;
   if (error) return <PageError error={error} onRetry={refetch} />;
 
   const proposals = pendingProposals ?? [];
@@ -127,9 +130,9 @@ export default function PendingApprovalPage() {
     <div className="space-y-6">
       {/* Header */}
       <div>
-        <h1 className="text-2xl font-bold">Cho duyet</h1>
+        <h1 className="text-2xl font-bold">{t.proposals.pending.title}</h1>
         <p className="text-muted-foreground">
-          Co {proposals.length} de xuat dang cho ban duyet
+          {t.proposals.pending.subtitle}
         </p>
       </div>
 
@@ -142,7 +145,7 @@ export default function PendingApprovalPage() {
             </div>
             <div>
               <p className="text-2xl font-bold">{proposals.length}</p>
-              <p className="text-sm text-muted-foreground">Cho duyet</p>
+              <p className="text-sm text-muted-foreground">{t.common.pending}</p>
             </div>
           </CardContent>
         </Card>
@@ -153,7 +156,7 @@ export default function PendingApprovalPage() {
             </div>
             <div>
               <p className="text-2xl font-bold">{highPriorityCount}</p>
-              <p className="text-sm text-muted-foreground">Uu tien cao</p>
+              <p className="text-sm text-muted-foreground">{t.tasks.priorities.high}</p>
             </div>
           </CardContent>
         </Card>
@@ -164,7 +167,7 @@ export default function PendingApprovalPage() {
             </div>
             <div>
               <p className="text-2xl font-bold">{totalBudgetDisplay}</p>
-              <p className="text-sm text-muted-foreground">Tong budget</p>
+              <p className="text-sm text-muted-foreground">{t.analytics.budget.totalBudget}</p>
             </div>
           </CardContent>
         </Card>
@@ -174,8 +177,8 @@ export default function PendingApprovalPage() {
       {proposals.length === 0 ? (
         <PageEmpty
           icon={CheckCircle}
-          title="Khong co de xuat nao cho duyet"
-          description="Tat ca de xuat da duoc xu ly. Kiem tra lai sau."
+          title={t.proposals.pending.noPending}
+          description={t.proposals.pending.subtitle}
         />
       ) : (
         <div className="space-y-4">
@@ -236,7 +239,7 @@ export default function PendingApprovalPage() {
                     <div className="ml-4 flex flex-col items-end gap-2">
                       <div className="w-32">
                         <p className="text-xs text-muted-foreground mb-1 text-right">
-                          Tien do duyet
+                          {t.proposals.status}
                         </p>
                         <Progress value={approvalProgress} className="h-2" />
                       </div>
@@ -251,7 +254,7 @@ export default function PendingApprovalPage() {
                           }}
                         >
                           <XCircle className="h-4 w-4 mr-1" />
-                          Tu choi
+                          {t.proposals.pending.reject}
                         </Button>
                         <Button
                           size="sm"
@@ -262,7 +265,7 @@ export default function PendingApprovalPage() {
                           }}
                         >
                           <CheckCircle className="h-4 w-4 mr-1" />
-                          Duyet
+                          {t.proposals.pending.approve}
                         </Button>
                       </div>
                     </div>
@@ -297,19 +300,19 @@ export default function PendingApprovalPage() {
                 </div>
                 <DialogTitle>{selectedProposal.title}</DialogTitle>
                 <DialogDescription>
-                  Gui boi {selectedProposal.creator.name} vao{" "}
+                  {t.proposals.submittedBy} {selectedProposal.creator.name} {t.proposals.submittedAt}{" "}
                   {format(new Date(selectedProposal.createdAt), "dd/MM/yyyy")}
                 </DialogDescription>
               </DialogHeader>
               <div className="space-y-4 py-4 max-h-[60vh] overflow-y-auto">
                 <div>
-                  <Label className="text-muted-foreground">Mo ta chi tiet</Label>
+                  <Label className="text-muted-foreground">{t.proposals.new.proposalDescription}</Label>
                   <p className="mt-1">{selectedProposal.description}</p>
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   {selectedProposal.budget && (
                     <div>
-                      <Label className="text-muted-foreground">Ngan sach de xuat</Label>
+                      <Label className="text-muted-foreground">{t.analytics.budget.title}</Label>
                       <p className="mt-1 text-lg font-semibold">
                         {new Intl.NumberFormat("vi-VN").format(selectedProposal.budget)} VND
                       </p>
@@ -317,7 +320,7 @@ export default function PendingApprovalPage() {
                   )}
                   {selectedProposal.dueDate && (
                     <div>
-                      <Label className="text-muted-foreground">Thoi gian thuc hien</Label>
+                      <Label className="text-muted-foreground">{t.tasks.dueDate}</Label>
                       <p className="mt-1">
                         {format(new Date(selectedProposal.dueDate), "dd/MM/yyyy")}
                       </p>
@@ -325,7 +328,7 @@ export default function PendingApprovalPage() {
                   )}
                 </div>
                 <div>
-                  <Label className="text-muted-foreground">Nguoi gui</Label>
+                  <Label className="text-muted-foreground">{t.proposals.submittedBy}</Label>
                   <div className="mt-2 flex items-center gap-3 p-3 rounded-lg bg-muted/50">
                     <Avatar>
                       <AvatarImage src={selectedProposal.creator.avatar ?? ""} />
@@ -340,7 +343,7 @@ export default function PendingApprovalPage() {
                 </div>
                 {selectedProposal.approvals && selectedProposal.approvals.length > 0 && (
                   <div>
-                    <Label className="text-muted-foreground">Nguoi duyet khac</Label>
+                    <Label className="text-muted-foreground">{t.proposals.reviewedBy}</Label>
                     <div className="mt-2 space-y-2">
                       {selectedProposal.approvals.map((approver) => (
                         <div
@@ -358,12 +361,12 @@ export default function PendingApprovalPage() {
                             }
                           >
                             {approver.status === "approved"
-                              ? "Da duyet"
+                              ? t.proposals.statuses.approved
                               : approver.status === "rejected"
-                              ? "Tu choi"
+                              ? t.proposals.statuses.rejected
                               : approver.status === "revision_requested"
-                              ? "Yeu cau sua"
-                              : "Cho duyet"}
+                              ? t.proposals.statuses.needsRevision
+                              : t.common.pending}
                           </Badge>
                         </div>
                       ))}
@@ -371,10 +374,10 @@ export default function PendingApprovalPage() {
                   </div>
                 )}
                 <div>
-                  <Label htmlFor="feedback">Ghi chu / Phan hoi</Label>
+                  <Label htmlFor="feedback">{t.proposals.pending.addComment}</Label>
                   <Textarea
                     id="feedback"
-                    placeholder="Nhap ghi chu hoac ly do tu choi (neu co)..."
+                    placeholder={t.proposals.pending.addComment}
                     value={feedback}
                     onChange={(e) => setFeedback(e.target.value)}
                     className="mt-2"
@@ -384,7 +387,7 @@ export default function PendingApprovalPage() {
               </div>
               <DialogFooter className="gap-2">
                 <Button variant="outline" onClick={() => setIsDetailOpen(false)}>
-                  Dong
+                  {t.common.close}
                 </Button>
                 <Button
                   variant="destructive"
@@ -392,7 +395,7 @@ export default function PendingApprovalPage() {
                   disabled={rejectMutation.isPending}
                 >
                   <XCircle className="h-4 w-4 mr-1" />
-                  {rejectMutation.isPending ? "Dang xu ly..." : "Tu choi"}
+                  {rejectMutation.isPending ? t.common.loading : t.proposals.pending.reject}
                 </Button>
                 <Button
                   className="bg-green-600 hover:bg-green-700"
@@ -400,7 +403,7 @@ export default function PendingApprovalPage() {
                   disabled={approveMutation.isPending}
                 >
                   <CheckCircle className="h-4 w-4 mr-1" />
-                  {approveMutation.isPending ? "Dang xu ly..." : "Phe duyet"}
+                  {approveMutation.isPending ? t.common.loading : t.proposals.pending.approve}
                 </Button>
               </DialogFooter>
             </>

@@ -31,6 +31,7 @@ import {
 import { trpc } from "@/lib/trpc";
 import { PageLoading } from "@/components/ui/loading-spinner";
 import { PageError } from "@/components/ui/error-display";
+import { useLanguage } from "@/i18n";
 
 // Helper to get date range for a given period
 function getDateRange(period: string) {
@@ -59,6 +60,7 @@ function getCurrentMonth() {
 }
 
 export default function TeamPerformancePage() {
+  const { t } = useLanguage();
   const [period, setPeriod] = useState("this-month");
 
   const dateRange = useMemo(() => getDateRange(period), [period]);
@@ -127,9 +129,9 @@ export default function TeamPerformancePage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-semibold mb-1">Team Performance</h1>
+          <h1 className="text-2xl font-semibold mb-1">{t.performance.team.title}</h1>
           <p className="text-muted-foreground">
-            Overview of team member performance and rankings
+            {t.performance.team.subtitle}
           </p>
         </div>
         <Select value={period} onValueChange={setPeriod}>
@@ -137,9 +139,9 @@ export default function TeamPerformancePage() {
             <SelectValue placeholder="Select period" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="this-week">This Week</SelectItem>
-            <SelectItem value="this-month">This Month</SelectItem>
-            <SelectItem value="all-time">All Time</SelectItem>
+            <SelectItem value="this-week">{t.performance.periods.thisWeek}</SelectItem>
+            <SelectItem value="this-month">{t.performance.periods.thisMonth}</SelectItem>
+            <SelectItem value="all-time">{t.performance.periods.thisYear}</SelectItem>
           </SelectContent>
         </Select>
       </div>
@@ -149,7 +151,7 @@ export default function TeamPerformancePage() {
         <Card>
           <CardContent className="p-4">
             <div className="flex items-center justify-between mb-2">
-              <p className="text-sm text-muted-foreground">Team Members</p>
+              <p className="text-sm text-muted-foreground">{t.gamification.leaderboard.member}</p>
               <Users className="w-4 h-4 text-muted-foreground" />
             </div>
             <p className="text-2xl font-bold">{teamMembers.length}</p>
@@ -158,7 +160,7 @@ export default function TeamPerformancePage() {
         <Card>
           <CardContent className="p-4">
             <div className="flex items-center justify-between mb-2">
-              <p className="text-sm text-muted-foreground">Avg Score</p>
+              <p className="text-sm text-muted-foreground">{t.performance.metrics.qualityScore}</p>
               <Target className="w-4 h-4 text-muted-foreground" />
             </div>
             <p className="text-2xl font-bold">
@@ -171,7 +173,7 @@ export default function TeamPerformancePage() {
         <Card>
           <CardContent className="p-4">
             <div className="flex items-center justify-between mb-2">
-              <p className="text-sm text-muted-foreground">Avg Completion Rate</p>
+              <p className="text-sm text-muted-foreground">{t.performance.metrics.onTimeDelivery}</p>
               <TrendingUp className="w-4 h-4 text-muted-foreground" />
             </div>
             <p className="text-2xl font-bold">
@@ -186,7 +188,7 @@ export default function TeamPerformancePage() {
         <Card>
           <CardContent className="p-4">
             <div className="flex items-center justify-between mb-2">
-              <p className="text-sm text-muted-foreground">Total Points</p>
+              <p className="text-sm text-muted-foreground">{t.gamification.points.total}</p>
               <Trophy className="w-4 h-4 text-muted-foreground" />
             </div>
             <p className="text-2xl font-bold">
@@ -199,11 +201,11 @@ export default function TeamPerformancePage() {
       {/* Performance Comparison Chart */}
       <Card>
         <CardHeader>
-          <CardTitle>Team Performance Comparison</CardTitle>
+          <CardTitle>{t.performance.team.teamOverview}</CardTitle>
         </CardHeader>
         <CardContent>
           {teamPerformanceData.length === 0 ? (
-            <p className="text-center text-muted-foreground py-8">No data available for the selected period.</p>
+            <p className="text-center text-muted-foreground py-8">{t.common.noData}</p>
           ) : (
             <ResponsiveContainer width="100%" height={300}>
               <BarChart data={teamPerformanceData}>
@@ -217,14 +219,14 @@ export default function TeamPerformancePage() {
                   yAxisId="left"
                   dataKey="tasks"
                   fill="#0d9488"
-                  name="Tasks Completed"
+                  name={t.performance.metrics.tasksCompleted}
                   radius={[4, 4, 0, 0]}
                 />
                 <Bar
                   yAxisId="right"
                   dataKey="onTime"
                   fill="#f59e0b"
-                  name="Completion Rate (%)"
+                  name={t.performance.metrics.onTimeDelivery}
                   radius={[4, 4, 0, 0]}
                 />
               </BarChart>
@@ -238,7 +240,7 @@ export default function TeamPerformancePage() {
         <CardContent className="p-6">
           <div className="flex items-center justify-between">
             <div>
-              <h3 className="text-lg font-semibold mb-1">Monthly Bonus Pool</h3>
+              <h3 className="text-lg font-semibold mb-1">{t.gamification.rewards.title}</h3>
               <p className="text-sm text-muted-foreground">
                 {bonusPool
                   ? `${(bonusPool.bonusPercentage * 100).toFixed(0)}% of total revenue for team distribution`
@@ -258,18 +260,18 @@ export default function TeamPerformancePage() {
               </Badge>
             </div>
           </div>
-          <Button className="mt-4">Manage Distribution</Button>
+          <Button className="mt-4">{t.common.edit}</Button>
         </CardContent>
       </Card>
 
       {/* Team Members Table */}
       <Card>
         <CardHeader>
-          <CardTitle>Team Members</CardTitle>
+          <CardTitle>{t.performance.team.memberPerformance}</CardTitle>
         </CardHeader>
         <CardContent>
           {teamMembers.length === 0 ? (
-            <p className="text-center text-muted-foreground py-8">No team members found.</p>
+            <p className="text-center text-muted-foreground py-8">{t.common.noData}</p>
           ) : (
             <div className="space-y-4">
               {teamMembers.map((member, index) => (
@@ -331,22 +333,22 @@ export default function TeamPerformancePage() {
       {/* Cross-Team Ratings Summary */}
       <Card>
         <CardHeader>
-          <CardTitle>Cross-Team Ratings Overview</CardTitle>
+          <CardTitle>{t.performance.team.rankings}</CardTitle>
         </CardHeader>
         <CardContent>
           {teamMembers.length === 0 ? (
-            <p className="text-center text-muted-foreground py-8">No ratings data available.</p>
+            <p className="text-center text-muted-foreground py-8">{t.common.noData}</p>
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full">
                 <thead>
                   <tr className="border-b">
-                    <th className="text-left p-3 font-medium">Team Member</th>
-                    <th className="text-center p-3 font-medium">Sales</th>
-                    <th className="text-center p-3 font-medium">Customer Service</th>
-                    <th className="text-center p-3 font-medium">Medical</th>
-                    <th className="text-center p-3 font-medium">Accounting</th>
-                    <th className="text-center p-3 font-medium">Average</th>
+                    <th className="text-left p-3 font-medium">{t.gamification.leaderboard.member}</th>
+                    <th className="text-center p-3 font-medium">{t.settings.departments.sales}</th>
+                    <th className="text-center p-3 font-medium">{t.settings.departments.administration}</th>
+                    <th className="text-center p-3 font-medium">{t.settings.departments.medical}</th>
+                    <th className="text-center p-3 font-medium">{t.settings.departments.marketing}</th>
+                    <th className="text-center p-3 font-medium">{t.performance.metrics.qualityScore}</th>
                   </tr>
                 </thead>
                 <tbody>

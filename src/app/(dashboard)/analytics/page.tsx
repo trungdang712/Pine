@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useMemo } from "react";
+import { useLanguage } from "@/i18n";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -51,6 +52,7 @@ import { format, subDays } from "date-fns";
 type PlatformFilter = "all" | "google_ads" | "facebook" | "instagram" | "zalo" | "tiktok";
 
 export default function AnalyticsPage() {
+  const { t } = useLanguage();
   const [selectedCampaignId, setSelectedCampaignId] = useState<string | null>(null);
   const [platformFilter, setPlatformFilter] = useState<PlatformFilter>("all");
   const [timeRange, setTimeRange] = useState<"7d" | "30d" | "90d">("30d");
@@ -614,15 +616,15 @@ export default function AnalyticsPage() {
     );
   };
 
-  if (isLoading) return <PageLoading text="Dang tai du lieu campaigns..." />;
+  if (isLoading) return <PageLoading text={t.common.loading} />;
   if (error) return <PageError error={error} onRetry={refetch} />;
 
   return (
     <div className="space-y-6">
       <div className="mb-6">
-        <h1 className="text-2xl font-semibold mb-1">Campaigns Overview</h1>
+        <h1 className="text-2xl font-semibold mb-1">{t.analytics.campaigns.title}</h1>
         <p className="text-muted-foreground">
-          Phan tich chi tiet performance cua marketing campaigns
+          {t.analytics.campaigns.subtitle}
         </p>
       </div>
 
@@ -636,7 +638,7 @@ export default function AnalyticsPage() {
             <SelectValue placeholder="Platform" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="all">Tat ca</SelectItem>
+            <SelectItem value="all">{t.common.all}</SelectItem>
             <SelectItem value="facebook">Facebook</SelectItem>
             <SelectItem value="google_ads">Google Ads</SelectItem>
             <SelectItem value="instagram">Instagram</SelectItem>
@@ -660,7 +662,7 @@ export default function AnalyticsPage() {
         <div className="relative flex-1 max-w-sm">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
           <Input
-            placeholder="Tim kiem campaign..."
+            placeholder={t.common.search}
             className="pl-10"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
@@ -675,7 +677,7 @@ export default function AnalyticsPage() {
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <Card>
           <CardContent className="p-4">
-            <p className="text-sm text-muted-foreground mb-1">Tong chi</p>
+            <p className="text-sm text-muted-foreground mb-1">{t.analytics.campaigns.totalSpend}</p>
             <p className="text-2xl font-semibold">
               {formatCurrency(dashboardStats?.spend ?? totals.spend)} VND
             </p>
@@ -683,7 +685,7 @@ export default function AnalyticsPage() {
         </Card>
         <Card>
           <CardContent className="p-4">
-            <p className="text-sm text-muted-foreground mb-1">Tong leads</p>
+            <p className="text-sm text-muted-foreground mb-1">{t.analytics.campaigns.conversions}</p>
             <p className="text-2xl font-semibold">
               {dashboardStats?.leads ?? totals.leads}
             </p>
@@ -699,7 +701,7 @@ export default function AnalyticsPage() {
         </Card>
         <Card>
           <CardContent className="p-4">
-            <p className="text-sm text-muted-foreground mb-1">ROAS trung binh</p>
+            <p className="text-sm text-muted-foreground mb-1">{t.analytics.campaigns.roas}</p>
             <p className="text-2xl font-semibold">{totals.avgRoas}x</p>
           </CardContent>
         </Card>
@@ -708,13 +710,13 @@ export default function AnalyticsPage() {
       {/* Campaigns Table */}
       {filteredCampaigns.length === 0 ? (
         <PageEmpty
-          title="Chua co campaign nao"
-          description="Chua co marketing campaign nao duoc tao. Bat dau bang cach tao campaign moi."
+          title={t.analytics.campaigns.noCampaigns}
+          description={t.analytics.campaigns.noCampaigns}
         />
       ) : (
         <Card>
           <CardHeader>
-            <CardTitle>Danh sach Campaigns</CardTitle>
+            <CardTitle>{t.analytics.campaigns.title}</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="overflow-x-auto">

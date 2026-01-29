@@ -65,6 +65,7 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { toast } from "sonner";
 import { useUpload, formatFileSize, validateFile } from "@/hooks/use-upload";
 import { Progress } from "@/components/ui/progress";
+import { useLanguage } from "@/i18n";
 
 type AssetCategory = "image" | "video" | "document" | "template";
 
@@ -102,6 +103,7 @@ const categoryIcons: Record<AssetCategory, typeof Image> = {
 };
 
 export default function AssetLibraryPage() {
+  const { t } = useLanguage();
   const [searchQuery, setSearchQuery] = useState("");
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
   const [activeTab, setActiveTab] = useState<AssetCategory>("image");
@@ -356,7 +358,7 @@ export default function AssetLibraryPage() {
         <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
           <Button size="sm" variant="secondary" onClick={(e) => e.stopPropagation()}>
             <Eye className="h-4 w-4 mr-1" />
-            View
+            {t.common.view}
           </Button>
           <Button
             size="sm"
@@ -389,7 +391,7 @@ export default function AssetLibraryPage() {
                 }}
               >
                 <Download className="h-4 w-4 mr-2" />
-                Download
+                {t.library.brand.downloadAll}
               </DropdownMenuItem>
               <DropdownMenuItem
                 onClick={(e) => {
@@ -399,7 +401,7 @@ export default function AssetLibraryPage() {
                 className="text-destructive"
               >
                 <Trash2 className="h-4 w-4 mr-2" />
-                Delete
+                {t.common.delete}
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
@@ -518,7 +520,7 @@ export default function AssetLibraryPage() {
     templatesQuery.error;
 
   if (isLoading) {
-    return <PageLoading text="Loading assets..." />;
+    return <PageLoading text={t.common.loading} />;
   }
 
   if (error) {
@@ -540,14 +542,14 @@ export default function AssetLibraryPage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold">Asset Library</h1>
+          <h1 className="text-2xl font-bold">{t.library.assets.title}</h1>
           <p className="text-muted-foreground">
-            Images, videos, and templates for content marketing
+            {t.library.assets.subtitle}
           </p>
         </div>
         <Button onClick={() => setIsUploadOpen(true)}>
           <Upload className="h-4 w-4 mr-2" />
-          Upload Asset
+          {t.library.assets.uploadAsset}
         </Button>
       </div>
 
@@ -556,7 +558,7 @@ export default function AssetLibraryPage() {
         <div className="relative flex-1 max-w-md">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
-            placeholder="Search assets by name or tags..."
+            placeholder={t.common.search}
             className="pl-10"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
@@ -589,28 +591,28 @@ export default function AssetLibraryPage() {
         <TabsList>
           <TabsTrigger value="image">
             <Image className="h-4 w-4 mr-2" />
-            Images
+            {t.library.assets.images}
             <Badge variant="secondary" className="ml-2">
               {imagesQuery.data?.assets.length ?? 0}
             </Badge>
           </TabsTrigger>
           <TabsTrigger value="video">
             <Video className="h-4 w-4 mr-2" />
-            Videos
+            {t.library.assets.videos}
             <Badge variant="secondary" className="ml-2">
               {videosQuery.data?.assets.length ?? 0}
             </Badge>
           </TabsTrigger>
           <TabsTrigger value="document">
             <FileText className="h-4 w-4 mr-2" />
-            Documents
+            {t.library.assets.documents}
             <Badge variant="secondary" className="ml-2">
               {documentsQuery.data?.assets.length ?? 0}
             </Badge>
           </TabsTrigger>
           <TabsTrigger value="template">
             <FileText className="h-4 w-4 mr-2" />
-            Templates
+            {t.library.brand.templates}
             <Badge variant="secondary" className="ml-2">
               {templatesQuery.data?.assets.length ?? 0}
             </Badge>
@@ -658,9 +660,9 @@ export default function AssetLibraryPage() {
       <Dialog open={isUploadOpen} onOpenChange={setIsUploadOpen}>
         <DialogContent className="max-w-[100vw] sm:max-w-md w-full max-h-[100dvh] sm:max-h-[80vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>Upload Asset</DialogTitle>
+            <DialogTitle>{t.library.assets.uploadAsset}</DialogTitle>
             <DialogDescription>
-              Upload images, videos, documents, or templates to your asset library.
+              {t.library.assets.subtitle}
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
@@ -745,7 +747,7 @@ export default function AssetLibraryPage() {
               }}
               disabled={uploading || createAssetMutation.isPending}
             >
-              Cancel
+              {t.common.cancel}
             </Button>
             <Button
               onClick={handleUpload}
@@ -754,12 +756,12 @@ export default function AssetLibraryPage() {
               {uploading || createAssetMutation.isPending ? (
                 <>
                   <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  Uploading...
+                  {t.common.loading}
                 </>
               ) : (
                 <>
                   <Upload className="h-4 w-4 mr-2" />
-                  Upload
+                  {t.library.assets.uploadAsset}
                 </>
               )}
             </Button>
@@ -879,7 +881,7 @@ export default function AssetLibraryPage() {
                       onClick={() => window.open(selectedAsset.fileUrl, "_blank")}
                     >
                       <Download className="h-4 w-4 mr-2" />
-                      Download
+                      {t.library.brand.downloadAll}
                     </Button>
                     <Button
                       variant="outline"
@@ -909,13 +911,13 @@ export default function AssetLibraryPage() {
       <AlertDialog open={!!deleteAssetId} onOpenChange={() => setDeleteAssetId(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Delete Asset</AlertDialogTitle>
+            <AlertDialogTitle>{t.common.delete}</AlertDialogTitle>
             <AlertDialogDescription>
-              Are you sure you want to delete this asset? This action cannot be undone.
+              {t.common.confirm}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogCancel>{t.common.cancel}</AlertDialogCancel>
             <AlertDialogAction
               onClick={confirmDelete}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
@@ -923,10 +925,10 @@ export default function AssetLibraryPage() {
               {deleteAssetMutation.isPending ? (
                 <>
                   <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  Deleting...
+                  {t.common.loading}
                 </>
               ) : (
-                "Delete"
+                t.common.delete
               )}
             </AlertDialogAction>
           </AlertDialogFooter>

@@ -8,6 +8,7 @@ import { Award, Trophy, Star, Zap, Target, Users, Lightbulb } from "lucide-react
 import { trpc } from "@/lib/trpc";
 import { PageLoading } from "@/components/ui/loading-spinner";
 import { PageError } from "@/components/ui/error-display";
+import { useLanguage } from "@/i18n";
 
 // Icon mapping based on achievement category or iconUrl
 const getIconDisplay = (iconUrl: string | null | undefined, category: string) => {
@@ -83,6 +84,7 @@ const getRarityConfig = (rarity: string) => {
 
 
 export default function AchievementsPage() {
+  const { t } = useLanguage();
   // Fetch achievements from tRPC
   const myAchievementsQuery = trpc.gamification.getMyAchievements.useQuery();
   const allAchievementsQuery = trpc.gamification.getAllAchievements.useQuery();
@@ -90,7 +92,7 @@ export default function AchievementsPage() {
   const isLoading = myAchievementsQuery.isLoading || allAchievementsQuery.isLoading;
   const error = myAchievementsQuery.error || allAchievementsQuery.error;
 
-  if (isLoading) return <PageLoading text="Loading achievements..." />;
+  if (isLoading) return <PageLoading text={t.common.loading} />;
   if (error) {
     return (
       <PageError
@@ -147,9 +149,9 @@ export default function AchievementsPage() {
     <div className="space-y-6">
       {/* Header */}
       <div>
-        <h1 className="text-2xl font-bold">Achievements</h1>
+        <h1 className="text-2xl font-bold">{t.gamification.achievements.title}</h1>
         <p className="text-muted-foreground">
-          Cac thanh tich da dat duoc va dang tien toi
+          {t.gamification.achievements.subtitle}
         </p>
       </div>
 
@@ -164,7 +166,7 @@ export default function AchievementsPage() {
               <p className="text-2xl font-bold">
                 {earnedCount}/{totalCount}
               </p>
-              <p className="text-sm text-muted-foreground">Da dat</p>
+              <p className="text-sm text-muted-foreground">{t.gamification.achievements.unlocked}</p>
             </div>
           </CardContent>
         </Card>
@@ -175,7 +177,7 @@ export default function AchievementsPage() {
             </div>
             <div>
               <p className="text-2xl font-bold">{totalPoints}</p>
-              <p className="text-sm text-muted-foreground">Diem tu achievements</p>
+              <p className="text-sm text-muted-foreground">{t.gamification.leaderboard.points}</p>
             </div>
           </CardContent>
         </Card>
@@ -197,7 +199,7 @@ export default function AchievementsPage() {
             </div>
             <div>
               <p className="text-2xl font-bold">{inProgressCount}</p>
-              <p className="text-sm text-muted-foreground">Dang tien toi</p>
+              <p className="text-sm text-muted-foreground">{t.gamification.achievements.progress}</p>
             </div>
           </CardContent>
         </Card>
@@ -208,23 +210,23 @@ export default function AchievementsPage() {
         <TabsList>
           <TabsTrigger value="all">
             <Award className="h-4 w-4 mr-2" />
-            Tat ca
+            {t.common.all}
           </TabsTrigger>
           <TabsTrigger value="performance">
             <Target className="h-4 w-4 mr-2" />
-            Performance
+            {t.performance.title}
           </TabsTrigger>
           <TabsTrigger value="innovation">
             <Lightbulb className="h-4 w-4 mr-2" />
-            Innovation
+            {t.proposals.ideas.title}
           </TabsTrigger>
           <TabsTrigger value="collaboration">
             <Users className="h-4 w-4 mr-2" />
-            Collaboration
+            {t.performance.metrics.teamCollaboration}
           </TabsTrigger>
           <TabsTrigger value="content">
             <Star className="h-4 w-4 mr-2" />
-            Content
+            {t.calendar.contentType}
           </TabsTrigger>
         </TabsList>
 
@@ -232,7 +234,7 @@ export default function AchievementsPage() {
           <TabsContent key={category} value={category} className="space-y-6">
             {/* Earned Achievements */}
             <div>
-              <h3 className="text-lg font-semibold mb-4">Da dat duoc</h3>
+              <h3 className="text-lg font-semibold mb-4">{t.gamification.achievements.unlocked}</h3>
               <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
                 {combinedAchievements
                   .filter(
@@ -276,7 +278,7 @@ export default function AchievementsPage() {
                   (a) => a.earned && (category === "all" || a.category === category)
                 ).length === 0 && (
                   <p className="text-sm text-muted-foreground col-span-full">
-                    Chua co thanh tich nao trong danh muc nay.
+                    {t.gamification.achievements.noAchievements}
                   </p>
                 )}
               </div>
@@ -284,7 +286,7 @@ export default function AchievementsPage() {
 
             {/* In Progress / Available Achievements */}
             <div>
-              <h3 className="text-lg font-semibold mb-4">Dang tien toi</h3>
+              <h3 className="text-lg font-semibold mb-4">{t.gamification.achievements.progress}</h3>
               <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
                 {combinedAchievements
                   .filter(
@@ -305,7 +307,7 @@ export default function AchievementsPage() {
                             {achievement.description}
                           </p>
                           <div className="mt-2 text-xs text-muted-foreground">
-                            Phan thuong: +{achievement.points} pts
+                            {t.gamification.rewards.title}: +{achievement.points} pts
                           </div>
                         </CardContent>
                       </Card>
@@ -315,7 +317,7 @@ export default function AchievementsPage() {
                   (a) => !a.earned && (category === "all" || a.category === category)
                 ).length === 0 && (
                   <p className="text-sm text-muted-foreground col-span-full">
-                    Da dat tat ca thanh tich trong danh muc nay!
+                    {t.common.completed}
                   </p>
                 )}
               </div>

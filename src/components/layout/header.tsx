@@ -19,12 +19,14 @@ import { useSidebar } from "@/components/ui/sidebar";
 import { trpc } from "@/lib/trpc";
 import Link from "next/link";
 import { formatDistanceToNow } from "date-fns";
-import { vi } from "date-fns/locale";
+import { vi as viLocale, enUS } from "date-fns/locale";
+import { useLanguage } from "@/i18n";
 
 export function Header() {
   const { profile, signOut, isAuthenticated, isDemoMode } = useAuth();
   const { toggleSidebar, isMobile } = useSidebar();
   const utils = trpc.useUtils();
+  const { t, language } = useLanguage();
 
   // Subscribe to realtime alerts via Supabase Realtime
   // This handles instant notifications; polling below is a fallback
@@ -39,6 +41,8 @@ export function Header() {
     .map((n) => n[0])
     .join("")
     .toUpperCase();
+
+  const dateLocale = language === "vi" ? viLocale : enUS;
 
   // Fetch real notification data (polling as fallback, realtime handles instant updates)
   const { data: unreadCount = 0 } = trpc.alerts.getUnreadCount.useQuery(undefined, {
@@ -79,7 +83,7 @@ export function Header() {
 
   const formatAlertTime = (date: Date) => {
     try {
-      return formatDistanceToNow(new Date(date), { addSuffix: true, locale: vi });
+      return formatDistanceToNow(new Date(date), { addSuffix: true, locale: dateLocale });
     } catch {
       return "";
     }
@@ -106,7 +110,7 @@ export function Header() {
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
             <Input
               type="search"
-              placeholder="Tìm kiếm..."
+              placeholder={t.header.search}
               className="pl-10 bg-background"
             />
           </div>
@@ -133,10 +137,10 @@ export function Header() {
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-[calc(100vw-2rem)] sm:w-80 max-w-sm">
               <DropdownMenuLabel className="flex items-center justify-between">
-                Thông báo
+                {t.header.notifications}
                 {unreadCount > 0 && (
                   <div className="flex items-center gap-2">
-                    <Badge variant="secondary">{unreadCount} mới</Badge>
+                    <Badge variant="secondary">{unreadCount} {t.header.newCount}</Badge>
                     <Button
                       variant="ghost"
                       size="sm"
@@ -144,7 +148,7 @@ export function Header() {
                       onClick={() => markAllAsRead.mutate()}
                     >
                       <Check className="w-3 h-3 mr-1" />
-                      Đánh dấu đã đọc
+                      {t.header.markAllRead}
                     </Button>
                   </div>
                 )}
@@ -153,7 +157,7 @@ export function Header() {
               <div className="max-h-96 overflow-y-auto">
                 {recentAlerts.length === 0 ? (
                   <div className="p-4 text-center text-muted-foreground text-sm">
-                    Không có thông báo
+                    {t.header.noNotifications}
                   </div>
                 ) : (
                   recentAlerts.map((alert) => (
@@ -184,7 +188,7 @@ export function Header() {
               </div>
               <DropdownMenuSeparator />
               <DropdownMenuItem asChild className="text-center justify-center text-primary">
-                <Link href="/notifications">Xem tất cả</Link>
+                <Link href="/notifications">{t.header.viewAll}</Link>
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
@@ -204,7 +208,7 @@ export function Header() {
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-56">
-                <DropdownMenuLabel>Tài khoản của tôi</DropdownMenuLabel>
+                <DropdownMenuLabel>{t.header.myAccount}</DropdownMenuLabel>
                 <DropdownMenuLabel>
                   <div className="flex flex-col">
                     <span>{profile?.name}</span>
@@ -220,13 +224,13 @@ export function Header() {
                 <DropdownMenuItem asChild>
                   <Link href="/settings">
                     <User className="w-4 h-4 mr-2" />
-                    Hồ sơ cá nhân
+                    {t.header.profile}
                   </Link>
                 </DropdownMenuItem>
                 <DropdownMenuItem asChild>
                   <Link href="/settings">
                     <Settings className="w-4 h-4 mr-2" />
-                    Cài đặt thông báo
+                    {t.header.notificationSettings}
                   </Link>
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
@@ -235,7 +239,7 @@ export function Header() {
                   onClick={() => signOut()}
                 >
                   <LogOut className="w-4 h-4 mr-2" />
-                  Đăng xuất
+                  {t.header.signOut}
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>

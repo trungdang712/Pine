@@ -36,6 +36,7 @@ import { trpc } from "@/lib/trpc";
 import { LoadingSpinner, PageLoading } from "@/components/ui/loading-spinner";
 import { ErrorDisplay } from "@/components/ui/error-display";
 import { toast } from "sonner";
+import { useLanguage } from "@/i18n";
 
 type Platform = "facebook" | "instagram" | "zalo" | "tiktok" | "website";
 type ContentStatus = "planned" | "in_production" | "ready_for_review" | "approved" | "scheduled" | "published" | "needs_revision";
@@ -68,14 +69,6 @@ const platformColors: Record<string, string> = {
   website: "bg-yellow-500",
 };
 
-const platformDisplayNames: Record<string, string> = {
-  facebook: "Facebook",
-  zalo: "Zalo",
-  tiktok: "TikTok",
-  instagram: "Instagram",
-  website: "Website",
-};
-
 const statusColors: Record<string, string> = {
   planned: "border-gray-300",
   in_production: "border-yellow-500",
@@ -86,18 +79,27 @@ const statusColors: Record<string, string> = {
   needs_revision: "border-red-500",
 };
 
-const statusDisplayNames: Record<string, string> = {
-  planned: "Planned",
-  in_production: "In Production",
-  ready_for_review: "Review",
-  approved: "Approved",
-  scheduled: "Scheduled",
-  published: "Published",
-  needs_revision: "Needs Revision",
-};
-
 export default function CalendarPage() {
+  const { t } = useLanguage();
   const [currentDate, setCurrentDate] = useState(() => new Date());
+
+  const platformDisplayNames: Record<string, string> = {
+    facebook: t.calendar.platforms.facebook,
+    zalo: t.calendar.platforms.zalo,
+    tiktok: t.calendar.platforms.tiktok,
+    instagram: t.calendar.platforms.instagram,
+    website: "Website",
+  };
+
+  const statusDisplayNames: Record<string, string> = {
+    planned: t.dashboard.status.scheduled,
+    in_production: t.dashboard.status.inProduction,
+    ready_for_review: t.dashboard.status.readyForReview,
+    approved: t.proposals.statuses.approved,
+    scheduled: t.dashboard.status.scheduled,
+    published: t.dashboard.status.published,
+    needs_revision: t.proposals.statuses.needsRevision,
+  };
   const [selectedContent, setSelectedContent] = useState<CalendarItem | null>(null);
   const [isContentDetailOpen, setIsContentDetailOpen] = useState(false);
   const [isNewContentOpen, setIsNewContentOpen] = useState(false);
@@ -376,7 +378,7 @@ export default function CalendarPage() {
   };
 
   if (isLoading) {
-    return <PageLoading text="Loading calendar..." />;
+    return <PageLoading text={t.common.loading} />;
   }
 
   if (error) {
@@ -396,12 +398,12 @@ export default function CalendarPage() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row items-start justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-semibold mb-1">Content Calendar</h1>
-          <p className="text-muted-foreground">Lich xuat ban noi dung tren cac nen tang</p>
+          <h1 className="text-2xl font-semibold mb-1">{t.calendar.title}</h1>
+          <p className="text-muted-foreground">{t.calendar.subtitle}</p>
         </div>
         <Button className="gap-2" onClick={() => setIsNewContentOpen(true)}>
           <Plus className="w-4 h-4" />
-          Them noi dung
+          {t.calendar.createEvent}
         </Button>
       </div>
 
@@ -469,36 +471,36 @@ export default function CalendarPage() {
         <CardContent className="p-4">
           <div className="flex items-center gap-4">
             <div className="flex-1">
-              <Label className="text-sm mb-2 block">Platform</Label>
+              <Label className="text-sm mb-2 block">{t.calendar.platform}</Label>
               <Select value={filterPlatform} onValueChange={setFilterPlatform}>
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">Tat ca platforms</SelectItem>
-                  <SelectItem value="facebook">Facebook</SelectItem>
-                  <SelectItem value="zalo">Zalo</SelectItem>
-                  <SelectItem value="tiktok">TikTok</SelectItem>
-                  <SelectItem value="instagram">Instagram</SelectItem>
+                  <SelectItem value="all">{t.common.all}</SelectItem>
+                  <SelectItem value="facebook">{t.calendar.platforms.facebook}</SelectItem>
+                  <SelectItem value="zalo">{t.calendar.platforms.zalo}</SelectItem>
+                  <SelectItem value="tiktok">{t.calendar.platforms.tiktok}</SelectItem>
+                  <SelectItem value="instagram">{t.calendar.platforms.instagram}</SelectItem>
                   <SelectItem value="website">Website</SelectItem>
                 </SelectContent>
               </Select>
             </div>
             <div className="flex-1">
-              <Label className="text-sm mb-2 block">Status</Label>
+              <Label className="text-sm mb-2 block">{t.tasks.status}</Label>
               <Select value={filterStatus} onValueChange={setFilterStatus}>
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">Tat ca status</SelectItem>
-                  <SelectItem value="planned">Planned</SelectItem>
-                  <SelectItem value="in_production">In Production</SelectItem>
-                  <SelectItem value="ready_for_review">Review</SelectItem>
-                  <SelectItem value="approved">Approved</SelectItem>
-                  <SelectItem value="scheduled">Scheduled</SelectItem>
-                  <SelectItem value="published">Published</SelectItem>
-                  <SelectItem value="needs_revision">Needs Revision</SelectItem>
+                  <SelectItem value="all">{t.common.all}</SelectItem>
+                  <SelectItem value="planned">{statusDisplayNames.planned}</SelectItem>
+                  <SelectItem value="in_production">{statusDisplayNames.in_production}</SelectItem>
+                  <SelectItem value="ready_for_review">{statusDisplayNames.ready_for_review}</SelectItem>
+                  <SelectItem value="approved">{statusDisplayNames.approved}</SelectItem>
+                  <SelectItem value="scheduled">{statusDisplayNames.scheduled}</SelectItem>
+                  <SelectItem value="published">{statusDisplayNames.published}</SelectItem>
+                  <SelectItem value="needs_revision">{statusDisplayNames.needs_revision}</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -526,21 +528,21 @@ export default function CalendarPage() {
               size="sm"
               onClick={() => setViewMode("month")}
             >
-              Thang
+              {t.calendar.views.month}
             </Button>
             <Button
               variant={viewMode === "week" ? "default" : "ghost"}
               size="sm"
               onClick={() => setViewMode("week")}
             >
-              Tuan
+              {t.calendar.views.week}
             </Button>
             <Button
               variant={viewMode === "day" ? "default" : "ghost"}
               size="sm"
               onClick={() => setViewMode("day")}
             >
-              Ngay
+              {t.calendar.views.day}
             </Button>
           </div>
         </CardHeader>
@@ -549,19 +551,19 @@ export default function CalendarPage() {
           <div className="flex flex-wrap items-center gap-4 mb-4 text-sm">
             <div className="flex items-center gap-2">
               <div className="w-3 h-3 rounded-full bg-blue-500" />
-              <span>Facebook</span>
+              <span>{t.calendar.platforms.facebook}</span>
             </div>
             <div className="flex items-center gap-2">
               <div className="w-3 h-3 rounded-full bg-blue-600" />
-              <span>Zalo</span>
+              <span>{t.calendar.platforms.zalo}</span>
             </div>
             <div className="flex items-center gap-2">
               <div className="w-3 h-3 rounded-full bg-black" />
-              <span>TikTok</span>
+              <span>{t.calendar.platforms.tiktok}</span>
             </div>
             <div className="flex items-center gap-2">
               <div className="w-3 h-3 rounded-full bg-pink-500" />
-              <span>Instagram</span>
+              <span>{t.calendar.platforms.instagram}</span>
             </div>
             <div className="flex items-center gap-2">
               <div className="w-3 h-3 rounded-full bg-yellow-500" />
@@ -603,7 +605,7 @@ export default function CalendarPage() {
                       <>
                         <div className={`text-sm font-medium mb-2 ${isToday ? "text-primary" : ""}`}>
                           {day}
-                          {isToday && <span className="ml-1 text-xs">(Hom nay)</span>}
+                          {isToday && <span className="ml-1 text-xs">({t.common.today})</span>}
                         </div>
                         <div className="space-y-1">
                           {dayContent.map((item) => (
@@ -637,23 +639,23 @@ export default function CalendarPage() {
           <div className="flex flex-wrap items-center gap-4 mt-4 text-sm text-muted-foreground">
             <div className="flex items-center gap-2">
               <div className="w-8 h-2 border-l-2 border-gray-300 bg-white" />
-              <span>Planned</span>
+              <span>{statusDisplayNames.planned}</span>
             </div>
             <div className="flex items-center gap-2">
               <div className="w-8 h-2 border-l-2 border-yellow-500 bg-white" />
-              <span>In Production</span>
+              <span>{statusDisplayNames.in_production}</span>
             </div>
             <div className="flex items-center gap-2">
               <div className="w-8 h-2 border-l-2 border-orange-500 bg-white" />
-              <span>Review</span>
+              <span>{statusDisplayNames.ready_for_review}</span>
             </div>
             <div className="flex items-center gap-2">
               <div className="w-8 h-2 border-l-2 border-green-500 bg-white" />
-              <span>Approved</span>
+              <span>{statusDisplayNames.approved}</span>
             </div>
             <div className="flex items-center gap-2">
               <div className="w-8 h-2 bg-blue-50 border" />
-              <span>Published</span>
+              <span>{statusDisplayNames.published}</span>
             </div>
           </div>
         </CardContent>
@@ -672,7 +674,7 @@ export default function CalendarPage() {
               <div className="space-y-4">
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
-                    <Label className="text-sm text-muted-foreground">Platform</Label>
+                    <Label className="text-sm text-muted-foreground">{t.calendar.platform}</Label>
                     <div className="mt-1">
                       <Select
                         value={editContent.platform}
@@ -682,17 +684,17 @@ export default function CalendarPage() {
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="facebook">Facebook</SelectItem>
-                          <SelectItem value="zalo">Zalo</SelectItem>
-                          <SelectItem value="tiktok">TikTok</SelectItem>
-                          <SelectItem value="instagram">Instagram</SelectItem>
+                          <SelectItem value="facebook">{t.calendar.platforms.facebook}</SelectItem>
+                          <SelectItem value="zalo">{t.calendar.platforms.zalo}</SelectItem>
+                          <SelectItem value="tiktok">{t.calendar.platforms.tiktok}</SelectItem>
+                          <SelectItem value="instagram">{t.calendar.platforms.instagram}</SelectItem>
                           <SelectItem value="website">Website</SelectItem>
                         </SelectContent>
                       </Select>
                     </div>
                   </div>
                   <div>
-                    <Label className="text-sm text-muted-foreground">Status</Label>
+                    <Label className="text-sm text-muted-foreground">{t.tasks.status}</Label>
                     <div className="mt-1">
                       <Select
                         value={editContent.status}
@@ -702,19 +704,19 @@ export default function CalendarPage() {
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="planned">Planned</SelectItem>
-                          <SelectItem value="in_production">In Production</SelectItem>
-                          <SelectItem value="ready_for_review">Review</SelectItem>
-                          <SelectItem value="approved">Approved</SelectItem>
-                          <SelectItem value="scheduled">Scheduled</SelectItem>
-                          <SelectItem value="published">Published</SelectItem>
-                          <SelectItem value="needs_revision">Needs Revision</SelectItem>
+                          <SelectItem value="planned">{statusDisplayNames.planned}</SelectItem>
+                          <SelectItem value="in_production">{statusDisplayNames.in_production}</SelectItem>
+                          <SelectItem value="ready_for_review">{statusDisplayNames.ready_for_review}</SelectItem>
+                          <SelectItem value="approved">{statusDisplayNames.approved}</SelectItem>
+                          <SelectItem value="scheduled">{statusDisplayNames.scheduled}</SelectItem>
+                          <SelectItem value="published">{statusDisplayNames.published}</SelectItem>
+                          <SelectItem value="needs_revision">{statusDisplayNames.needs_revision}</SelectItem>
                         </SelectContent>
                       </Select>
                     </div>
                   </div>
                   <div>
-                    <Label className="text-sm text-muted-foreground">Publish Date</Label>
+                    <Label className="text-sm text-muted-foreground">{t.calendar.scheduledAt}</Label>
                     <Input
                       type="date"
                       value={editContent.date}
@@ -723,7 +725,7 @@ export default function CalendarPage() {
                     />
                   </div>
                   <div>
-                    <Label className="text-sm text-muted-foreground">Publish Time</Label>
+                    <Label className="text-sm text-muted-foreground">{t.calendar.scheduledAt}</Label>
                     <Input
                       type="time"
                       value={editContent.time}
@@ -734,7 +736,7 @@ export default function CalendarPage() {
                 </div>
 
                 <div>
-                  <Label className="text-sm text-muted-foreground">Description</Label>
+                  <Label className="text-sm text-muted-foreground">{t.tasks.description}</Label>
                   <Textarea
                     value={editContent.description}
                     onChange={(e) => setEditContent({ ...editContent, description: e.target.value })}
@@ -745,7 +747,7 @@ export default function CalendarPage() {
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
-                    <Label className="text-sm text-muted-foreground">Content Type</Label>
+                    <Label className="text-sm text-muted-foreground">{t.calendar.contentType}</Label>
                     <Input
                       value={editContent.contentType}
                       onChange={(e) => setEditContent({ ...editContent, contentType: e.target.value })}
@@ -753,7 +755,7 @@ export default function CalendarPage() {
                     />
                   </div>
                   <div>
-                    <Label className="text-sm text-muted-foreground">Assignee</Label>
+                    <Label className="text-sm text-muted-foreground">{t.tasks.assignee}</Label>
                     <Input
                       value={editContent.assignee}
                       disabled
@@ -780,7 +782,7 @@ export default function CalendarPage() {
                     disabled={createMutation.isPending}
                   >
                     <Copy className="w-4 h-4" />
-                    Duplicate
+                    {t.common.add}
                   </Button>
                   <Button
                     variant="destructive"
@@ -790,21 +792,21 @@ export default function CalendarPage() {
                     disabled={deleteMutation.isPending}
                   >
                     <Trash2 className="w-4 h-4" />
-                    Delete
+                    {t.common.delete}
                   </Button>
                 </div>
                 <div className="flex gap-2">
                   <Button variant="outline" onClick={() => setIsContentDetailOpen(false)}>
-                    Dong
+                    {t.common.close}
                   </Button>
                   <Button onClick={handleUpdateContent} disabled={updateMutation.isPending}>
                     {updateMutation.isPending ? (
                       <>
                         <LoadingSpinner size="sm" className="mr-2 p-0" />
-                        Saving...
+                        {t.common.loading}
                       </>
                     ) : (
-                      "Luu thay doi"
+                      t.common.save
                     )}
                   </Button>
                 </div>
@@ -818,15 +820,15 @@ export default function CalendarPage() {
       <Dialog open={isNewContentOpen} onOpenChange={setIsNewContentOpen}>
         <DialogContent className="max-w-[100vw] sm:max-w-2xl w-full max-h-[100dvh] sm:max-h-[80vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>Them noi dung moi</DialogTitle>
-            <DialogDescription>Tao content moi cho Content Calendar</DialogDescription>
+            <DialogTitle>{t.calendar.createEvent}</DialogTitle>
+            <DialogDescription>{t.calendar.subtitle}</DialogDescription>
           </DialogHeader>
 
           <div className="space-y-4">
             <div>
-              <Label>Tieu de *</Label>
+              <Label>{t.calendar.title} *</Label>
               <Input
-                placeholder="Nhap tieu de content..."
+                placeholder={t.calendar.title}
                 className="mt-1"
                 value={newContent.title}
                 onChange={(e) => setNewContent({ ...newContent, title: e.target.value })}
@@ -834,9 +836,9 @@ export default function CalendarPage() {
             </div>
 
             <div>
-              <Label>Mo ta</Label>
+              <Label>{t.tasks.description}</Label>
               <Textarea
-                placeholder="Mo ta chi tiet ve content..."
+                placeholder={t.tasks.description}
                 rows={3}
                 className="mt-1"
                 value={newContent.description}
@@ -846,32 +848,32 @@ export default function CalendarPage() {
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
-                <Label>Platform *</Label>
+                <Label>{t.calendar.platform} *</Label>
                 <Select
                   value={newContent.platform}
                   onValueChange={(value) => setNewContent({ ...newContent, platform: value as Platform })}
                 >
                   <SelectTrigger className="mt-1">
-                    <SelectValue placeholder="Chon platform..." />
+                    <SelectValue placeholder={t.calendar.platform} />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="facebook">Facebook</SelectItem>
-                    <SelectItem value="zalo">Zalo</SelectItem>
-                    <SelectItem value="tiktok">TikTok</SelectItem>
-                    <SelectItem value="instagram">Instagram</SelectItem>
+                    <SelectItem value="facebook">{t.calendar.platforms.facebook}</SelectItem>
+                    <SelectItem value="zalo">{t.calendar.platforms.zalo}</SelectItem>
+                    <SelectItem value="tiktok">{t.calendar.platforms.tiktok}</SelectItem>
+                    <SelectItem value="instagram">{t.calendar.platforms.instagram}</SelectItem>
                     <SelectItem value="website">Website</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
 
               <div>
-                <Label>Content Type</Label>
+                <Label>{t.calendar.contentType}</Label>
                 <Select
                   value={newContent.contentType}
                   onValueChange={(value) => setNewContent({ ...newContent, contentType: value })}
                 >
                   <SelectTrigger className="mt-1">
-                    <SelectValue placeholder="Chon loai..." />
+                    <SelectValue placeholder={t.calendar.contentType} />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="Social Post">Social Post</SelectItem>
@@ -887,7 +889,7 @@ export default function CalendarPage() {
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
-                <Label>Publish Date *</Label>
+                <Label>{t.calendar.scheduledAt} *</Label>
                 <Input
                   type="date"
                   className="mt-1"
@@ -897,7 +899,7 @@ export default function CalendarPage() {
               </div>
 
               <div>
-                <Label>Publish Time</Label>
+                <Label>{t.calendar.scheduledAt}</Label>
                 <Input
                   type="time"
                   value={newContent.time}
@@ -909,9 +911,9 @@ export default function CalendarPage() {
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
-                <Label>Assignee</Label>
+                <Label>{t.tasks.assignee}</Label>
                 <Input
-                  placeholder="Nguoi phu trach..."
+                  placeholder={t.tasks.assignee}
                   className="mt-1"
                   value={newContent.assignee}
                   onChange={(e) => setNewContent({ ...newContent, assignee: e.target.value })}
@@ -919,7 +921,7 @@ export default function CalendarPage() {
               </div>
 
               <div>
-                <Label>Status</Label>
+                <Label>{t.tasks.status}</Label>
                 <Select
                   value={newContent.status}
                   onValueChange={(value) => setNewContent({ ...newContent, status: value as ContentStatus })}
@@ -928,10 +930,10 @@ export default function CalendarPage() {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="planned">Planned</SelectItem>
-                    <SelectItem value="in_production">In Production</SelectItem>
-                    <SelectItem value="ready_for_review">Review</SelectItem>
-                    <SelectItem value="approved">Approved</SelectItem>
+                    <SelectItem value="planned">{statusDisplayNames.planned}</SelectItem>
+                    <SelectItem value="in_production">{statusDisplayNames.in_production}</SelectItem>
+                    <SelectItem value="ready_for_review">{statusDisplayNames.ready_for_review}</SelectItem>
+                    <SelectItem value="approved">{statusDisplayNames.approved}</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -950,16 +952,16 @@ export default function CalendarPage() {
 
           <DialogFooter>
             <Button variant="outline" onClick={() => setIsNewContentOpen(false)}>
-              Huy
+              {t.common.cancel}
             </Button>
             <Button onClick={handleCreateContent} disabled={createMutation.isPending}>
               {createMutation.isPending ? (
                 <>
                   <LoadingSpinner size="sm" className="mr-2 p-0" />
-                  Creating...
+                  {t.common.loading}
                 </>
               ) : (
-                "Tao Content"
+                t.calendar.createEvent
               )}
             </Button>
           </DialogFooter>

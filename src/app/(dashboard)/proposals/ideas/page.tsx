@@ -40,17 +40,18 @@ import { PageError } from "@/components/ui/error-display";
 import { PageEmpty } from "@/components/ui/empty-state";
 import { toast } from "sonner";
 import { format } from "date-fns";
+import { useLanguage } from "@/i18n";
 
 type IdeaStatus = "submitted" | "reviewing" | "approved" | "implemented" | "rejected";
 type IdeaCategory = "content_format" | "process_improvement" | "new_platform" | "campaign_concept" | "automation";
 
-const statusConfig: Record<IdeaStatus, { label: string; color: string; icon: typeof Clock }> = {
-  submitted: { label: "Da gui", color: "bg-blue-100 text-blue-700", icon: Clock },
-  reviewing: { label: "Dang xem xet", color: "bg-yellow-100 text-yellow-700", icon: Clock },
-  approved: { label: "Da duyet", color: "bg-blue-100 text-blue-700", icon: CheckCircle },
-  implemented: { label: "Da trien khai", color: "bg-green-100 text-green-700", icon: Rocket },
-  rejected: { label: "Khong phu hop", color: "bg-gray-100 text-gray-700", icon: Clock },
-};
+const getStatusConfig = (t: ReturnType<typeof useLanguage>["t"]) => ({
+  submitted: { label: t.proposals.statuses.submitted, color: "bg-blue-100 text-blue-700", icon: Clock },
+  reviewing: { label: t.proposals.statuses.underReview, color: "bg-yellow-100 text-yellow-700", icon: Clock },
+  approved: { label: t.proposals.statuses.approved, color: "bg-blue-100 text-blue-700", icon: CheckCircle },
+  implemented: { label: t.common.completed, color: "bg-green-100 text-green-700", icon: Rocket },
+  rejected: { label: t.proposals.statuses.rejected, color: "bg-gray-100 text-gray-700", icon: Clock },
+});
 
 const categoryLabels: Record<IdeaCategory, string> = {
   content_format: "Content Format",
@@ -61,6 +62,8 @@ const categoryLabels: Record<IdeaCategory, string> = {
 };
 
 export default function InnovationIdeasPage() {
+  const { t } = useLanguage();
+  const statusConfig = getStatusConfig(t);
   const [isNewIdeaOpen, setIsNewIdeaOpen] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState<string>("all");
 
@@ -107,7 +110,7 @@ export default function InnovationIdeasPage() {
     });
   };
 
-  if (isLoading) return <PageLoading text="Dang tai y tuong..." />;
+  if (isLoading) return <PageLoading text={t.common.loading} />;
   if (error) return <PageError error={error} onRetry={refetch} />;
 
   const ideas = myIdeas ?? [];
@@ -128,37 +131,37 @@ export default function InnovationIdeasPage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold">Innovation Ideas</h1>
+          <h1 className="text-2xl font-bold">{t.proposals.ideas.title}</h1>
           <p className="text-muted-foreground">
-            Dong gop y tuong sang tao va nhan diem thuong
+            {t.proposals.ideas.subtitle}
           </p>
         </div>
         <Dialog open={isNewIdeaOpen} onOpenChange={setIsNewIdeaOpen}>
           <DialogTrigger asChild>
             <Button>
               <Plus className="h-4 w-4 mr-2" />
-              Gui y tuong
+              {t.proposals.ideas.submitIdea}
             </Button>
           </DialogTrigger>
           <DialogContent className="max-w-[100vw] sm:max-w-[500px] w-full max-h-[100dvh] sm:max-h-[80vh] overflow-y-auto">
             <DialogHeader>
-              <DialogTitle>Gui y tuong moi</DialogTitle>
+              <DialogTitle>{t.proposals.ideas.submitIdea}</DialogTitle>
               <DialogDescription>
-                Chia se y tuong sang tao cua ban. Neu duoc trien khai, ban se nhan duoc diem thuong!
+                {t.proposals.ideas.subtitle}
               </DialogDescription>
             </DialogHeader>
             <div className="grid gap-4 py-4">
               <div className="grid gap-2">
-                <Label htmlFor="idea-title">Tieu de y tuong</Label>
+                <Label htmlFor="idea-title">{t.proposals.new.proposalTitle}</Label>
                 <Input
                   id="idea-title"
-                  placeholder="Nhap tieu de ngan gon..."
+                  placeholder={t.proposals.new.proposalTitle}
                   value={ideaTitle}
                   onChange={(e) => setIdeaTitle(e.target.value)}
                 />
               </div>
               <div className="grid gap-2">
-                <Label htmlFor="idea-category">Danh muc</Label>
+                <Label htmlFor="idea-category">{t.proposals.new.category}</Label>
                 <Select
                   value={ideaCategory}
                   onValueChange={(v) => setIdeaCategory(v as IdeaCategory)}
@@ -176,10 +179,10 @@ export default function InnovationIdeasPage() {
                 </Select>
               </div>
               <div className="grid gap-2">
-                <Label htmlFor="idea-description">Mo ta chi tiet</Label>
+                <Label htmlFor="idea-description">{t.proposals.new.proposalDescription}</Label>
                 <Textarea
                   id="idea-description"
-                  placeholder="Mo ta y tuong cua ban: van de can giai quyet, giai phap de xuat, loi ich mong doi..."
+                  placeholder={t.proposals.new.proposalDescription}
                   rows={5}
                   value={ideaDescription}
                   onChange={(e) => setIdeaDescription(e.target.value)}
@@ -188,14 +191,14 @@ export default function InnovationIdeasPage() {
             </div>
             <DialogFooter>
               <Button variant="outline" onClick={() => setIsNewIdeaOpen(false)}>
-                Huy
+                {t.common.cancel}
               </Button>
               <Button
                 onClick={handleSubmitIdea}
                 disabled={submitIdeaMutation.isPending}
               >
                 <Lightbulb className="h-4 w-4 mr-2" />
-                {submitIdeaMutation.isPending ? "Dang gui..." : "Gui y tuong (+30 diem)"}
+                {submitIdeaMutation.isPending ? t.common.loading : t.proposals.ideas.submitIdea}
               </Button>
             </DialogFooter>
           </DialogContent>
@@ -211,7 +214,7 @@ export default function InnovationIdeasPage() {
             </div>
             <div>
               <p className="text-2xl font-bold">{stats.total}</p>
-              <p className="text-sm text-muted-foreground">Tong y tuong</p>
+              <p className="text-sm text-muted-foreground">{t.proposals.ideas.title}</p>
             </div>
           </CardContent>
         </Card>
@@ -222,7 +225,7 @@ export default function InnovationIdeasPage() {
             </div>
             <div>
               <p className="text-2xl font-bold">{stats.implemented}</p>
-              <p className="text-sm text-muted-foreground">Da trien khai</p>
+              <p className="text-sm text-muted-foreground">{t.common.completed}</p>
             </div>
           </CardContent>
         </Card>
@@ -233,7 +236,7 @@ export default function InnovationIdeasPage() {
             </div>
             <div>
               <p className="text-2xl font-bold">{stats.totalPoints}</p>
-              <p className="text-sm text-muted-foreground">Diem da nhan</p>
+              <p className="text-sm text-muted-foreground">{t.gamification.points.earned}</p>
             </div>
           </CardContent>
         </Card>
@@ -243,10 +246,10 @@ export default function InnovationIdeasPage() {
       <div className="flex items-center gap-4">
         <Select value={selectedCategory} onValueChange={setSelectedCategory}>
           <SelectTrigger className="w-[180px]">
-            <SelectValue placeholder="Tat ca danh muc" />
+            <SelectValue placeholder={t.common.all} />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="all">Tat ca danh muc</SelectItem>
+            <SelectItem value="all">{t.common.all}</SelectItem>
             <SelectItem value="content_format">Content Format</SelectItem>
             <SelectItem value="process_improvement">Process Improvement</SelectItem>
             <SelectItem value="new_platform">New Platform</SelectItem>
@@ -260,15 +263,11 @@ export default function InnovationIdeasPage() {
       {filteredIdeas.length === 0 ? (
         <PageEmpty
           icon={Lightbulb}
-          title="Chua co y tuong nao"
-          description={
-            selectedCategory !== "all"
-              ? "Khong co y tuong nao trong danh muc nay"
-              : "Gui y tuong dau tien de nhan diem thuong"
-          }
+          title={t.proposals.ideas.noIdeas}
+          description={t.proposals.ideas.subtitle}
           action={
             selectedCategory === "all"
-              ? { label: "Gui y tuong", onClick: () => setIsNewIdeaOpen(true) }
+              ? { label: t.proposals.ideas.submitIdea, onClick: () => setIsNewIdeaOpen(true) }
               : undefined
           }
         />
@@ -322,12 +321,12 @@ export default function InnovationIdeasPage() {
                   </div>
 
                   <div className="mt-4 pt-3 border-t text-sm text-muted-foreground">
-                    Gui ngay{" "}
+                    {t.proposals.submittedAt}{" "}
                     {format(new Date(idea.createdAt), "dd/MM/yyyy")}
                     {idea.implementedAt && (
                       <span>
                         {" "}
-                        | Trien khai{" "}
+                        | {t.common.completed}{" "}
                         {format(new Date(idea.implementedAt), "dd/MM/yyyy")}
                       </span>
                     )}
@@ -339,52 +338,6 @@ export default function InnovationIdeasPage() {
         </div>
       )}
 
-      {/* How it works */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-lg">Cach thuc hoat dong</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="grid gap-4 md:grid-cols-4">
-            <div className="text-center p-4">
-              <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-purple-100 text-purple-600 mb-3">
-                <Lightbulb className="h-6 w-6" />
-              </div>
-              <h4 className="font-medium mb-1">1. Gui y tuong</h4>
-              <p className="text-sm text-muted-foreground">
-                Chia se y tuong sang tao cua ban (+30 pts)
-              </p>
-            </div>
-            <div className="text-center p-4">
-              <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-yellow-100 text-yellow-600 mb-3">
-                <Clock className="h-6 w-6" />
-              </div>
-              <h4 className="font-medium mb-1">2. Xem xet</h4>
-              <p className="text-sm text-muted-foreground">
-                Team danh gia tinh kha thi
-              </p>
-            </div>
-            <div className="text-center p-4">
-              <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-blue-100 text-blue-600 mb-3">
-                <CheckCircle className="h-6 w-6" />
-              </div>
-              <h4 className="font-medium mb-1">3. Phe duyet</h4>
-              <p className="text-sm text-muted-foreground">
-                Y tuong duoc chap nhan
-              </p>
-            </div>
-            <div className="text-center p-4">
-              <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-green-100 text-green-600 mb-3">
-                <Rocket className="h-6 w-6" />
-              </div>
-              <h4 className="font-medium mb-1">4. Trien khai</h4>
-              <p className="text-sm text-muted-foreground">
-                Y tuong duoc thuc hien (+50 pts)
-              </p>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
     </div>
   );
 }

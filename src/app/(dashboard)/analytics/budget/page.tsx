@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useMemo } from "react";
+import { useLanguage } from "@/i18n";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -55,6 +56,7 @@ import { format } from "date-fns";
 type Platform = "google_ads" | "facebook" | "zalo";
 
 export default function BudgetPage() {
+  const { t } = useLanguage();
   const [selectedPlatform, setSelectedPlatform] = useState<string | null>(null);
   const [showAdjustmentRequest, setShowAdjustmentRequest] = useState(false);
   const [selectedMonth, setSelectedMonth] = useState(() => {
@@ -442,15 +444,15 @@ export default function BudgetPage() {
     );
   };
 
-  if (isLoading) return <PageLoading text="Dang tai du lieu ngan sach..." />;
+  if (isLoading) return <PageLoading text={t.common.loading} />;
   if (error) return <PageError error={error} onRetry={refetch} />;
 
   if (!budgetData) {
     return (
       <div className="space-y-6">
         <div className="mb-6">
-          <h1 className="text-2xl font-semibold mb-1">Monthly Budget</h1>
-          <p className="text-muted-foreground">Quan ly va theo doi ngan sach marketing hang thang</p>
+          <h1 className="text-2xl font-semibold mb-1">{t.analytics.budget.title}</h1>
+          <p className="text-muted-foreground">{t.analytics.budget.subtitle}</p>
         </div>
 
         <div className="flex items-center gap-4 mb-6">
@@ -469,8 +471,8 @@ export default function BudgetPage() {
         </div>
 
         <PageEmpty
-          title="Chua co ngan sach cho thang nay"
-          description="Chua co du lieu ngan sach cho thang da chon. Vui long tao ngan sach moi hoac chon thang khac."
+          title={t.common.noData}
+          description={t.common.noData}
         />
       </div>
     );
@@ -479,8 +481,8 @@ export default function BudgetPage() {
   return (
     <div className="space-y-6">
       <div className="mb-6">
-        <h1 className="text-2xl font-semibold mb-1">Monthly Budget</h1>
-        <p className="text-muted-foreground">Quan ly va theo doi ngan sach marketing hang thang</p>
+        <h1 className="text-2xl font-semibold mb-1">{t.analytics.budget.title}</h1>
+        <p className="text-muted-foreground">{t.analytics.budget.subtitle}</p>
       </div>
 
       {/* Header with Month Selector and Actions */}
@@ -546,15 +548,15 @@ export default function BudgetPage() {
             </div>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
               <div>
-                <p className="text-muted-foreground">Da chi</p>
+                <p className="text-muted-foreground">{t.analytics.budget.spent}</p>
                 <p className="font-semibold">{formatCurrency(budgetData.totalSpent)} VND</p>
               </div>
               <div>
-                <p className="text-muted-foreground">Con lai</p>
+                <p className="text-muted-foreground">{t.analytics.budget.remaining}</p>
                 <p className="font-semibold">{formatCurrency(budgetData.remaining)} VND</p>
               </div>
               <div>
-                <p className="text-muted-foreground">Du bao cuoi thang</p>
+                <p className="text-muted-foreground">{t.analytics.budget.projectedSpend}</p>
                 <p className="font-semibold">{formatCurrency(budgetData.projectedSpend)} VND</p>
               </div>
               <div>
@@ -576,7 +578,7 @@ export default function BudgetPage() {
       {/* Platform Budget Breakdown */}
       <Card>
         <CardHeader>
-          <CardTitle>Chi tiet theo nen tang</CardTitle>
+          <CardTitle>{t.analytics.budget.byChannel}</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="space-y-4">
@@ -626,7 +628,7 @@ export default function BudgetPage() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <Card className="lg:col-span-2">
           <CardHeader>
-            <CardTitle>Chi tieu hang ngay</CardTitle>
+            <CardTitle>{t.analytics.budget.dailySpend}</CardTitle>
           </CardHeader>
           <CardContent>
             {dailySpendData.length > 0 ? (

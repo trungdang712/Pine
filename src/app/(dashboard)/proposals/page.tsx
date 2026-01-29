@@ -19,20 +19,21 @@ import { PageEmpty } from "@/components/ui/empty-state";
 import { toast } from "sonner";
 import { format } from "date-fns";
 import { useAuth } from "@/hooks/use-auth";
+import { useLanguage } from "@/i18n";
 
 type ProposalStatus = "draft" | "submitted" | "under_review" | "approved" | "rejected" | "in_progress" | "completed";
 type ProposalCategory = "content" | "design" | "video" | "campaign" | "event" | "partnership";
 type ProposalPriority = "urgent" | "high" | "normal" | "low";
 
-const statusConfig: Record<ProposalStatus, { label: string; variant: "default" | "secondary" | "destructive" | "outline" }> = {
-  draft: { label: "Draft", variant: "outline" },
-  submitted: { label: "Submitted", variant: "secondary" },
-  under_review: { label: "Đang review", variant: "secondary" },
-  approved: { label: "Đã duyệt", variant: "default" },
-  rejected: { label: "Từ chối", variant: "destructive" },
-  in_progress: { label: "Đang thực hiện", variant: "default" },
-  completed: { label: "Hoàn thành", variant: "default" },
-};
+const getStatusConfig = (t: ReturnType<typeof useLanguage>["t"]) => ({
+  draft: { label: t.proposals.statuses.draft, variant: "outline" as const },
+  submitted: { label: t.proposals.statuses.submitted, variant: "secondary" as const },
+  under_review: { label: t.proposals.statuses.underReview, variant: "secondary" as const },
+  approved: { label: t.proposals.statuses.approved, variant: "default" as const },
+  rejected: { label: t.proposals.statuses.rejected, variant: "destructive" as const },
+  in_progress: { label: t.common.inProgress, variant: "default" as const },
+  completed: { label: t.common.completed, variant: "default" as const },
+});
 
 const categoryLabels: Record<ProposalCategory, string> = {
   content: "Content",
@@ -43,15 +44,20 @@ const categoryLabels: Record<ProposalCategory, string> = {
   partnership: "Partnership",
 };
 
-const priorityConfig: Record<ProposalPriority, { label: string; variant: "default" | "destructive" | "secondary" }> = {
-  urgent: { label: "Khẩn cấp", variant: "destructive" },
-  high: { label: "Cao", variant: "destructive" },
-  normal: { label: "Bình thường", variant: "secondary" },
-  low: { label: "Thấp", variant: "secondary" },
-};
+const getPriorityConfig = (t: ReturnType<typeof useLanguage>["t"]) => ({
+  urgent: { label: t.tasks.priorities.urgent, variant: "destructive" as const },
+  high: { label: t.tasks.priorities.high, variant: "destructive" as const },
+  normal: { label: t.tasks.priorities.medium, variant: "secondary" as const },
+  low: { label: t.tasks.priorities.low, variant: "secondary" as const },
+});
 
 export default function ProposalsPage() {
+  const { t } = useLanguage();
   const { profile } = useAuth();
+
+  const statusConfig = getStatusConfig(t);
+  const priorityConfig = getPriorityConfig(t);
+
   const [selectedProposalId, setSelectedProposalId] = useState<string | null>(null);
   const [isDetailOpen, setIsDetailOpen] = useState(false);
   const [isNewProposalOpen, setIsNewProposalOpen] = useState(false);
@@ -260,28 +266,28 @@ export default function ProposalsPage() {
     a => a.approverId === profile?.id && a.status === "pending"
   );
 
-  if (isLoading) return <PageLoading text="Đang tải proposals..." />;
+  if (isLoading) return <PageLoading text={t.common.loading} />;
   if (error) return <PageError error={error} onRetry={refetch} />;
 
   const renderInnovationIdeas = () => (
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h2 className="text-2xl font-semibold">Innovation Ideas</h2>
-          <p className="text-muted-foreground text-sm">Đề xuất ý tưởng sáng tạo và nhận điểm thưởng</p>
+          <h2 className="text-2xl font-semibold">{t.proposals.ideas.title}</h2>
+          <p className="text-muted-foreground text-sm">{t.proposals.ideas.subtitle}</p>
         </div>
         <Button className="gap-2" onClick={() => setIsNewIdeaOpen(true)}>
           <Plus className="w-4 h-4" />
-          Đề xuất ý tưởng mới
+          {t.proposals.ideas.submitIdea}
         </Button>
       </div>
 
       {innovationIdeas.length === 0 ? (
         <PageEmpty
           icon={Lightbulb}
-          title="Chưa có ý tưởng nào"
-          description="Đề xuất ý tưởng đầu tiên để nhận điểm thưởng"
-          action={{ label: "Đề xuất ý tưởng", onClick: () => setIsNewIdeaOpen(true) }}
+          title={t.proposals.ideas.noIdeas}
+          description={t.proposals.ideas.subtitle}
+          action={{ label: t.proposals.ideas.submitIdea, onClick: () => setIsNewIdeaOpen(true) }}
         />
       ) : (
         <Card>
@@ -324,18 +330,6 @@ export default function ProposalsPage() {
         </Card>
       )}
 
-      <Card className="border-primary/20">
-        <CardHeader>
-          <CardTitle className="text-lg">Cách thức đề xuất ý tưởng</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-2 text-sm text-muted-foreground">
-            <p>- Đề xuất ý tưởng mới để cải thiện công việc marketing (+30 điểm)</p>
-            <p>- Các ý tưởng được áp dụng sẽ nhận điểm thưởng dựa trên impact score (+50 điểm)</p>
-            <p>- Impact score được đánh giá bởi team lead sau khi triển khai</p>
-          </div>
-        </CardContent>
-      </Card>
     </div>
   );
 
@@ -343,12 +337,12 @@ export default function ProposalsPage() {
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-semibold">Proposals</h1>
-          <p className="text-muted-foreground text-sm">Quản lý proposals và theo dõi trạng thái phê duyệt</p>
+          <h1 className="text-2xl font-semibold">{t.proposals.title}</h1>
+          <p className="text-muted-foreground text-sm">{t.proposals.subtitle}</p>
         </div>
         <Button className="gap-2" onClick={() => setIsNewProposalOpen(true)}>
           <Plus className="w-4 h-4" />
-          Tạo Proposal mới
+          {t.proposals.createProposal}
         </Button>
       </div>
 
@@ -403,9 +397,9 @@ export default function ProposalsPage() {
       {proposals.length === 0 ? (
         <PageEmpty
           icon={FileText}
-          title="Chưa có proposal nào"
-          description="Tạo proposal đầu tiên để bắt đầu"
-          action={{ label: "Tạo Proposal mới", onClick: () => setIsNewProposalOpen(true) }}
+          title={t.proposals.noProposals}
+          description={t.proposals.subtitle}
+          action={{ label: t.proposals.createProposal, onClick: () => setIsNewProposalOpen(true) }}
         />
       ) : (
         <div className="space-y-3">
@@ -442,7 +436,7 @@ export default function ProposalsPage() {
                   {["submitted", "under_review"].includes(proposal.status) && proposal.approvals && (
                     <div className="space-y-2">
                       <div className="flex items-center justify-between text-sm">
-                        <span className="font-medium">Quy trình duyệt</span>
+                        <span className="font-medium">{t.proposals.status}</span>
                         <span className="text-muted-foreground">
                           {proposal.approvals.filter(a => a.status === "approved").length}/{proposal.approvals.length}
                         </span>
@@ -457,14 +451,14 @@ export default function ProposalsPage() {
                   {proposal.status === "approved" && (
                     <div className="flex items-center gap-2 text-green-500 text-sm">
                       <CheckCircle className="w-4 h-4" />
-                      <span>Đã duyệt</span>
+                      <span>{t.proposals.statuses.approved}</span>
                     </div>
                   )}
 
                   {proposal.status === "rejected" && (
                     <div className="flex items-center gap-2 text-red-500 text-sm">
                       <XCircle className="w-4 h-4" />
-                      <span>Từ chối</span>
+                      <span>{t.proposals.statuses.rejected}</span>
                     </div>
                   )}
 
@@ -482,7 +476,7 @@ export default function ProposalsPage() {
                       </div>
                     </div>
                     <Button variant="outline" size="sm" onClick={(e) => { e.stopPropagation(); handleProposalClick(proposal.id); }}>
-                      Xem chi tiết
+                      {t.common.view}
                     </Button>
                   </div>
                 </div>
@@ -498,8 +492,8 @@ export default function ProposalsPage() {
     <div className="p-6">
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
         <TabsList>
-          <TabsTrigger value="proposals">Proposals</TabsTrigger>
-          <TabsTrigger value="ideas">Innovation Ideas</TabsTrigger>
+          <TabsTrigger value="proposals">{t.proposals.title}</TabsTrigger>
+          <TabsTrigger value="ideas">{t.proposals.ideas.title}</TabsTrigger>
         </TabsList>
 
         <TabsContent value="proposals">
@@ -633,7 +627,7 @@ export default function ProposalsPage() {
                     ))}
                     {(!selectedProposal.comments || selectedProposal.comments.length === 0) && (
                       <p className="text-sm text-muted-foreground text-center py-4">
-                        Chưa có comment nào
+                        {t.common.noData}
                       </p>
                     )}
                   </div>
@@ -641,14 +635,14 @@ export default function ProposalsPage() {
                   {/* Add Comment */}
                   <div className="flex gap-2">
                     <Input
-                      placeholder="Thêm comment..."
+                      placeholder={t.proposals.pending.addComment}
                       value={newComment}
                       onChange={(e) => setNewComment(e.target.value)}
                       onKeyDown={(e) => e.key === "Enter" && handleAddComment()}
                     />
                     <Button size="sm" className="gap-2" onClick={handleAddComment} disabled={addComment.isPending}>
                       <Send className="w-4 h-4" />
-                      Gửi
+                      {t.common.submit}
                     </Button>
                   </div>
                 </div>
@@ -663,7 +657,7 @@ export default function ProposalsPage() {
                       disabled={submitProposal.isPending}
                     >
                       <Send className="w-4 h-4" />
-                      Submit để duyệt
+                      {t.proposals.submitProposal}
                     </Button>
                   )}
                   {canApprove && (
@@ -674,7 +668,7 @@ export default function ProposalsPage() {
                         onClick={() => handleApprovalAction("revision")}
                       >
                         <MessageSquare className="w-4 h-4" />
-                        Yêu cầu sửa
+                        {t.proposals.pending.requestRevision}
                       </Button>
                       <Button
                         variant="outline"
@@ -682,20 +676,20 @@ export default function ProposalsPage() {
                         onClick={() => handleApprovalAction("reject")}
                       >
                         <XCircle className="w-4 h-4" />
-                        Reject
+                        {t.proposals.pending.reject}
                       </Button>
                       <Button
                         className="gap-2"
                         onClick={() => handleApprovalAction("approve")}
                       >
                         <CheckCircle className="w-4 h-4" />
-                        Approve
+                        {t.proposals.pending.approve}
                       </Button>
                     </>
                   )}
                 </div>
                 <Button variant="outline" onClick={() => setIsDetailOpen(false)}>
-                  Đóng
+                  {t.common.close}
                 </Button>
               </DialogFooter>
             </>
@@ -708,26 +702,23 @@ export default function ProposalsPage() {
         <DialogContent className="max-w-[100vw] sm:max-w-lg w-full max-h-[100dvh] sm:max-h-[80vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>
-              {approvalAction === "approve" ? "Approve Proposal" :
-               approvalAction === "reject" ? "Reject Proposal" : "Yêu cầu chỉnh sửa"}
+              {approvalAction === "approve" ? t.proposals.pending.approve :
+               approvalAction === "reject" ? t.proposals.pending.reject : t.proposals.pending.requestRevision}
             </DialogTitle>
             <DialogDescription>
               {approvalAction === "approve"
-                ? "Xác nhận duyệt proposal này và chuyển sang bước tiếp theo"
+                ? t.proposals.pending.approve
                 : approvalAction === "reject"
-                ? "Từ chối proposal và cung cấp lý do"
-                : "Yêu cầu chỉnh sửa và cung cấp hướng dẫn"}
+                ? t.proposals.pending.reject
+                : t.proposals.pending.requestRevision}
             </DialogDescription>
           </DialogHeader>
 
           <div className="space-y-4">
             <div>
-              <Label>Comment {approvalAction !== "approve" && "*"}</Label>
+              <Label>{t.proposals.pending.addComment} {approvalAction !== "approve" && "*"}</Label>
               <Textarea
-                placeholder={
-                  approvalAction === "approve" ? "Thêm comment (optional)..." :
-                  approvalAction === "reject" ? "Lý do từ chối..." : "Yêu cầu chỉnh sửa..."
-                }
+                placeholder={t.proposals.pending.addComment}
                 value={approvalComment}
                 onChange={(e) => setApprovalComment(e.target.value)}
                 rows={4}
@@ -738,14 +729,14 @@ export default function ProposalsPage() {
 
           <DialogFooter>
             <Button variant="outline" onClick={() => setIsApprovalModalOpen(false)}>
-              Hủy
+              {t.common.cancel}
             </Button>
             <Button
               variant={approvalAction === "approve" ? "default" : approvalAction === "reject" ? "destructive" : "secondary"}
               onClick={handleSubmitApproval}
               disabled={approveProposal.isPending || rejectProposal.isPending || requestRevision.isPending}
             >
-              {approvalAction === "approve" ? "Approve" : approvalAction === "reject" ? "Reject" : "Gửi yêu cầu"}
+              {approvalAction === "approve" ? t.proposals.pending.approve : approvalAction === "reject" ? t.proposals.pending.reject : t.common.submit}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -755,15 +746,15 @@ export default function ProposalsPage() {
       <Dialog open={isNewProposalOpen} onOpenChange={setIsNewProposalOpen}>
         <DialogContent className="max-w-[100vw] sm:max-w-3xl w-full max-h-[100dvh] sm:max-h-[80vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>Tạo Proposal mới</DialogTitle>
-            <DialogDescription>Điền thông tin đầy đủ cho proposal của bạn</DialogDescription>
+            <DialogTitle>{t.proposals.new.title}</DialogTitle>
+            <DialogDescription>{t.proposals.new.subtitle}</DialogDescription>
           </DialogHeader>
 
           <div className="space-y-4">
             <div>
-              <Label>Tiêu đề *</Label>
+              <Label>{t.proposals.new.proposalTitle} *</Label>
               <Input
-                placeholder="Nhập tiêu đề proposal..."
+                placeholder={t.proposals.new.proposalTitle}
                 className="mt-1"
                 value={newTitle}
                 onChange={(e) => setNewTitle(e.target.value)}
@@ -772,7 +763,7 @@ export default function ProposalsPage() {
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
-                <Label>Category *</Label>
+                <Label>{t.proposals.new.category} *</Label>
                 <Select value={newCategory} onValueChange={(v) => setNewCategory(v as ProposalCategory)}>
                   <SelectTrigger className="mt-1">
                     <SelectValue />
@@ -789,25 +780,25 @@ export default function ProposalsPage() {
               </div>
 
               <div>
-                <Label>Priority</Label>
+                <Label>{t.tasks.priority}</Label>
                 <Select value={newPriority} onValueChange={(v) => setNewPriority(v as ProposalPriority)}>
                   <SelectTrigger className="mt-1">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="urgent">Khẩn cấp</SelectItem>
-                    <SelectItem value="high">Cao</SelectItem>
-                    <SelectItem value="normal">Bình thường</SelectItem>
-                    <SelectItem value="low">Thấp</SelectItem>
+                    <SelectItem value="urgent">{t.tasks.priorities.urgent}</SelectItem>
+                    <SelectItem value="high">{t.tasks.priorities.high}</SelectItem>
+                    <SelectItem value="normal">{t.tasks.priorities.medium}</SelectItem>
+                    <SelectItem value="low">{t.tasks.priorities.low}</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
             </div>
 
             <div>
-              <Label>Mô tả *</Label>
+              <Label>{t.proposals.new.proposalDescription} *</Label>
               <Textarea
-                placeholder="Mô tả chi tiết về proposal..."
+                placeholder={t.proposals.new.proposalDescription}
                 rows={4}
                 className="mt-1"
                 value={newDescription}
@@ -817,7 +808,7 @@ export default function ProposalsPage() {
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
-                <Label>Budget (VND)</Label>
+                <Label>{t.analytics.budget.title} (VND)</Label>
                 <Input
                   placeholder="VD: 30,000,000"
                   className="mt-1"
@@ -827,7 +818,7 @@ export default function ProposalsPage() {
               </div>
 
               <div>
-                <Label>Due Date</Label>
+                <Label>{t.tasks.dueDate}</Label>
                 <Input
                   type="date"
                   className="mt-1"
@@ -840,10 +831,10 @@ export default function ProposalsPage() {
 
           <DialogFooter>
             <Button variant="outline" onClick={() => handleCreateProposal(false)} disabled={createProposal.isPending}>
-              Lưu Draft
+              {t.proposals.new.saveDraft}
             </Button>
             <Button onClick={() => handleCreateProposal(true)} disabled={createProposal.isPending}>
-              {createProposal.isPending ? "Đang tạo..." : "Submit Proposal"}
+              {createProposal.isPending ? t.common.loading : t.proposals.new.submitForReview}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -853,15 +844,15 @@ export default function ProposalsPage() {
       <Dialog open={isNewIdeaOpen} onOpenChange={setIsNewIdeaOpen}>
         <DialogContent className="max-w-[100vw] sm:max-w-2xl w-full max-h-[100dvh] sm:max-h-[80vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>Đề xuất ý tưởng mới</DialogTitle>
-            <DialogDescription>Chia sẻ ý tưởng sáng tạo của bạn và nhận +30 điểm</DialogDescription>
+            <DialogTitle>{t.proposals.ideas.submitIdea}</DialogTitle>
+            <DialogDescription>{t.proposals.ideas.subtitle}</DialogDescription>
           </DialogHeader>
 
           <div className="space-y-4">
             <div>
-              <Label>Tiêu đề *</Label>
+              <Label>{t.proposals.new.proposalTitle} *</Label>
               <Input
-                placeholder="Tên ý tưởng..."
+                placeholder={t.proposals.new.proposalTitle}
                 className="mt-1"
                 value={ideaTitle}
                 onChange={(e) => setIdeaTitle(e.target.value)}
@@ -869,7 +860,7 @@ export default function ProposalsPage() {
             </div>
 
             <div>
-              <Label>Category</Label>
+              <Label>{t.proposals.new.category}</Label>
               <Select value={ideaCategory} onValueChange={(v) => setIdeaCategory(v as "content_format" | "process_improvement" | "new_platform" | "campaign_concept" | "automation")}>
                 <SelectTrigger className="mt-1">
                   <SelectValue />
@@ -885,9 +876,9 @@ export default function ProposalsPage() {
             </div>
 
             <div>
-              <Label>Mô tả chi tiết *</Label>
+              <Label>{t.proposals.new.proposalDescription} *</Label>
               <Textarea
-                placeholder="Mô tả ý tưởng của bạn, lợi ích và cách thực hiện..."
+                placeholder={t.proposals.new.proposalDescription}
                 rows={4}
                 className="mt-1"
                 value={ideaDescription}
@@ -898,10 +889,10 @@ export default function ProposalsPage() {
 
           <DialogFooter>
             <Button variant="outline" onClick={() => setIsNewIdeaOpen(false)}>
-              Hủy
+              {t.common.cancel}
             </Button>
             <Button onClick={handleSubmitIdea} disabled={submitIdea.isPending}>
-              {submitIdea.isPending ? "Đang gửi..." : "Gửi ý tưởng (+30 điểm)"}
+              {submitIdea.isPending ? t.common.loading : t.proposals.ideas.submitIdea}
             </Button>
           </DialogFooter>
         </DialogContent>

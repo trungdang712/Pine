@@ -18,6 +18,7 @@ import { trpc } from "@/lib/trpc";
 import { PageLoading, LoadingSpinner } from "@/components/ui/loading-spinner";
 import { PageError } from "@/components/ui/error-display";
 import { toast } from "sonner";
+import { useLanguage } from "@/i18n";
 
 // Icon mapping for rewards based on name keywords
 const getRewardIcon = (name: string): string => {
@@ -46,6 +47,7 @@ interface RewardItem {
 }
 
 export default function RewardsPage() {
+  const { t } = useLanguage();
   const [selectedReward, setSelectedReward] = useState<RewardItem | null>(null);
   const [isRedeemOpen, setIsRedeemOpen] = useState(false);
 
@@ -72,7 +74,7 @@ export default function RewardsPage() {
   const isLoading = rewardsQuery.isLoading || myPointsQuery.isLoading;
   const error = rewardsQuery.error || myPointsQuery.error;
 
-  if (isLoading) return <PageLoading text="Loading rewards..." />;
+  if (isLoading) return <PageLoading text={t.common.loading} />;
   if (error) {
     return (
       <PageError
@@ -135,9 +137,9 @@ export default function RewardsPage() {
     <div className="space-y-6">
       {/* Header */}
       <div>
-        <h1 className="text-2xl font-bold">Rewards Catalog</h1>
+        <h1 className="text-2xl font-bold">{t.gamification.rewards.title}</h1>
         <p className="text-muted-foreground">
-          Doi diem lay phan thuong hap dan
+          {t.gamification.rewards.subtitle}
         </p>
       </div>
 
@@ -146,10 +148,10 @@ export default function RewardsPage() {
         <CardContent className="p-6">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm text-muted-foreground mb-1">Diem hien co</p>
+              <p className="text-sm text-muted-foreground mb-1">{t.gamification.rewards.availablePoints}</p>
               <p className="text-4xl font-bold text-primary">{userPoints}</p>
               <p className="text-sm text-muted-foreground mt-1">
-                diem co the su dung
+                {t.gamification.leaderboard.points}
               </p>
             </div>
             <div className="text-right">
@@ -159,7 +161,7 @@ export default function RewardsPage() {
           </div>
           <div className="mt-4">
             <div className="flex items-center justify-between text-sm mb-1">
-              <span>Den Level {userLevel + 1}</span>
+              <span>{t.gamification.leaderboard.level} {userLevel + 1}</span>
               <span>{userPoints}/{nextLevelThreshold}</span>
             </div>
             <Progress value={Math.min((userPoints / nextLevelThreshold) * 100, 100)} className="h-2" />
@@ -176,7 +178,7 @@ export default function RewardsPage() {
             </div>
             <div>
               <p className="text-2xl font-bold">{availableRewardsCount}</p>
-              <p className="text-sm text-muted-foreground">Phan thuong co san</p>
+              <p className="text-sm text-muted-foreground">{t.gamification.rewards.title}</p>
             </div>
           </CardContent>
         </Card>
@@ -187,7 +189,7 @@ export default function RewardsPage() {
             </div>
             <div>
               <p className="text-2xl font-bold">{redemptionCount}</p>
-              <p className="text-sm text-muted-foreground">Da doi thuong</p>
+              <p className="text-sm text-muted-foreground">{t.gamification.rewards.redeemHistory}</p>
             </div>
           </CardContent>
         </Card>
@@ -198,7 +200,7 @@ export default function RewardsPage() {
             </div>
             <div>
               <p className="text-2xl font-bold">{totalPointsSpent}</p>
-              <p className="text-sm text-muted-foreground">Diem da su dung</p>
+              <p className="text-sm text-muted-foreground">{t.gamification.points.spent}</p>
             </div>
           </CardContent>
         </Card>
@@ -206,7 +208,7 @@ export default function RewardsPage() {
 
       {/* Rewards Grid */}
       <div>
-        <h3 className="text-lg font-semibold mb-4">Danh sach phan thuong</h3>
+        <h3 className="text-lg font-semibold mb-4">{t.gamification.rewards.title}</h3>
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
           {rewards.map((reward) => {
             const canGet = canRedeem(reward);
@@ -230,7 +232,7 @@ export default function RewardsPage() {
                       {reward.pointsCost} diem
                     </Badge>
                     {!reward.isActive && (
-                      <span className="text-xs text-red-600">Khong kha dung</span>
+                      <span className="text-xs text-red-600">{t.common.inactive}</span>
                     )}
                   </div>
                   <Button
@@ -239,10 +241,10 @@ export default function RewardsPage() {
                     onClick={() => openRedeem(reward)}
                   >
                     {!reward.isActive
-                      ? "Khong kha dung"
+                      ? t.common.inactive
                       : reward.pointsCost > userPoints
-                      ? `Can them ${reward.pointsCost - userPoints} diem`
-                      : "Doi thuong"}
+                      ? `${reward.pointsCost - userPoints} ${t.gamification.leaderboard.points}`
+                      : t.gamification.rewards.redeem}
                   </Button>
                 </CardContent>
               </Card>
@@ -250,7 +252,7 @@ export default function RewardsPage() {
           })}
           {rewards.length === 0 && (
             <p className="text-sm text-muted-foreground col-span-full text-center py-8">
-              Chua co phan thuong nao. Hay quay lai sau!
+              {t.gamification.rewards.noRewards}
             </p>
           )}
         </div>
@@ -261,15 +263,15 @@ export default function RewardsPage() {
         <CardHeader>
           <CardTitle className="text-lg flex items-center gap-2">
             <Clock className="h-5 w-5" />
-            Lich su doi thuong
+            {t.gamification.rewards.redeemHistory}
           </CardTitle>
         </CardHeader>
         <CardContent>
           {redemptionsQuery.isLoading ? (
-            <LoadingSpinner size="sm" text="Loading history..." />
+            <LoadingSpinner size="sm" text={t.common.loading} />
           ) : redemptionHistory.length === 0 ? (
             <p className="text-sm text-muted-foreground text-center py-4">
-              Chua co lich su doi thuong.
+              {t.common.noData}
             </p>
           ) : (
             <div className="space-y-3">
@@ -323,21 +325,21 @@ export default function RewardsPage() {
               </DialogHeader>
               <div className="py-4">
                 <div className="flex items-center justify-between p-4 rounded-lg bg-muted">
-                  <span>Chi phi</span>
+                  <span>{t.gamification.points.spent}</span>
                   <span className="font-bold text-lg">
-                    {selectedReward.pointsCost} diem
+                    {selectedReward.pointsCost} {t.gamification.leaderboard.points}
                   </span>
                 </div>
                 <div className="flex items-center justify-between p-4">
-                  <span>Diem hien co</span>
+                  <span>{t.gamification.rewards.availablePoints}</span>
                   <span className="font-bold text-lg text-primary">
-                    {userPoints} diem
+                    {userPoints} {t.gamification.leaderboard.points}
                   </span>
                 </div>
                 <div className="flex items-center justify-between p-4 border-t">
-                  <span>Diem con lai sau khi doi</span>
+                  <span>{t.gamification.points.total}</span>
                   <span className="font-bold text-lg">
-                    {userPoints - selectedReward.pointsCost} diem
+                    {userPoints - selectedReward.pointsCost} {t.gamification.leaderboard.points}
                   </span>
                 </div>
               </div>
@@ -347,7 +349,7 @@ export default function RewardsPage() {
                   onClick={() => setIsRedeemOpen(false)}
                   disabled={redeemMutation.isPending}
                 >
-                  Huy
+                  {t.common.cancel}
                 </Button>
                 <Button
                   onClick={handleRedeem}
@@ -358,7 +360,7 @@ export default function RewardsPage() {
                   ) : (
                     <>
                       <Gift className="h-4 w-4 mr-2" />
-                      Xac nhan doi thuong
+                      {t.common.confirm}
                     </>
                   )}
                 </Button>

@@ -43,6 +43,7 @@ import { PageError } from "@/components/ui/error-display";
 import { EmptyState } from "@/components/ui/empty-state";
 import { toast } from "sonner";
 import { format } from "date-fns";
+import { useLanguage } from "@/i18n";
 
 const typeConfig: Record<string, { label: string; icon: typeof ImageIcon; color: string }> = {
   design: { label: "Design", icon: ImageIcon, color: "bg-pink-100 text-pink-700" },
@@ -77,6 +78,7 @@ const statusConfig: Record<string, { label: string; color: string }> = {
 };
 
 export default function TaskRequestsPage() {
+  const { t } = useLanguage();
   const [selectedRequestId, setSelectedRequestId] = useState<string | null>(null);
   const [isDetailOpen, setIsDetailOpen] = useState(false);
   const [isCreateTaskOpen, setIsCreateTaskOpen] = useState(false);
@@ -184,7 +186,7 @@ export default function TaskRequestsPage() {
   };
 
   // Loading state
-  if (isLoading) return <PageLoading text="Loading task requests..." />;
+  if (isLoading) return <PageLoading text={t.common.loading} />;
 
   // Error state
   if (error) return <PageError error={error} onRetry={() => refetch()} />;
@@ -198,13 +200,13 @@ export default function TaskRequestsPage() {
             <Link href="/inbox">
               <Button variant="ghost" size="sm">
                 <ArrowLeft className="h-4 w-4 mr-1" />
-                Back to Inbox
+                {t.common.back}
               </Button>
             </Link>
           </div>
-          <h1 className="text-2xl font-bold">Task Requests</h1>
+          <h1 className="text-2xl font-bold">{t.inbox.requests.title}</h1>
           <p className="text-muted-foreground">
-            External task requests from other departments
+            {t.inbox.requests.subtitle}
           </p>
         </div>
       </div>
@@ -272,10 +274,10 @@ export default function TaskRequestsPage() {
       <div className="flex items-center gap-4">
         <Select value={typeFilter} onValueChange={setTypeFilter}>
           <SelectTrigger className="w-[150px]">
-            <SelectValue placeholder="All Types" />
+            <SelectValue placeholder={t.common.all} />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="all">All Types</SelectItem>
+            <SelectItem value="all">{t.common.all}</SelectItem>
             <SelectItem value="design">Design</SelectItem>
             <SelectItem value="content">Content</SelectItem>
             <SelectItem value="video">Video</SelectItem>
@@ -284,26 +286,26 @@ export default function TaskRequestsPage() {
         </Select>
         <Select value={urgencyFilter} onValueChange={setUrgencyFilter}>
           <SelectTrigger className="w-[150px]">
-            <SelectValue placeholder="All Urgency" />
+            <SelectValue placeholder={t.inbox.opportunities.priority} />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="all">All Urgency</SelectItem>
-            <SelectItem value="urgent">Urgent</SelectItem>
-            <SelectItem value="normal">Normal</SelectItem>
-            <SelectItem value="low">Low</SelectItem>
+            <SelectItem value="all">{t.common.all}</SelectItem>
+            <SelectItem value="urgent">{t.tasks.priorities.urgent}</SelectItem>
+            <SelectItem value="normal">{t.tasks.priorities.medium}</SelectItem>
+            <SelectItem value="low">{t.tasks.priorities.low}</SelectItem>
           </SelectContent>
         </Select>
         <Select value={statusFilter} onValueChange={setStatusFilter}>
           <SelectTrigger className="w-[150px]">
-            <SelectValue placeholder="All Status" />
+            <SelectValue placeholder={t.tasks.status} />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="all">All Status</SelectItem>
-            <SelectItem value="new">New</SelectItem>
-            <SelectItem value="accepted">Accepted</SelectItem>
-            <SelectItem value="declined">Declined</SelectItem>
-            <SelectItem value="in_progress">In Progress</SelectItem>
-            <SelectItem value="completed">Completed</SelectItem>
+            <SelectItem value="all">{t.common.all}</SelectItem>
+            <SelectItem value="new">{t.tasks.requests.newRequest}</SelectItem>
+            <SelectItem value="accepted">{t.tasks.requests.approve}</SelectItem>
+            <SelectItem value="declined">{t.tasks.requests.reject}</SelectItem>
+            <SelectItem value="in_progress">{t.common.inProgress}</SelectItem>
+            <SelectItem value="completed">{t.common.completed}</SelectItem>
           </SelectContent>
         </Select>
       </div>
@@ -315,8 +317,8 @@ export default function TaskRequestsPage() {
             <CardContent className="p-0">
               <EmptyState
                 icon={FileText}
-                title="No requests found"
-                description="Try adjusting your filters to see more results"
+                title={t.inbox.requests.noRequests}
+                description={t.inbox.requests.subtitle}
               />
             </CardContent>
           </Card>
@@ -406,7 +408,7 @@ export default function TaskRequestsPage() {
                         }}
                       >
                         <XCircle className="h-4 w-4 mr-1" />
-                        Decline
+                        {t.tasks.requests.reject}
                       </Button>
                       <Button
                         size="sm"
@@ -416,7 +418,7 @@ export default function TaskRequestsPage() {
                         }}
                       >
                         <CheckCircle className="h-4 w-4 mr-1" />
-                        Accept
+                        {t.tasks.requests.approve}
                       </Button>
                     </div>
                   )}
@@ -549,7 +551,7 @@ export default function TaskRequestsPage() {
 
                 <DialogFooter className="gap-2">
                   <Button variant="outline" onClick={() => setIsDetailOpen(false)}>
-                    Close
+                    {t.common.close}
                   </Button>
                   {selectedRequest.status === "new" && (
                     <>
@@ -559,13 +561,13 @@ export default function TaskRequestsPage() {
                         onClick={() => handleDecline(selectedRequest.id)}
                       >
                         <XCircle className="h-4 w-4 mr-1" />
-                        Decline
+                        {t.tasks.requests.reject}
                       </Button>
                       <Button
                         onClick={() => handleAccept(selectedRequest)}
                       >
                         <CheckCircle className="h-4 w-4 mr-1" />
-                        Accept & Create Task
+                        {t.tasks.requests.approve} & {t.inbox.opportunities.createTask}
                       </Button>
                     </>
                   )}
@@ -582,10 +584,10 @@ export default function TaskRequestsPage() {
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <CheckSquare className="h-5 w-5" />
-              Create Task from Request
+              {t.inbox.opportunities.createTask}
             </DialogTitle>
             <DialogDescription>
-              Request accepted. Select an assignee to create the task.
+              {t.inbox.opportunities.assignTo}
             </DialogDescription>
           </DialogHeader>
 
@@ -655,14 +657,14 @@ export default function TaskRequestsPage() {
 
           <DialogFooter>
             <Button variant="outline" onClick={() => setIsCreateTaskOpen(false)}>
-              Cancel
+              {t.common.cancel}
             </Button>
             <Button
               onClick={handleCreateTask}
               disabled={acceptRequest.isPending || !selectedAssignee}
             >
               <CheckSquare className="h-4 w-4 mr-1" />
-              {acceptRequest.isPending ? "Creating..." : "Accept & Create Task"}
+              {acceptRequest.isPending ? t.common.loading : `${t.tasks.requests.approve} & ${t.inbox.opportunities.createTask}`}
             </Button>
           </DialogFooter>
         </DialogContent>

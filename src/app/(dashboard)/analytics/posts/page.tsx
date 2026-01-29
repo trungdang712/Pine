@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useMemo } from "react";
+import { useLanguage } from "@/i18n";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -50,6 +51,7 @@ type PlatformFilter = "all" | "google_ads" | "facebook" | "instagram" | "zalo" |
 type TimeRange = "7d" | "30d" | "90d";
 
 export default function PostsPage() {
+  const { t } = useLanguage();
   const [selectedPostId, setSelectedPostId] = useState<string | null>(null);
   const [platformFilter, setPlatformFilter] = useState<PlatformFilter>("all");
   const [timeRange, setTimeRange] = useState<TimeRange>("30d");
@@ -436,7 +438,7 @@ export default function PostsPage() {
     );
   };
 
-  if (isLoading) return <PageLoading text="Dang tai du lieu posts..." />;
+  if (isLoading) return <PageLoading text={t.common.loading} />;
   if (error) return <PageError error={error} onRetry={refetch} />;
 
   return (
@@ -451,7 +453,7 @@ export default function PostsPage() {
             <SelectValue placeholder="Platform" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="all">Tat ca</SelectItem>
+            <SelectItem value="all">{t.common.all}</SelectItem>
             <SelectItem value="facebook">Facebook</SelectItem>
             <SelectItem value="instagram">Instagram</SelectItem>
             <SelectItem value="zalo">Zalo</SelectItem>
@@ -471,7 +473,7 @@ export default function PostsPage() {
         <div className="relative flex-1 max-w-sm">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
           <Input
-            placeholder="Tim kiem post..."
+            placeholder={t.common.search}
             className="pl-10"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
@@ -490,19 +492,19 @@ export default function PostsPage() {
       <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
         <Card>
           <CardContent className="p-4">
-            <p className="text-sm text-muted-foreground mb-1">Total Posts</p>
+            <p className="text-sm text-muted-foreground mb-1">{t.analytics.posts.totalPosts}</p>
             <p className="text-2xl font-bold">{summaryStats.totalPosts}</p>
           </CardContent>
         </Card>
         <Card>
           <CardContent className="p-4">
-            <p className="text-sm text-muted-foreground mb-1">Total Reach</p>
+            <p className="text-sm text-muted-foreground mb-1">{t.analytics.posts.reach}</p>
             <p className="text-2xl font-bold">{formatNumber(summaryStats.totalReach)}</p>
           </CardContent>
         </Card>
         <Card>
           <CardContent className="p-4">
-            <p className="text-sm text-muted-foreground mb-1">Total Engagement</p>
+            <p className="text-sm text-muted-foreground mb-1">{t.analytics.posts.engagement}</p>
             <p className="text-2xl font-bold">{formatNumber(summaryStats.totalEngagement)}</p>
           </CardContent>
         </Card>
@@ -565,12 +567,12 @@ export default function PostsPage() {
       {/* Top Performing Posts */}
       {filteredPosts.length === 0 ? (
         <PageEmpty
-          title="Chua co post nao"
-          description="Chua co social post nao duoc tao hoac khong co post phu hop voi bo loc."
+          title={t.common.noData}
+          description={t.common.noData}
         />
       ) : (
         <div>
-          <h3 className="text-lg font-semibold mb-4">Top Performing Posts</h3>
+          <h3 className="text-lg font-semibold mb-4">{t.analytics.posts.topPosts}</h3>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             {filteredPosts.slice(0, 9).map((post) => {
               const postType = getPostType(post);
@@ -593,7 +595,7 @@ export default function PostsPage() {
                     </p>
                     <div className="grid grid-cols-2 gap-2 text-sm mb-3">
                       <div>
-                        <p className="text-muted-foreground text-xs">Reach</p>
+                        <p className="text-muted-foreground text-xs">{t.analytics.posts.reach}</p>
                         <p className="font-semibold">{formatNumber(post.reach)}</p>
                       </div>
                       <div>

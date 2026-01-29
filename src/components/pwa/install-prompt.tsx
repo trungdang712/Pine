@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { X, Download, Smartphone } from 'lucide-react';
+import { useLanguage } from '@/i18n';
 
 interface BeforeInstallPromptEvent extends Event {
   readonly platforms: string[];
@@ -22,6 +23,7 @@ const STORAGE_KEY = 'pwa-install-prompt-dismissed';
 const DISMISS_DURATION_DAYS = 7; // Don't show again for 7 days after dismissal
 
 export function InstallPrompt() {
+  const { t } = useLanguage();
   const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(null);
   const [showPrompt, setShowPrompt] = useState(false);
   const [isInstalled, setIsInstalled] = useState(false);
@@ -171,15 +173,15 @@ export function InstallPrompt() {
               id="install-prompt-title"
               className="text-sm font-semibold text-gray-900"
             >
-              Install Greenfield Marketing
+              {t.pwa.installTitle}
             </h3>
             <p
               id="install-prompt-description"
               className="mt-1 text-xs text-gray-500"
             >
               {isIOS
-                ? 'Tap the share button and then "Add to Home Screen" to install.'
-                : 'Add to your home screen for quick access and offline support.'}
+                ? t.pwa.installDescriptionIOS
+                : t.pwa.installDescription}
             </p>
 
             {/* Action buttons */}
@@ -190,14 +192,14 @@ export function InstallPrompt() {
                   className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-teal-600 text-white text-xs font-medium rounded-md hover:bg-teal-700 transition-colors"
                 >
                   <Download className="h-3.5 w-3.5" />
-                  Install App
+                  {t.pwa.installButton}
                 </button>
               )}
               <button
                 onClick={handleDismiss}
                 className="px-3 py-1.5 text-xs font-medium text-gray-600 hover:text-gray-800 transition-colors"
               >
-                {isIOS ? 'Got it' : 'Not now'}
+                {isIOS ? t.pwa.gotIt : t.pwa.notNow}
               </button>
             </div>
           </div>

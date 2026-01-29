@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useMemo } from "react";
+import { useLanguage } from "@/i18n";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -56,6 +57,7 @@ function formatTime(seconds: number): string {
 }
 
 export default function LandingPagesPage() {
+  const { t } = useLanguage();
   const [selectedPage, setSelectedPage] = useState<string | null>(null);
   const [dateRange, setDateRange] = useState("30d");
   const [searchQuery, setSearchQuery] = useState("");
@@ -76,7 +78,7 @@ export default function LandingPagesPage() {
 
   const landingPagesQuery = trpc.analytics.getLandingPagePerformance.useQuery(dateParams);
 
-  if (landingPagesQuery.isLoading) return <PageLoading text="Loading landing pages..." />;
+  if (landingPagesQuery.isLoading) return <PageLoading text={t.common.loading} />;
   if (landingPagesQuery.error) {
     return (
       <PageError
@@ -466,7 +468,7 @@ export default function LandingPagesPage() {
         <Card>
           <CardContent className="p-4">
             <div className="flex items-center justify-between mb-2">
-              <p className="text-sm text-muted-foreground">Tong Visitors</p>
+              <p className="text-sm text-muted-foreground">{t.analytics.landing.visitors}</p>
               <Eye className="w-4 h-4 text-muted-foreground" />
             </div>
             <p className="text-2xl font-bold">
@@ -478,7 +480,7 @@ export default function LandingPagesPage() {
         <Card>
           <CardContent className="p-4">
             <div className="flex items-center justify-between mb-2">
-              <p className="text-sm text-muted-foreground">Tong Conversions</p>
+              <p className="text-sm text-muted-foreground">{t.analytics.campaigns.conversions}</p>
               <Target className="w-4 h-4 text-muted-foreground" />
             </div>
             <p className="text-2xl font-bold">{totalConversions}</p>
@@ -489,7 +491,7 @@ export default function LandingPagesPage() {
           <CardContent className="p-4">
             <div className="flex items-center justify-between mb-2">
               <p className="text-sm text-muted-foreground">
-                Conversion Rate TB
+                {t.analytics.landing.conversionRate}
               </p>
               <MousePointer className="w-4 h-4 text-muted-foreground" />
             </div>
@@ -500,7 +502,7 @@ export default function LandingPagesPage() {
         <Card>
           <CardContent className="p-4">
             <div className="flex items-center justify-between mb-2">
-              <p className="text-sm text-muted-foreground">Bounce Rate TB</p>
+              <p className="text-sm text-muted-foreground">{t.analytics.landing.bounceRate}</p>
               <TrendingDown className="w-4 h-4 text-muted-foreground" />
             </div>
             <p className="text-2xl font-bold">{avgBounce.toFixed(1)}%</p>
@@ -513,7 +515,7 @@ export default function LandingPagesPage() {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           <Card className="lg:col-span-2">
             <CardHeader>
-              <CardTitle>Xu Huong Traffic & Conversion</CardTitle>
+              <CardTitle>{t.analytics.landing.title}</CardTitle>
             </CardHeader>
             <CardContent>
               <div className="w-full h-[300px]">
@@ -549,7 +551,7 @@ export default function LandingPagesPage() {
 
           <Card>
             <CardHeader>
-              <CardTitle>Phan Bo Thiet Bi</CardTitle>
+              <CardTitle>{t.analytics.overview}</CardTitle>
             </CardHeader>
             <CardContent>
               <div className="w-full h-[180px]">
@@ -598,11 +600,11 @@ export default function LandingPagesPage() {
       {/* Landing Pages Cards */}
       <Card>
         <CardHeader className="flex flex-row items-center justify-between">
-          <CardTitle>Chi Tiet Landing Pages</CardTitle>
+          <CardTitle>{t.analytics.landing.title}</CardTitle>
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
             <Input
-              placeholder="Tim kiem landing page..."
+              placeholder={t.common.search}
               className="pl-10 w-[250px]"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
@@ -614,9 +616,7 @@ export default function LandingPagesPage() {
             <div className="text-center py-12">
               <Eye className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
               <p className="text-muted-foreground">
-                {searchQuery
-                  ? "Khong tim thay landing page nao"
-                  : "Chua co landing page nao"}
+                {t.common.noData}
               </p>
             </div>
           ) : (

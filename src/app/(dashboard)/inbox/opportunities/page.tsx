@@ -46,6 +46,7 @@ import { PageError } from "@/components/ui/error-display";
 import { EmptyState } from "@/components/ui/empty-state";
 import { toast } from "sonner";
 import { format } from "date-fns";
+import { useLanguage } from "@/i18n";
 
 // Map DB type values to UI config
 const typeConfig: Record<string, { label: string; icon: typeof Mic; color: string }> = {
@@ -113,6 +114,7 @@ function getSuggestedContent(type: string): string[] {
 }
 
 export default function ContentOpportunitiesPage() {
+  const { t } = useLanguage();
   const [selectedOpportunityId, setSelectedOpportunityId] = useState<string | null>(null);
   const [isDetailOpen, setIsDetailOpen] = useState(false);
   const [isConvertModalOpen, setIsConvertModalOpen] = useState(false);
@@ -208,7 +210,7 @@ export default function ContentOpportunitiesPage() {
   };
 
   // Loading state
-  if (isLoading) return <PageLoading text="Loading content opportunities..." />;
+  if (isLoading) return <PageLoading text={t.common.loading} />;
 
   // Error state
   if (error) return <PageError error={error} onRetry={() => refetch()} />;
@@ -222,13 +224,13 @@ export default function ContentOpportunitiesPage() {
             <Link href="/inbox">
               <Button variant="ghost" size="sm">
                 <ArrowLeft className="h-4 w-4 mr-1" />
-                Back to Inbox
+                {t.common.back}
               </Button>
             </Link>
           </div>
-          <h1 className="text-2xl font-bold">Content Opportunities</h1>
+          <h1 className="text-2xl font-bold">{t.inbox.opportunities.title}</h1>
           <p className="text-muted-foreground">
-            Content opportunities from Sales, Nurse and Doctor teams
+            {t.inbox.opportunities.subtitle}
           </p>
         </div>
       </div>
@@ -296,10 +298,10 @@ export default function ContentOpportunitiesPage() {
       <div className="flex items-center gap-4">
         <Select value={typeFilter} onValueChange={setTypeFilter}>
           <SelectTrigger className="w-[180px]">
-            <SelectValue placeholder="All Types" />
+            <SelectValue placeholder={t.common.all} />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="all">All Types</SelectItem>
+            <SelectItem value="all">{t.common.all}</SelectItem>
             <SelectItem value="testimonial">Testimonial</SelectItem>
             <SelectItem value="before_after">Before/After</SelectItem>
             <SelectItem value="success_story">Success Story</SelectItem>
@@ -308,16 +310,16 @@ export default function ContentOpportunitiesPage() {
         </Select>
         <Select value={statusFilter} onValueChange={setStatusFilter}>
           <SelectTrigger className="w-[180px]">
-            <SelectValue placeholder="All Status" />
+            <SelectValue placeholder={t.tasks.status} />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="all">All Status</SelectItem>
-            <SelectItem value="new">New</SelectItem>
-            <SelectItem value="accepted">Accepted</SelectItem>
-            <SelectItem value="declined">Declined</SelectItem>
-            <SelectItem value="need_more_info">Needs Info</SelectItem>
-            <SelectItem value="in_progress">In Progress</SelectItem>
-            <SelectItem value="published">Published</SelectItem>
+            <SelectItem value="all">{t.common.all}</SelectItem>
+            <SelectItem value="new">{t.tasks.requests.newRequest}</SelectItem>
+            <SelectItem value="accepted">{t.tasks.requests.approve}</SelectItem>
+            <SelectItem value="declined">{t.tasks.requests.reject}</SelectItem>
+            <SelectItem value="need_more_info">{t.common.info}</SelectItem>
+            <SelectItem value="in_progress">{t.common.inProgress}</SelectItem>
+            <SelectItem value="published">{t.dashboard.status.published}</SelectItem>
           </SelectContent>
         </Select>
       </div>
@@ -329,8 +331,8 @@ export default function ContentOpportunitiesPage() {
             <CardContent className="p-0">
               <EmptyState
                 icon={Camera}
-                title="No opportunities found"
-                description="Try adjusting your filters or check back later for new content opportunities."
+                title={t.inbox.opportunities.noOpportunities}
+                description={t.inbox.opportunities.subtitle}
               />
             </CardContent>
           </Card>
@@ -408,7 +410,7 @@ export default function ContentOpportunitiesPage() {
                         }}
                       >
                         <MessageSquare className="h-4 w-4 mr-1" />
-                        Need Info
+                        {t.common.info}
                       </Button>
                       <Button
                         size="sm"
@@ -421,7 +423,7 @@ export default function ContentOpportunitiesPage() {
                         }}
                       >
                         <XCircle className="h-4 w-4 mr-1" />
-                        Decline
+                        {t.tasks.requests.reject}
                       </Button>
                       <Button
                         size="sm"
@@ -432,7 +434,7 @@ export default function ContentOpportunitiesPage() {
                         }}
                       >
                         <CheckCircle className="h-4 w-4 mr-1" />
-                        Accept
+                        {t.tasks.requests.approve}
                       </Button>
                     </div>
                   )}
@@ -448,7 +450,7 @@ export default function ContentOpportunitiesPage() {
                         }}
                       >
                         <CheckSquare className="h-4 w-4 mr-1" />
-                        Create Task
+                        {t.inbox.opportunities.createTask}
                       </Button>
                       <Button
                         size="sm"
@@ -460,7 +462,7 @@ export default function ContentOpportunitiesPage() {
                         }}
                       >
                         <FileText className="h-4 w-4 mr-1" />
-                        Create Proposal
+                        {t.proposals.createProposal}
                       </Button>
                     </div>
                   )}
@@ -564,10 +566,10 @@ export default function ContentOpportunitiesPage() {
 
                     {/* Response / Add comment */}
                     <div>
-                      <Label htmlFor="response">Response / Notes</Label>
+                      <Label htmlFor="response">{t.inbox.requests.respond}</Label>
                       <Textarea
                         id="response"
-                        placeholder="Add notes or request more information..."
+                        placeholder={t.tasks.addComment}
                         value={response}
                         onChange={(e) => setResponse(e.target.value)}
                         className="mt-2"
@@ -580,7 +582,7 @@ export default function ContentOpportunitiesPage() {
                           disabled={addComment.isPending}
                           onClick={() => handleAddComment(selectedOpportunity.id)}
                         >
-                          Add Comment
+                          {t.tasks.addComment}
                         </Button>
                       )}
                     </div>
@@ -636,7 +638,7 @@ export default function ContentOpportunitiesPage() {
                     {selectedOpportunity.status === "accepted" && (
                       <Card className="border-green-200">
                         <CardHeader>
-                          <CardTitle className="text-base">Convert to</CardTitle>
+                          <CardTitle className="text-base">{t.common.create}</CardTitle>
                         </CardHeader>
                         <CardContent className="space-y-2">
                           <Button
@@ -646,7 +648,7 @@ export default function ContentOpportunitiesPage() {
                             onClick={() => openConvertModal("task")}
                           >
                             <CheckSquare className="w-4 h-4" />
-                            Create Task
+                            {t.inbox.opportunities.createTask}
                           </Button>
                           <Button
                             variant="outline"
@@ -655,7 +657,7 @@ export default function ContentOpportunitiesPage() {
                             onClick={() => openConvertModal("proposal")}
                           >
                             <FileText className="w-4 h-4" />
-                            Create Proposal
+                            {t.proposals.createProposal}
                           </Button>
                         </CardContent>
                       </Card>
@@ -665,7 +667,7 @@ export default function ContentOpportunitiesPage() {
 
                 <DialogFooter className="gap-2">
                   <Button variant="outline" onClick={() => setIsDetailOpen(false)}>
-                    Close
+                    {t.common.close}
                   </Button>
                   {selectedOpportunity.status === "new" && (
                     <>
@@ -675,7 +677,7 @@ export default function ContentOpportunitiesPage() {
                         onClick={() => handleNeedMoreInfo(selectedOpportunity.id)}
                       >
                         <MessageSquare className="h-4 w-4 mr-1" />
-                        Need More Info
+                        {t.common.info}
                       </Button>
                       <Button
                         variant="destructive"
@@ -683,14 +685,14 @@ export default function ContentOpportunitiesPage() {
                         onClick={() => handleDecline(selectedOpportunity.id)}
                       >
                         <XCircle className="h-4 w-4 mr-1" />
-                        Decline
+                        {t.tasks.requests.reject}
                       </Button>
                       <Button
                         disabled={updateOpportunity.isPending}
                         onClick={() => handleAccept(selectedOpportunity.id)}
                       >
                         <CheckCircle className="h-4 w-4 mr-1" />
-                        Accept
+                        {t.tasks.requests.approve}
                       </Button>
                     </>
                   )}
@@ -706,10 +708,10 @@ export default function ContentOpportunitiesPage() {
         <DialogContent className="max-w-[100vw] sm:max-w-[600px] w-full max-h-[100dvh] sm:max-h-[80vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>
-              {convertType === "task" ? "Convert to Task" : "Convert to Proposal"}
+              {convertType === "task" ? t.inbox.opportunities.createTask : t.proposals.createProposal}
             </DialogTitle>
             <DialogDescription>
-              Pre-fill information from this content opportunity
+              {t.inbox.opportunities.subtitle}
             </DialogDescription>
           </DialogHeader>
 
@@ -762,13 +764,13 @@ export default function ContentOpportunitiesPage() {
 
           <DialogFooter>
             <Button variant="outline" onClick={() => setIsConvertModalOpen(false)}>
-              Cancel
+              {t.common.cancel}
             </Button>
             <Button onClick={() => {
               setIsConvertModalOpen(false);
-              toast.success(convertType === "task" ? "Task created" : "Proposal created");
+              toast.success(convertType === "task" ? t.common.success : t.common.success);
             }}>
-              {convertType === "task" ? "Create Task" : "Create Proposal"}
+              {convertType === "task" ? t.inbox.opportunities.createTask : t.proposals.createProposal}
             </Button>
           </DialogFooter>
         </DialogContent>

@@ -38,6 +38,7 @@ import { PageError } from "@/components/ui/error-display";
 import { PageEmpty } from "@/components/ui/empty-state";
 import { toast } from "sonner";
 import { format } from "date-fns";
+import { useLanguage } from "@/i18n";
 
 const opportunityTypeLabels: Record<string, { label: string; color: string }> = {
   testimonial: { label: "Testimonial", color: "bg-blue-100 text-blue-800" },
@@ -71,6 +72,7 @@ const statusConfig: Record<string, { label: string; variant: "default" | "second
 };
 
 export default function InboxPage() {
+  const { t } = useLanguage();
   const [activeTab, setActiveTab] = useState("opportunities");
   const [selectedOpportunity, setSelectedOpportunity] = useState<string | null>(null);
   const [selectedRequest, setSelectedRequest] = useState<string | null>(null);
@@ -152,16 +154,16 @@ export default function InboxPage() {
   const isLoading = loadingOpportunities || loadingRequests;
   const error = opportunitiesError || requestsError;
 
-  if (isLoading) return <PageLoading text="Đang tải inbox..." />;
+  if (isLoading) return <PageLoading text={t.common.loading} />;
   if (error) return <PageError error={error} onRetry={() => { refetchOpportunities(); refetchRequests(); }} />;
 
   return (
     <div className="p-4 md:p-6 space-y-4 md:space-y-6">
       {/* Header */}
       <div>
-        <h1 className="text-2xl font-semibold mb-1">Inbox Hub</h1>
+        <h1 className="text-2xl font-semibold mb-1">{t.inbox.title}</h1>
         <p className="text-muted-foreground">
-          Nhận và xử lý yêu cầu từ các bộ phận khác
+          {t.inbox.subtitle}
         </p>
       </div>
 
@@ -171,7 +173,7 @@ export default function InboxPage() {
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-muted-foreground">Content Opportunities</p>
+                <p className="text-sm text-muted-foreground">{t.inbox.opportunities.title}</p>
                 <p className="text-2xl font-semibold">{opportunities.length}</p>
               </div>
               <MessageSquare className="w-8 h-8 text-blue-500" />
@@ -182,7 +184,7 @@ export default function InboxPage() {
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-muted-foreground">Task Requests</p>
+                <p className="text-sm text-muted-foreground">{t.inbox.requests.title}</p>
                 <p className="text-2xl font-semibold">{taskRequests.length}</p>
               </div>
               <FileText className="w-8 h-8 text-purple-500" />
@@ -193,7 +195,7 @@ export default function InboxPage() {
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-muted-foreground">Cần xử lý</p>
+                <p className="text-sm text-muted-foreground">{t.common.pending}</p>
                 <p className="text-2xl font-semibold">{newOpportunitiesCount + newRequestsCount}</p>
               </div>
               <AlertTriangle className="w-8 h-8 text-yellow-500" />
@@ -204,7 +206,7 @@ export default function InboxPage() {
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-muted-foreground">Đang xử lý</p>
+                <p className="text-sm text-muted-foreground">{t.common.inProgress}</p>
                 <p className="text-2xl font-semibold">
                   {opportunities.filter((o) => o.status === "in_progress").length +
                     taskRequests.filter((r) => r.status === "in_progress").length}
@@ -220,7 +222,7 @@ export default function InboxPage() {
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
         <TabsList>
           <TabsTrigger value="opportunities" className="gap-2">
-            Content Opportunities
+            {t.inbox.opportunities.title}
             {newOpportunitiesCount > 0 && (
               <Badge variant="destructive" className="ml-1">
                 {newOpportunitiesCount}
@@ -228,7 +230,7 @@ export default function InboxPage() {
             )}
           </TabsTrigger>
           <TabsTrigger value="requests" className="gap-2">
-            Task Requests
+            {t.inbox.requests.title}
             {newRequestsCount > 0 && (
               <Badge variant="destructive" className="ml-1">
                 {newRequestsCount}
@@ -242,8 +244,8 @@ export default function InboxPage() {
           {opportunities.length === 0 ? (
             <PageEmpty
               icon={MessageSquare}
-              title="Không có content opportunity nào"
-              description="Khi có cơ hội content mới từ sales/nurse team, chúng sẽ xuất hiện ở đây"
+              title={t.inbox.opportunities.noOpportunities}
+              description={t.inbox.opportunities.subtitle}
             />
           ) : (
             <div className="space-y-3">
@@ -313,8 +315,8 @@ export default function InboxPage() {
           {taskRequests.length === 0 ? (
             <PageEmpty
               icon={FileText}
-              title="Không có task request nào"
-              description="Khi có yêu cầu task mới từ các bộ phận khác, chúng sẽ xuất hiện ở đây"
+              title={t.inbox.requests.noRequests}
+              description={t.inbox.requests.subtitle}
             />
           ) : (
             <div className="space-y-3">
@@ -398,7 +400,7 @@ export default function InboxPage() {
           {selectedOpp && (
             <>
               <DialogHeader>
-                <DialogTitle>Content Opportunity</DialogTitle>
+                <DialogTitle>{t.inbox.opportunities.title}</DialogTitle>
                 <DialogDescription>
                   <div className="flex flex-wrap items-center gap-2 mt-2">
                     <span
@@ -465,10 +467,10 @@ export default function InboxPage() {
 
                 {selectedOpp.status === "new" && (
                   <div>
-                    <Label className="text-sm text-muted-foreground">Assign To</Label>
+                    <Label className="text-sm text-muted-foreground">{t.inbox.opportunities.assignTo}</Label>
                     <Select value={selectedAssignee} onValueChange={setSelectedAssignee}>
                       <SelectTrigger className="mt-1">
-                        <SelectValue placeholder="Chọn người được giao..." />
+                        <SelectValue placeholder={t.inbox.opportunities.assignTo} />
                       </SelectTrigger>
                       <SelectContent>
                         {users.map((user) => (
@@ -492,13 +494,13 @@ export default function InboxPage() {
                       disabled={updateOpportunity.isPending}
                     >
                       <XCircle className="w-4 h-4" />
-                      Từ chối
+                      {t.tasks.requests.reject}
                     </Button>
                     <Button
                       className="gap-2"
                       onClick={() => {
                         if (!selectedAssignee) {
-                          toast.error("Vui lòng chọn người được giao");
+                          toast.error(t.inbox.opportunities.assignTo);
                           return;
                         }
                         handleAcceptOpportunity(selectedOpp.id, selectedAssignee);
@@ -506,12 +508,12 @@ export default function InboxPage() {
                       disabled={updateOpportunity.isPending || !selectedAssignee}
                     >
                       <CheckCircle className="w-4 h-4" />
-                      Chấp nhận
+                      {t.tasks.requests.approve}
                     </Button>
                   </>
                 )}
                 <Button variant="outline" onClick={() => setIsOpportunityDetailOpen(false)}>
-                  Đóng
+                  {t.common.close}
                 </Button>
               </DialogFooter>
             </>
@@ -588,10 +590,10 @@ export default function InboxPage() {
 
                 {selectedReq.status === "new" && (
                   <div>
-                    <Label className="text-sm text-muted-foreground">Assign To</Label>
+                    <Label className="text-sm text-muted-foreground">{t.inbox.opportunities.assignTo}</Label>
                     <Select value={selectedAssignee} onValueChange={setSelectedAssignee}>
                       <SelectTrigger className="mt-1">
-                        <SelectValue placeholder="Chọn người được giao..." />
+                        <SelectValue placeholder={t.inbox.opportunities.assignTo} />
                       </SelectTrigger>
                       <SelectContent>
                         {users.map((user) => (
@@ -615,7 +617,7 @@ export default function InboxPage() {
                       disabled={declineRequest.isPending}
                     >
                       <XCircle className="w-4 h-4" />
-                      Từ chối
+                      {t.tasks.requests.reject}
                     </Button>
                     <Button
                       className="gap-2"
@@ -623,12 +625,12 @@ export default function InboxPage() {
                       disabled={acceptRequest.isPending || !selectedAssignee}
                     >
                       <CheckCircle className="w-4 h-4" />
-                      Chấp nhận & Tạo Task
+                      {t.tasks.requests.approve} & {t.inbox.opportunities.createTask}
                     </Button>
                   </>
                 )}
                 <Button variant="outline" onClick={() => setIsRequestDetailOpen(false)}>
-                  Đóng
+                  {t.common.close}
                 </Button>
               </DialogFooter>
             </>
