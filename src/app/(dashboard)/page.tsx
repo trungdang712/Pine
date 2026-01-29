@@ -168,29 +168,35 @@ export default function DashboardPage() {
     return (t.dashboard.status as Record<string, string>)[key] || key;
   };
 
-  // Fetch real data
-  const { data: taskStats, isLoading: loadingTaskStats } = trpc.task.getTaskStats.useQuery(undefined, {
-    enabled: isAuthenticated,
-  });
-
-  const { data: recentAlerts = [], isLoading: loadingAlerts } = trpc.alerts.getMyAlerts.useQuery(
-    { limit: 5 },
-    { enabled: isAuthenticated }
-  );
-
-  // Get upcoming calendar items (next 2 weeks)
-  const now = new Date();
-  const twoWeeksFromNow = new Date(now.getTime() + 14 * 24 * 60 * 60 * 1000);
-  const { data: calendarItems = [], isLoading: loadingCalendar } = trpc.calendar.getItems.useQuery(
-    {
+  // Get stable date range for calendar query (memoized to prevent re-renders)
+  const [dateRange] = useState(() => {
+    const now = new Date();
+    const twoWeeksFromNow = new Date(now.getTime() + 14 * 24 * 60 * 60 * 1000);
+    return {
       startDate: now.toISOString(),
       endDate: twoWeeksFromNow.toISOString(),
-    },
-    { enabled: isAuthenticated }
+    };
+  });
+
+  // Fetch real data with error handling
+  const { data: taskStats, isLoading: loadingTaskStats, error: taskStatsError } = trpc.task.getTaskStats.useQuery(undefined, {
+    enabled: isAuthenticated,
+    retry: 1,
+  });
+
+  const { data: recentAlerts = [], isLoading: loadingAlerts, error: alertsError } = trpc.alerts.getMyAlerts.useQuery(
+    { limit: 5 },
+    { enabled: isAuthenticated, retry: 1 }
   );
 
-  const { data: myPoints, isLoading: loadingPoints } = trpc.gamification.getMyPoints.useQuery(undefined, {
+  const { data: calendarItems = [], isLoading: loadingCalendar, error: calendarError } = trpc.calendar.getItems.useQuery(
+    dateRange,
+    { enabled: isAuthenticated, retry: 1 }
+  );
+
+  const { data: myPoints, isLoading: loadingPoints, error: pointsError } = trpc.gamification.getMyPoints.useQuery(undefined, {
     enabled: isAuthenticated,
+    retry: 1,
   });
 
   const currentDate = new Date().toLocaleDateString(language === "vi" ? "vi-VN" : "en-US", {
@@ -271,7 +277,10 @@ export default function DashboardPage() {
 
   const kpis = generateKPIs();
 
-  const isLoading = loadingTaskStats || loadingAlerts || loadingCalendar || loadingPoints;
+  // Only consider still loading if there's no error - errors should stop the loading state
+  const isLoadingKPIs = (loadingTaskStats && !taskStatsError) || (loadingPoints && !pointsError);
+  const isLoadingCalendar = loadingCalendar && !calendarError;
+  const isLoadingAlerts = loadingAlerts && !alertsError;
 
   return (
     <div className="p-4 md:p-6 space-y-4 md:space-y-6">
@@ -306,7 +315,7 @@ export default function DashboardPage() {
 
       {/* KPI Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        {isLoading ? (
+        {isLoadingKPIs ? (
           Array(4).fill(0).map((_, i) => (
             <Card key={i} className="p-4">
               <LoadingSpinner size="sm" />
@@ -335,8 +344,12 @@ export default function DashboardPage() {
             <CardTitle>{t.dashboard.upcomingContent}</CardTitle>
           </CardHeader>
           <CardContent>
-            {loadingCalendar ? (
+            {isLoadingCalendar ? (
               <LoadingSpinner size="sm" />
+            ) : calendarError ? (
+              <div className="text-center py-8 text-muted-foreground text-sm">
+                {t.errors.generic}
+              </div>
             ) : calendarItems.length === 0 ? (
               <div className="text-center py-8 text-muted-foreground">
                 {t.dashboard.noUpcomingContent}
@@ -393,8 +406,12 @@ export default function DashboardPage() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            {loadingAlerts ? (
+            {isLoadingAlerts ? (
               <LoadingSpinner size="sm" />
+            ) : alertsError ? (
+              <div className="text-center py-8 text-muted-foreground text-sm">
+                {t.errors.generic}
+              </div>
             ) : recentAlerts.length === 0 ? (
               <div className="text-center py-8 text-muted-foreground">
                 {t.dashboard.noNewNotifications}
