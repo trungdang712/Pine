@@ -55,18 +55,8 @@ export default function LoginPage() {
       <Card className="w-full max-w-md">
         <CardHeader className="text-center">
           <div className="mx-auto mb-4">
-            <img
-              src="/logo.png"
-              alt="Greenfield Dental"
-              className="h-16 w-auto mx-auto"
-              onError={(e) => {
-                // Fallback to text if logo doesn't exist
-                e.currentTarget.style.display = 'none';
-                e.currentTarget.nextElementSibling?.classList.remove('hidden');
-              }}
-            />
-            <div className="hidden h-12 w-12 mx-auto items-center justify-center rounded-xl bg-primary">
-              <span className="text-2xl font-bold text-primary-foreground">GF</span>
+            <div className="h-16 w-16 mx-auto flex items-center justify-center rounded-xl bg-primary">
+              <span className="text-3xl font-bold text-primary-foreground">GF</span>
             </div>
           </div>
           <CardDescription className="italic text-base">
