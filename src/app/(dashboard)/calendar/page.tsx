@@ -162,6 +162,9 @@ export default function CalendarPage() {
     endDate,
   });
 
+  // Fetch team members for assignee dropdown
+  const { data: teamMembers = [] } = trpc.user.getTeamMembers.useQuery();
+
   // Mutations
   const utils = trpc.useUtils();
 
@@ -912,12 +915,21 @@ export default function CalendarPage() {
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <Label>{t.tasks.assignee}</Label>
-                <Input
-                  placeholder={t.tasks.assignee}
-                  className="mt-1"
+                <Select
                   value={newContent.assignee}
-                  onChange={(e) => setNewContent({ ...newContent, assignee: e.target.value })}
-                />
+                  onValueChange={(value) => setNewContent({ ...newContent, assignee: value })}
+                >
+                  <SelectTrigger className="mt-1">
+                    <SelectValue placeholder={t.tasks.assignee} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {teamMembers.map((member) => (
+                      <SelectItem key={member.id} value={member.id}>
+                        {member.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
 
               <div>
