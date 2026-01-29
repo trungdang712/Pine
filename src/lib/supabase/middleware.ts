@@ -34,6 +34,9 @@ export async function updateSession(request: NextRequest) {
     return NextResponse.next({ request })
   }
 
+  // API routes need session refresh but handle their own auth/redirects
+  const isApiRoute = request.nextUrl.pathname.startsWith('/api/')
+
   let supabaseResponse = NextResponse.next({
     request,
   })
@@ -82,6 +85,11 @@ export async function updateSession(request: NextRequest) {
     request.nextUrl.pathname === route ||
     request.nextUrl.pathname.startsWith(route + '/')
   )
+
+  // API routes handle their own auth - don't redirect, just refresh session and pass through
+  if (isApiRoute) {
+    return supabaseResponse
+  }
 
   if (isProtectedRoute && !user) {
     const url = request.nextUrl.clone()
