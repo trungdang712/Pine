@@ -61,6 +61,9 @@ export const calendarRouter = createTRPCRouter({
           proposal: {
             select: { id: true, title: true },
           },
+          channel: {
+            select: { id: true, name: true, platform: true, avatarUrl: true },
+          },
           _count: {
             select: { comments: true, attachments: true, socialPosts: true },
           },
@@ -80,6 +83,9 @@ export const calendarRouter = createTRPCRouter({
           },
           proposal: {
             select: { id: true, title: true, status: true },
+          },
+          channel: {
+            select: { id: true, name: true, platform: true, avatarUrl: true },
           },
           socialPosts: true,
           comments: {
@@ -128,6 +134,7 @@ export const calendarRouter = createTRPCRouter({
         title: z.string().min(1),
         description: z.string().optional(),
         platform: platformEnum,
+        channelId: z.string().optional(),
         contentType: contentTypeEnum.optional(),
         status: contentStatusEnum.default("planned"),
         scheduledAt: z.string().datetime().optional(),
@@ -145,6 +152,9 @@ export const calendarRouter = createTRPCRouter({
           creator: {
             select: { id: true, name: true, avatar: true },
           },
+          channel: {
+            select: { id: true, name: true, platform: true, avatarUrl: true },
+          },
         },
       });
 
@@ -158,6 +168,7 @@ export const calendarRouter = createTRPCRouter({
         title: z.string().min(1).optional(),
         description: z.string().optional(),
         platform: platformEnum.optional(),
+        channelId: z.string().nullable().optional(),
         contentType: contentTypeEnum.nullable().optional(),
         status: contentStatusEnum.optional(),
         scheduledAt: z.string().datetime().nullable().optional(),
@@ -185,6 +196,9 @@ export const calendarRouter = createTRPCRouter({
         include: {
           creator: {
             select: { id: true, name: true, avatar: true },
+          },
+          channel: {
+            select: { id: true, name: true, platform: true, avatarUrl: true },
           },
         },
       });

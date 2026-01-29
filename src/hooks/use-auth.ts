@@ -11,6 +11,7 @@ interface UserProfile {
   avatar: string | null;
   team: string;
   role: string;
+  mustChangePassword: boolean;
 }
 
 interface AuthState {
@@ -27,6 +28,7 @@ const DEMO_PROFILE: UserProfile = {
   avatar: null,
   team: "marketing",
   role: "marketing_manager",
+  mustChangePassword: false,
 };
 
 // Helper for timeout
@@ -87,7 +89,7 @@ export function useAuth() {
           const profileResult = await withTimeout(
             supabase
               .from("User")
-              .select("id, email, name, avatar, team, role")
+              .select("id, email, name, avatar, team, role, mustChangePassword")
               .eq("authId", user.id)
               .single(),
             3000
@@ -124,7 +126,7 @@ export function useAuth() {
           const profileResult = await withTimeout(
             supabase
               .from("User")
-              .select("id, email, name, avatar, team, role")
+              .select("id, email, name, avatar, team, role, mustChangePassword")
               .eq("authId", session.user.id)
               .single(),
             3000

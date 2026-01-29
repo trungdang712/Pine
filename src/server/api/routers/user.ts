@@ -80,8 +80,10 @@ export const userRouter = createTRPCRouter({
         name: true,
         avatar: true,
         role: true,
+        team: true,
         createdAt: true,
         points: true,
+        mustChangePassword: true,
       },
     });
 
@@ -143,6 +145,7 @@ export const userRouter = createTRPCRouter({
           name: input.name,
           role: input.role,
           team: "marketing",
+          mustChangePassword: true, // Require password change on first login
           points: {
             create: {
               totalPoints: 0,
@@ -265,6 +268,12 @@ export const userRouter = createTRPCRouter({
           });
         }
 
+        // Clear the mustChangePassword flag
+        await ctx.prisma.user.update({
+          where: { id: ctx.session.user.id },
+          data: { mustChangePassword: false },
+        });
+
         return { success: true };
       }
 
@@ -283,7 +292,10 @@ export const userRouter = createTRPCRouter({
 
       await ctx.prisma.user.update({
         where: { id: ctx.session.user.id },
-        data: { password: hashedPassword },
+        data: {
+          password: hashedPassword,
+          mustChangePassword: false,
+        },
       });
 
       return { success: true };

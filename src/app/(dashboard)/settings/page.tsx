@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useSearchParams } from "next/navigation";
 import { useAuth } from "@/hooks/use-auth";
 import { trpc } from "@/lib/trpc";
 import { PageLoading } from "@/components/ui/loading-spinner";
@@ -67,6 +68,22 @@ export default function SettingsPage() {
   const { profile, isAuthenticated } = useAuth();
   const utils = trpc.useUtils();
   const { t, language, setLanguage } = useLanguage();
+  const searchParams = useSearchParams();
+
+  // Check if password change is required
+  const passwordChangeRequired = searchParams.get("change_password") === "required" || profile?.mustChangePassword;
+  const defaultTab = searchParams.get("tab") || (passwordChangeRequired ? "security" : "profile");
+  const [activeTab, setActiveTab] = useState(defaultTab);
+
+  // Update active tab when searchParams change
+  useEffect(() => {
+    const tab = searchParams.get("tab");
+    if (tab) {
+      setActiveTab(tab);
+    } else if (profile?.mustChangePassword) {
+      setActiveTab("security");
+    }
+  }, [searchParams, profile?.mustChangePassword]);
 
   // Profile form state
   const [profileForm, setProfileForm] = useState({
@@ -184,6 +201,10 @@ export default function SettingsPage() {
     onSuccess: () => {
       toast.success("Password updated successfully");
       setPasswordForm({ currentPassword: "", newPassword: "", confirmPassword: "" });
+      // Reload the page to refresh auth state after password change
+      if (profile?.mustChangePassword) {
+        window.location.href = "/";
+      }
     },
     onError: (error) => toast.error(error.message),
   });
@@ -766,7 +787,20 @@ export default function SettingsPage() {
         <p className="text-muted-foreground">{t.settings.subtitle}</p>
       </div>
 
-      <Tabs defaultValue="profile" className="space-y-6">
+      {/* Password change required alert */}
+      {passwordChangeRequired && (
+        <div className="mb-6 p-4 border border-yellow-300 bg-yellow-50 rounded-lg flex items-start gap-3">
+          <AlertTriangle className="w-5 h-5 text-yellow-600 flex-shrink-0 mt-0.5" />
+          <div>
+            <p className="font-medium text-yellow-800">Password Change Required</p>
+            <p className="text-sm text-yellow-700">
+              For security reasons, you must change your password before continuing. Please update your password in the Security tab below.
+            </p>
+          </div>
+        </div>
+      )}
+
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
         <TabsList className="h-auto flex-wrap">
           <TabsTrigger value="profile">
             <User className="w-4 h-4 mr-2" />
