@@ -31,7 +31,15 @@ import {
   Trash2,
   Copy,
   BarChart3,
+  FileText,
+  Download,
+  Upload,
+  Send,
+  MessageSquare,
+  Paperclip,
 } from "lucide-react";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { useUpload, formatFileSize } from "@/hooks/use-upload";
 import { trpc } from "@/lib/trpc";
 import { LoadingSpinner, PageLoading } from "@/components/ui/loading-spinner";
 import { ErrorDisplay } from "@/components/ui/error-display";
@@ -40,10 +48,12 @@ import { useLanguage } from "@/i18n";
 
 type Platform = "facebook" | "instagram" | "zalo" | "tiktok" | "website";
 type ContentStatus = "planned" | "in_production" | "ready_for_review" | "approved" | "scheduled" | "published" | "needs_revision";
+type ContentType = "social_post" | "video" | "article" | "graphic" | "carousel" | "blog_post";
 
 interface CalendarItem {
   id: string;
   platform: Platform;
+  contentType: ContentType | null;
   title: string;
   description: string | null;
   status: ContentStatus;
@@ -59,6 +69,29 @@ interface CalendarItem {
     attachments: number;
     socialPosts?: number;
   };
+}
+
+interface CalendarItemComment {
+  id: string;
+  calendarItemId: string;
+  userId: string;
+  content: string;
+  createdAt: Date;
+  user: {
+    id: string;
+    name: string | null;
+    avatar: string | null;
+  } | null;
+}
+
+interface CalendarItemAttachment {
+  id: string;
+  calendarItemId: string;
+  fileName: string;
+  fileUrl: string;
+  fileType: string | null;
+  fileSize: number | null;
+  createdAt: Date;
 }
 
 const platformColors: Record<string, string> = {
@@ -100,6 +133,16 @@ export default function CalendarPage() {
     published: t.dashboard.status.published,
     needs_revision: t.proposals.statuses.needsRevision,
   };
+
+  const contentTypeDisplayNames: Record<string, string> = {
+    social_post: t.calendar.contentTypes.socialPost,
+    video: t.calendar.contentTypes.video,
+    article: t.calendar.contentTypes.article,
+    graphic: t.calendar.contentTypes.graphic,
+    carousel: t.calendar.contentTypes.carousel,
+    blog_post: t.calendar.contentTypes.blogPost,
+  };
+
   const [selectedContent, setSelectedContent] = useState<CalendarItem | null>(null);
   const [isContentDetailOpen, setIsContentDetailOpen] = useState(false);
   const [isNewContentOpen, setIsNewContentOpen] = useState(false);
@@ -127,9 +170,12 @@ export default function CalendarPage() {
     date: "",
     time: "",
     description: "",
-    contentType: "",
+    contentType: "" as ContentType | "",
     assignee: "",
   });
+
+  // Comment state
+  const [newComment, setNewComment] = useState("");
 
   // Calculate date range for current month view
   const { startDate, endDate } = useMemo(() => {
@@ -215,6 +261,67 @@ export default function CalendarPage() {
     },
   });
 
+  const addCommentMutation = trpc.calendar.addComment.useMutation({
+    onSuccess: () => {
+      setNewComment("");
+      utils.calendar.getById.invalidate();
+    },
+    onError: (error) => {
+      toast.error(`Failed to add comment: ${error.message}`);
+    },
+  });
+
+  const addAttachmentMutation = trpc.calendar.addAttachment.useMutation({
+    onSuccess: () => {
+      toast.success("Attachment uploaded successfully");
+      utils.calendar.getById.invalidate();
+    },
+    onError: (error) => {
+      toast.error(`Failed to add attachment: ${error.message}`);
+    },
+  });
+
+  // Fetch detailed content when modal opens
+  const { data: contentDetail, isLoading: isLoadingDetail } = trpc.calendar.getById.useQuery(
+    { id: selectedContent?.id ?? "" },
+    { enabled: isContentDetailOpen && !!selectedContent?.id }
+  );
+
+  // Upload hook for attachments
+  const { upload: uploadFile, uploading: isUploading } = useUpload({
+    bucket: "attachments",
+    onSuccess: (result) => {
+      if (selectedContent) {
+        addAttachmentMutation.mutate({
+          calendarItemId: selectedContent.id,
+          fileName: result.name,
+          fileUrl: result.url,
+          fileType: result.name.split(".").pop() || undefined,
+          fileSize: result.size,
+        });
+      }
+    },
+    onError: (error) => {
+      toast.error(`Upload failed: ${error.message}`);
+    },
+  });
+
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file && selectedContent) {
+      await uploadFile(file, `calendar/${selectedContent.id}`);
+    }
+    e.target.value = "";
+  };
+
+  const handleAddComment = () => {
+    if (!newComment.trim() || !selectedContent) return;
+    addCommentMutation.mutate({
+      calendarItemId: selectedContent.id,
+      content: newComment.trim(),
+    });
+  };
+
   const daysInMonth = new Date(
     currentDate.getFullYear(),
     currentDate.getMonth() + 1,
@@ -281,9 +388,10 @@ export default function CalendarPage() {
       date: scheduledDate ? scheduledDate.toISOString().split("T")[0] : "",
       time: scheduledDate ? scheduledDate.toTimeString().slice(0, 5) : "",
       description: content.description || "",
-      contentType: "",
+      contentType: content.contentType || "",
       assignee: content.creator?.name || "",
     });
+    setNewComment("");
     setIsContentDetailOpen(true);
   };
 
@@ -299,6 +407,7 @@ export default function CalendarPage() {
       title: newContent.title,
       description: newContent.description || undefined,
       platform: newContent.platform as Platform,
+      contentType: newContent.contentType ? (newContent.contentType as ContentType) : undefined,
       status: newContent.status,
       scheduledAt: scheduledAt.toISOString(),
     });
@@ -314,6 +423,7 @@ export default function CalendarPage() {
     updateMutation.mutate({
       id: selectedContent.id,
       platform: editContent.platform as Platform || undefined,
+      contentType: editContent.contentType ? (editContent.contentType as ContentType) : null,
       status: editContent.status as ContentStatus || undefined,
       description: editContent.description || undefined,
       scheduledAt: scheduledAt,
@@ -340,6 +450,7 @@ export default function CalendarPage() {
       title: `${selectedContent.title} (Copy)`,
       description: selectedContent.description || undefined,
       platform: selectedContent.platform,
+      contentType: selectedContent.contentType || undefined,
       status: "planned",
       scheduledAt: scheduledDate.toISOString(),
     });
@@ -378,6 +489,21 @@ export default function CalendarPage() {
     if (!date) return "";
     const d = new Date(date);
     return d.toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" });
+  };
+
+  const formatCommentDate = (date: Date): string => {
+    const d = new Date(date);
+    const now = new Date();
+    const diffMs = now.getTime() - d.getTime();
+    const diffMins = Math.floor(diffMs / 60000);
+    const diffHours = Math.floor(diffMs / 3600000);
+    const diffDays = Math.floor(diffMs / 86400000);
+
+    if (diffMins < 1) return "Just now";
+    if (diffMins < 60) return `${diffMins}m ago`;
+    if (diffHours < 24) return `${diffHours}h ago`;
+    if (diffDays < 7) return `${diffDays}d ago`;
+    return d.toLocaleDateString("vi-VN", { day: "2-digit", month: "2-digit", year: "numeric" });
   };
 
   if (isLoading) {
@@ -666,7 +792,7 @@ export default function CalendarPage() {
 
       {/* Content Detail Modal */}
       <Dialog open={isContentDetailOpen} onOpenChange={setIsContentDetailOpen}>
-        <DialogContent className="max-w-[100vw] sm:max-w-2xl w-full max-h-[100dvh] sm:max-h-[80vh] overflow-y-auto">
+        <DialogContent className="max-w-[100vw] sm:max-w-3xl w-full max-h-[100dvh] sm:max-h-[90vh] overflow-y-auto">
           {selectedContent && (
             <>
               <DialogHeader>
@@ -674,7 +800,8 @@ export default function CalendarPage() {
                 <DialogDescription>Content ID: #{selectedContent.id.slice(0, 8)}</DialogDescription>
               </DialogHeader>
 
-              <div className="space-y-4">
+              <div className="space-y-6">
+                {/* Basic Info Grid */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
                     <Label className="text-sm text-muted-foreground">{t.calendar.platform}</Label>
@@ -692,6 +819,27 @@ export default function CalendarPage() {
                           <SelectItem value="tiktok">{t.calendar.platforms.tiktok}</SelectItem>
                           <SelectItem value="instagram">{t.calendar.platforms.instagram}</SelectItem>
                           <SelectItem value="website">Website</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                  <div>
+                    <Label className="text-sm text-muted-foreground">{t.calendar.contentType}</Label>
+                    <div className="mt-1">
+                      <Select
+                        value={editContent.contentType}
+                        onValueChange={(value) => setEditContent({ ...editContent, contentType: value as ContentType })}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder={t.calendar.contentType} />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="social_post">{contentTypeDisplayNames.social_post}</SelectItem>
+                          <SelectItem value="video">{contentTypeDisplayNames.video}</SelectItem>
+                          <SelectItem value="article">{contentTypeDisplayNames.article}</SelectItem>
+                          <SelectItem value="graphic">{contentTypeDisplayNames.graphic}</SelectItem>
+                          <SelectItem value="carousel">{contentTypeDisplayNames.carousel}</SelectItem>
+                          <SelectItem value="blog_post">{contentTypeDisplayNames.blog_post}</SelectItem>
                         </SelectContent>
                       </Select>
                     </div>
@@ -717,6 +865,14 @@ export default function CalendarPage() {
                         </SelectContent>
                       </Select>
                     </div>
+                  </div>
+                  <div>
+                    <Label className="text-sm text-muted-foreground">{t.tasks.assignee}</Label>
+                    <Input
+                      value={editContent.assignee}
+                      disabled
+                      className="mt-1"
+                    />
                   </div>
                   <div>
                     <Label className="text-sm text-muted-foreground">{t.calendar.scheduledAt}</Label>
@@ -748,31 +904,129 @@ export default function CalendarPage() {
                   />
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div>
-                    <Label className="text-sm text-muted-foreground">{t.calendar.contentType}</Label>
-                    <Input
-                      value={editContent.contentType}
-                      onChange={(e) => setEditContent({ ...editContent, contentType: e.target.value })}
-                      className="mt-1"
-                    />
+                {/* Attachments Section */}
+                <div className="border-t pt-4">
+                  <div className="flex items-center justify-between mb-3">
+                    <Label className="flex items-center gap-2">
+                      <Paperclip className="w-4 h-4" />
+                      {t.tasks.attachments} ({contentDetail?.attachments?.length || 0})
+                    </Label>
+                    <div>
+                      <input
+                        type="file"
+                        id="file-upload"
+                        className="hidden"
+                        onChange={handleFileUpload}
+                        disabled={isUploading || addAttachmentMutation.isPending}
+                      />
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="gap-2"
+                        onClick={() => document.getElementById("file-upload")?.click()}
+                        disabled={isUploading || addAttachmentMutation.isPending}
+                      >
+                        <Upload className="w-4 h-4" />
+                        {isUploading ? t.common.loading : t.common.upload}
+                      </Button>
+                    </div>
                   </div>
-                  <div>
-                    <Label className="text-sm text-muted-foreground">{t.tasks.assignee}</Label>
-                    <Input
-                      value={editContent.assignee}
-                      disabled
-                      className="mt-1"
-                    />
-                  </div>
+                  {isLoadingDetail ? (
+                    <div className="text-sm text-muted-foreground">{t.common.loading}</div>
+                  ) : contentDetail?.attachments && contentDetail.attachments.length > 0 ? (
+                    <div className="space-y-2">
+                      {contentDetail.attachments.map((attachment: CalendarItemAttachment) => (
+                        <div
+                          key={attachment.id}
+                          className="flex items-center justify-between p-2 bg-muted/50 rounded-md"
+                        >
+                          <div className="flex items-center gap-2">
+                            <FileText className="w-4 h-4 text-muted-foreground" />
+                            <div>
+                              <p className="text-sm font-medium">{attachment.fileName}</p>
+                              {attachment.fileSize && (
+                                <p className="text-xs text-muted-foreground">
+                                  {formatFileSize(attachment.fileSize)}
+                                </p>
+                              )}
+                            </div>
+                          </div>
+                          <a
+                            href={attachment.fileUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-primary hover:underline"
+                          >
+                            <Download className="w-4 h-4" />
+                          </a>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-sm text-muted-foreground">{t.common.noData}</p>
+                  )}
                 </div>
 
-                {selectedContent._count && (
-                  <div className="flex gap-4 text-sm text-muted-foreground">
-                    <span>{selectedContent._count.comments} comments</span>
-                    <span>{selectedContent._count.attachments} attachments</span>
+                {/* Comments Section */}
+                <div className="border-t pt-4">
+                  <Label className="flex items-center gap-2 mb-3">
+                    <MessageSquare className="w-4 h-4" />
+                    {t.tasks.comments} ({contentDetail?.comments?.length || 0})
+                  </Label>
+
+                  {/* Add Comment */}
+                  <div className="flex gap-2 mb-4">
+                    <Input
+                      placeholder={t.tasks.addComment}
+                      value={newComment}
+                      onChange={(e) => setNewComment(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" && !e.shiftKey) {
+                          e.preventDefault();
+                          handleAddComment();
+                        }
+                      }}
+                    />
+                    <Button
+                      size="icon"
+                      onClick={handleAddComment}
+                      disabled={!newComment.trim() || addCommentMutation.isPending}
+                    >
+                      <Send className="w-4 h-4" />
+                    </Button>
                   </div>
-                )}
+
+                  {/* Comments List */}
+                  {isLoadingDetail ? (
+                    <div className="text-sm text-muted-foreground">{t.common.loading}</div>
+                  ) : contentDetail?.comments && contentDetail.comments.length > 0 ? (
+                    <div className="space-y-3 max-h-48 overflow-y-auto">
+                      {contentDetail.comments.map((comment: CalendarItemComment) => (
+                        <div key={comment.id} className="flex gap-3">
+                          <Avatar className="w-8 h-8">
+                            <AvatarImage src={comment.user?.avatar || undefined} />
+                            <AvatarFallback>
+                              {comment.user?.name?.charAt(0)?.toUpperCase() || "?"}
+                            </AvatarFallback>
+                          </Avatar>
+                          <div className="flex-1">
+                            <div className="flex items-center gap-2">
+                              <span className="text-sm font-medium">
+                                {comment.user?.name || "Unknown"}
+                              </span>
+                              <span className="text-xs text-muted-foreground">
+                                {formatCommentDate(comment.createdAt)}
+                              </span>
+                            </div>
+                            <p className="text-sm text-muted-foreground">{comment.content}</p>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-sm text-muted-foreground">{t.common.noData}</p>
+                  )}
+                </div>
               </div>
 
               <DialogFooter className="flex justify-between">
@@ -879,12 +1133,12 @@ export default function CalendarPage() {
                     <SelectValue placeholder={t.calendar.contentType} />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="Social Post">Social Post</SelectItem>
-                    <SelectItem value="Video">Video</SelectItem>
-                    <SelectItem value="Article">Article</SelectItem>
-                    <SelectItem value="Graphic">Graphic</SelectItem>
-                    <SelectItem value="Blog Post">Blog Post</SelectItem>
-                    <SelectItem value="Carousel">Carousel</SelectItem>
+                    <SelectItem value="social_post">{contentTypeDisplayNames.social_post}</SelectItem>
+                    <SelectItem value="video">{contentTypeDisplayNames.video}</SelectItem>
+                    <SelectItem value="article">{contentTypeDisplayNames.article}</SelectItem>
+                    <SelectItem value="graphic">{contentTypeDisplayNames.graphic}</SelectItem>
+                    <SelectItem value="carousel">{contentTypeDisplayNames.carousel}</SelectItem>
+                    <SelectItem value="blog_post">{contentTypeDisplayNames.blog_post}</SelectItem>
                   </SelectContent>
                 </Select>
               </div>

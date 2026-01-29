@@ -12,6 +12,14 @@ const contentStatusEnum = z.enum([
   "published",
   "needs_revision",
 ]);
+const contentTypeEnum = z.enum([
+  "social_post",
+  "video",
+  "article",
+  "graphic",
+  "carousel",
+  "blog_post",
+]);
 
 export const calendarRouter = createTRPCRouter({
   getItems: protectedProcedure
@@ -75,12 +83,11 @@ export const calendarRouter = createTRPCRouter({
           },
           socialPosts: true,
           comments: {
-            include: {
-              calendarItem: false,
-            },
             orderBy: { createdAt: "desc" },
           },
-          attachments: true,
+          attachments: {
+            orderBy: { createdAt: "desc" },
+          },
         },
       });
 
@@ -88,7 +95,23 @@ export const calendarRouter = createTRPCRouter({
         throw new TRPCError({ code: "NOT_FOUND", message: "Calendar item not found" });
       }
 
-      return item;
+      // Fetch user info for each comment
+      const commentUserIds = [...new Set(item.comments.map((c) => c.userId))];
+      const users = await ctx.prisma.user.findMany({
+        where: { id: { in: commentUserIds } },
+        select: { id: true, name: true, avatar: true },
+      });
+      const userMap = new Map(users.map((u) => [u.id, u]));
+
+      const commentsWithUser = item.comments.map((comment) => ({
+        ...comment,
+        user: userMap.get(comment.userId) || null,
+      }));
+
+      return {
+        ...item,
+        comments: commentsWithUser,
+      };
     }),
 
   create: protectedProcedure
@@ -97,6 +120,7 @@ export const calendarRouter = createTRPCRouter({
         title: z.string().min(1),
         description: z.string().optional(),
         platform: platformEnum,
+        contentType: contentTypeEnum.optional(),
         status: contentStatusEnum.default("planned"),
         scheduledAt: z.string().datetime().optional(),
         proposalId: z.string().optional(),
@@ -126,6 +150,7 @@ export const calendarRouter = createTRPCRouter({
         title: z.string().min(1).optional(),
         description: z.string().optional(),
         platform: platformEnum.optional(),
+        contentType: contentTypeEnum.nullable().optional(),
         status: contentStatusEnum.optional(),
         scheduledAt: z.string().datetime().nullable().optional(),
         publishedAt: z.string().datetime().nullable().optional(),
@@ -236,9 +261,43 @@ export const calendarRouter = createTRPCRouter({
           userId: ctx.session.user.id,
           content: input.content,
         },
+        include: {
+          calendarItem: false,
+        },
       });
 
-      return comment;
+      // Return comment with user info
+      const user = await ctx.prisma.user.findUnique({
+        where: { id: ctx.session.user.id },
+        select: { id: true, name: true, avatar: true },
+      });
+
+      return { ...comment, user };
+    }),
+
+  addAttachment: protectedProcedure
+    .input(
+      z.object({
+        calendarItemId: z.string(),
+        fileName: z.string(),
+        fileUrl: z.string(),
+        fileType: z.string().optional(),
+        fileSize: z.number().optional(),
+      })
+    )
+    .mutation(async ({ ctx, input }) => {
+      // Verify item exists
+      const item = await ctx.prisma.contentCalendarItem.findUnique({
+        where: { id: input.calendarItemId },
+      });
+
+      if (!item) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Calendar item not found" });
+      }
+
+      return ctx.prisma.calendarItemAttachment.create({
+        data: input,
+      });
     }),
 
   getUpcoming: protectedProcedure

@@ -49,6 +49,8 @@ export const vi: Translations = {
     warning: "Cảnh báo",
     info: "Thông tin",
     refresh: "Làm mới",
+    upload: "Tải lên",
+    download: "Tải xuống",
   },
   nav: {
     dashboard: "Trang chủ",
@@ -260,6 +262,14 @@ export const vi: Translations = {
       zalo: "Zalo",
       linkedin: "LinkedIn",
       twitter: "Twitter",
+    },
+    contentTypes: {
+      socialPost: "Bài đăng MXH",
+      video: "Video",
+      article: "Bài viết",
+      graphic: "Đồ họa",
+      carousel: "Carousel",
+      blogPost: "Blog",
     },
     stats: {
       totalContent: "Tổng nội dung",

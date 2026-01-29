@@ -51,6 +51,8 @@ export interface Translations {
     warning: string;
     info: string;
     refresh: string;
+    upload: string;
+    download: string;
   };
   nav: {
     dashboard: string;
@@ -262,6 +264,14 @@ export interface Translations {
       zalo: string;
       linkedin: string;
       twitter: string;
+    };
+    contentTypes: {
+      socialPost: string;
+      video: string;
+      article: string;
+      graphic: string;
+      carousel: string;
+      blogPost: string;
     };
     stats: {
       totalContent: string;

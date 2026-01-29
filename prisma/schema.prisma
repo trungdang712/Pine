@@ -415,6 +415,7 @@ model ContentCalendarItem {
   title       String
   description String?
   platform    String    // facebook, instagram, zalo, tiktok, website
+  contentType String?   // social_post, video, article, graphic, carousel, blog_post
   status      String    @default("planned") // planned, in_production, ready_for_review, approved, scheduled, published, needs_revision
   scheduledAt DateTime?
   publishedAt DateTime?

@@ -49,6 +49,8 @@ export const en: Translations = {
     warning: "Warning",
     info: "Info",
     refresh: "Refresh",
+    upload: "Upload",
+    download: "Download",
   },
   nav: {
     dashboard: "Dashboard",
@@ -260,6 +262,14 @@ export const en: Translations = {
       zalo: "Zalo",
       linkedin: "LinkedIn",
       twitter: "Twitter",
+    },
+    contentTypes: {
+      socialPost: "Social Post",
+      video: "Video",
+      article: "Article",
+      graphic: "Graphic",
+      carousel: "Carousel",
+      blogPost: "Blog Post",
     },
     stats: {
       totalContent: "Total Content",
