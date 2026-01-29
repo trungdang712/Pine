@@ -50,6 +50,7 @@ export interface Translations {
     error: string;
     warning: string;
     info: string;
+    refresh: string;
   };
   nav: {
     dashboard: string;
@@ -708,6 +709,7 @@ export interface Translations {
     serverError: string;
     networkError: string;
     validationError: string;
+    sessionExpired: string;
     tryAgain: string;
     goBack: string;
     goHome: string;

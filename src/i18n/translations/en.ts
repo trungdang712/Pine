@@ -48,6 +48,7 @@ export const en: Translations = {
     error: "Error",
     warning: "Warning",
     info: "Info",
+    refresh: "Refresh",
   },
   nav: {
     dashboard: "Dashboard",
@@ -706,6 +707,7 @@ export const en: Translations = {
     serverError: "Server error. Please try again later.",
     networkError: "Network error. Please check your internet connection.",
     validationError: "Please check your input and try again",
+    sessionExpired: "Session expired. Please refresh the page.",
     tryAgain: "Try Again",
     goBack: "Go Back",
     goHome: "Go to Home",

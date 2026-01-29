@@ -136,7 +136,7 @@ const statusLabelsData: Record<string, { labelKey: string; variant: "default" | 
 };
 
 export default function DashboardPage() {
-  const { profile, isAuthenticated } = useAuth();
+  const { profile, isAuthenticated, loading: authLoading } = useAuth();
   const { t, language } = useLanguage();
   const userName = profile?.name?.split(" ")[0] ?? "User";
   const isAdmin = profile?.role === "super_admin" || profile?.role === "admin" || profile?.role === "marketing_manager";
@@ -178,25 +178,25 @@ export default function DashboardPage() {
     };
   });
 
-  // Fetch real data with error handling
-  const { data: taskStats, isLoading: loadingTaskStats, error: taskStatsError } = trpc.task.getTaskStats.useQuery(undefined, {
+  // Fetch real data - enabled when authenticated, no retry on errors
+  const { data: taskStats, isLoading: loadingTaskStats, error: taskStatsError, isError: isTaskStatsError } = trpc.task.getTaskStats.useQuery(undefined, {
     enabled: isAuthenticated,
-    retry: 1,
+    retry: false,
   });
 
-  const { data: recentAlerts = [], isLoading: loadingAlerts, error: alertsError } = trpc.alerts.getMyAlerts.useQuery(
+  const { data: recentAlerts = [], isLoading: loadingAlerts, error: alertsError, isError: isAlertsError } = trpc.alerts.getMyAlerts.useQuery(
     { limit: 5 },
-    { enabled: isAuthenticated, retry: 1 }
+    { enabled: isAuthenticated, retry: false }
   );
 
-  const { data: calendarItems = [], isLoading: loadingCalendar, error: calendarError } = trpc.calendar.getItems.useQuery(
+  const { data: calendarItems = [], isLoading: loadingCalendar, error: calendarError, isError: isCalendarError } = trpc.calendar.getItems.useQuery(
     dateRange,
-    { enabled: isAuthenticated, retry: 1 }
+    { enabled: isAuthenticated, retry: false }
   );
 
-  const { data: myPoints, isLoading: loadingPoints, error: pointsError } = trpc.gamification.getMyPoints.useQuery(undefined, {
+  const { data: myPoints, isLoading: loadingPoints, error: pointsError, isError: isPointsError } = trpc.gamification.getMyPoints.useQuery(undefined, {
     enabled: isAuthenticated,
-    retry: 1,
+    retry: false,
   });
 
   const currentDate = new Date().toLocaleDateString(language === "vi" ? "vi-VN" : "en-US", {
@@ -277,13 +277,36 @@ export default function DashboardPage() {
 
   const kpis = generateKPIs();
 
-  // Only consider still loading if there's no error - errors should stop the loading state
-  const isLoadingKPIs = (loadingTaskStats && !taskStatsError) || (loadingPoints && !pointsError);
-  const isLoadingCalendar = loadingCalendar && !calendarError;
-  const isLoadingAlerts = loadingAlerts && !alertsError;
+  // Check if any query has auth error (UNAUTHORIZED)
+  const hasAuthError = isTaskStatsError || isPointsError || isCalendarError || isAlertsError;
+
+  // Loading states: auth loading OR (query loading AND no error)
+  const isLoadingKPIs = authLoading || ((loadingTaskStats && !taskStatsError) || (loadingPoints && !pointsError));
+  const isLoadingCalendar = authLoading || (loadingCalendar && !calendarError);
+  const isLoadingAlerts = authLoading || (loadingAlerts && !alertsError);
 
   return (
     <div className="p-4 md:p-6 space-y-4 md:space-y-6">
+      {/* Auth Error Banner */}
+      {hasAuthError && !authLoading && (
+        <Card className="border-amber-200 bg-amber-50">
+          <CardContent className="p-4 flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Clock className="h-5 w-5 text-amber-600" />
+              <span className="text-amber-800">{t.errors.sessionExpired}</span>
+            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => window.location.reload()}
+              className="border-amber-300 text-amber-700 hover:bg-amber-100"
+            >
+              {t.common.refresh}
+            </Button>
+          </CardContent>
+        </Card>
+      )}
+
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
         <div>

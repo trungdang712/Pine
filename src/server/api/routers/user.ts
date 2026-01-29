@@ -6,9 +6,16 @@ import { createAdminClient } from "@/lib/supabase/admin";
 
 export const userRouter = createTRPCRouter({
   // Limited user listing available to all authenticated users (e.g., for assignee dropdowns)
+  // Only shows marketing team members
   getTeamMembers: protectedProcedure.query(async ({ ctx }) => {
     return ctx.prisma.user.findMany({
-      where: { isActive: true },
+      where: {
+        isActive: true,
+        OR: [
+          { team: "marketing" },
+          { team: "admin" }, // Admins have access to everything
+        ],
+      },
       select: {
         id: true,
         name: true,
@@ -19,9 +26,16 @@ export const userRouter = createTRPCRouter({
     });
   }),
 
+  // Admin user listing - only marketing team members
   getAll: adminProcedure.query(async ({ ctx }) => {
     return ctx.prisma.user.findMany({
-      where: { isActive: true },
+      where: {
+        isActive: true,
+        OR: [
+          { team: "marketing" },
+          { team: "admin" },
+        ],
+      },
       select: {
         id: true,
         email: true,

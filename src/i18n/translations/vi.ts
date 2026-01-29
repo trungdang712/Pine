@@ -48,6 +48,7 @@ export const vi: Translations = {
     error: "Lỗi",
     warning: "Cảnh báo",
     info: "Thông tin",
+    refresh: "Làm mới",
   },
   nav: {
     dashboard: "Trang chủ",
@@ -704,6 +705,7 @@ export const vi: Translations = {
     unauthorized: "Bạn cần đăng nhập để truy cập trang này",
     forbidden: "Bạn không có quyền truy cập trang này",
     serverError: "Lỗi máy chủ. Vui lòng thử lại sau.",
+    sessionExpired: "Phiên đăng nhập hết hạn. Vui lòng làm mới trang.",
     networkError: "Lỗi mạng. Vui lòng kiểm tra kết nối internet.",
     validationError: "Vui lòng kiểm tra lại thông tin đã nhập",
     tryAgain: "Thử lại",
