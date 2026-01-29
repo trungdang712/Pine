@@ -55,9 +55,11 @@ export default function LoginPage() {
       <Card className="w-full max-w-md">
         <CardHeader className="text-center">
           <div className="mx-auto mb-4">
-            <div className="h-16 w-16 mx-auto flex items-center justify-center rounded-xl bg-primary">
-              <span className="text-3xl font-bold text-primary-foreground">GF</span>
-            </div>
+            <img
+              src="/logo.png"
+              alt="Greenfield Dental"
+              className="h-16 w-auto mx-auto"
+            />
           </div>
           <CardDescription className="italic text-base">
             "Information is the currency of the digital age, and we are all its unwitting subjects"
