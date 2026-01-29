@@ -206,7 +206,7 @@ export function Header() {
                       {userInitials}
                     </AvatarFallback>
                   </Avatar>
-                  <span className="hidden md:inline">{firstName}</span>
+                  <span className="hidden md:inline">{fullName}</span>
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-56">

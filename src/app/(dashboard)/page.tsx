@@ -138,7 +138,9 @@ const statusLabelsData: Record<string, { labelKey: string; variant: "default" | 
 export default function DashboardPage() {
   const { profile, isAuthenticated, loading: authLoading } = useAuth();
   const { t, language } = useLanguage();
-  const userName = profile?.name?.split(" ")[0] || "";
+  // For Vietnamese names, the given name is the last word
+  const nameParts = profile?.name?.split(" ") || [];
+  const userName = nameParts[nameParts.length - 1] || "";
   const isAdmin = profile?.role === "super_admin" || profile?.role === "admin" || profile?.role === "marketing_manager";
   const dateLocale = language === "vi" ? viLocale : enUS;
 
@@ -301,7 +303,7 @@ export default function DashboardPage() {
       <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
         <div>
           <h1 className="text-2xl font-semibold mb-1">
-            {getGreeting()}, {userName}!
+            {getGreeting()}, {userName}! 👋
           </h1>
           <p className="text-muted-foreground">{currentDate}</p>
         </div>
