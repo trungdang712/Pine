@@ -321,7 +321,7 @@ export default function ProposalsPage() {
                   <div className="flex items-start justify-between">
                     <div className="flex-1">
                       <div className="flex items-center gap-2 mb-2">
-                        <h3 className="font-semibold">#{proposal.id.slice(0, 8)} | {proposal.title}</h3>
+                        <h3 className="font-semibold">{proposal.title}</h3>
                       </div>
                       <div className="flex flex-wrap items-center gap-2 mb-2">
                         <Badge variant="outline">{categoryLabels[proposal.category as ProposalCategory]}</Badge>
@@ -407,7 +407,7 @@ export default function ProposalsPage() {
           {selectedProposal && (
             <>
               <DialogHeader>
-                <DialogTitle className="text-xl">#{selectedProposal.id.slice(0, 8)} | {selectedProposal.title}</DialogTitle>
+                <DialogTitle className="text-xl">{selectedProposal.title}</DialogTitle>
                 <DialogDescription>
                   <Badge variant={statusConfig[selectedProposal.status as ProposalStatus]?.variant ?? "outline"} className="mt-2">
                     {statusConfig[selectedProposal.status as ProposalStatus]?.label ?? selectedProposal.status}

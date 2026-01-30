@@ -130,7 +130,7 @@ export const proposalRouter = createTRPCRouter({
       });
     }),
 
-  getPendingApprovals: adminProcedure
+  getPendingApprovals: protectedProcedure
     .input(
       z.object({
         layerFilter: z.enum(["all", "layer1", "layer2"]).optional().default("all"),
@@ -144,39 +144,48 @@ export const proposalRouter = createTRPCRouter({
       });
 
       const userRole = currentUser?.role ?? "";
-      const canApproveLayer1 = canApproveAtLayer(userRole, 1);
-      const canApproveLayer2 = canApproveAtLayer(userRole, 2);
-
-      // Determine which layers to show based on user role and filter
+      const isAdmin = ["super_admin", "admin"].includes(userRole);
+      const isManager = userRole === "marketing_manager";
       const layerFilter = input?.layerFilter ?? "all";
-      const layers: number[] = [];
 
-      if (layerFilter === "all") {
-        if (canApproveLayer1) layers.push(1);
-        if (canApproveLayer2) layers.push(2);
-      } else if (layerFilter === "layer1" && canApproveLayer1) {
-        layers.push(1);
-      } else if (layerFilter === "layer2" && canApproveLayer2) {
-        layers.push(2);
-      }
+      // Build where conditions based on role
+      // Marketing Manager: See proposals at Layer 1 where they can approve (both 1-layer and 2-layer)
+      // Admin: See ALL 2-layer proposals (for monitoring), regardless of current layer
+      //        Admin does NOT see 1-layer proposals (those are manager-only)
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const whereConditions: any[] = [];
 
-      // If user can't approve any layer, return empty
-      if (layers.length === 0) {
-        return [];
-      }
-
-      return ctx.prisma.proposal.findMany({
-        where: {
-          status: { in: ["layer1_review", "layer2_review"] },
-          currentLayer: { in: layers },
+      // Manager sees proposals at Layer 1 (their approval queue) - both 1-layer and 2-layer
+      if (isManager && (layerFilter === "all" || layerFilter === "layer1")) {
+        whereConditions.push({
+          status: "layer1_review",
+          currentLayer: 1,
           approvals: {
             some: {
               approverId: ctx.session.user.id,
-              layer: { in: layers },
+              layer: 1,
               status: "pending",
             },
           },
-        },
+        });
+      }
+
+      // Admin sees ALL 2-layer proposals for monitoring (even at Layer 1)
+      // Admin does NOT see 1-layer proposals
+      if (isAdmin && (layerFilter === "all" || layerFilter === "layer2")) {
+        whereConditions.push({
+          status: { in: ["layer1_review", "layer2_review"] },
+          totalLayers: 2, // Only 2-layer proposals for admin
+        });
+      }
+
+      // If no valid role or no conditions, use impossible condition
+      const whereClause = whereConditions.length > 0
+        ? { OR: whereConditions }
+        : { id: "impossible-id-that-will-never-match" };
+
+      return ctx.prisma.proposal.findMany({
+        where: whereClause,
         include: {
           creator: {
             select: { id: true, name: true, avatar: true },
