@@ -75,7 +75,7 @@ export default function SettingsPage() {
 
   // Check if password change is required
   const passwordChangeRequired = searchParams.get("change_password") === "required" || profile?.mustChangePassword;
-  const defaultTab = searchParams.get("tab") || (passwordChangeRequired ? "security" : "profile");
+  const defaultTab = searchParams.get("tab") || "profile";
   const [activeTab, setActiveTab] = useState(defaultTab);
 
   // Update active tab when searchParams change
@@ -84,7 +84,7 @@ export default function SettingsPage() {
     if (tab) {
       setActiveTab(tab);
     } else if (profile?.mustChangePassword) {
-      setActiveTab("security");
+      setActiveTab("profile");
     }
   }, [searchParams, profile?.mustChangePassword]);
 

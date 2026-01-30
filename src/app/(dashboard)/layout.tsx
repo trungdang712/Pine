@@ -25,7 +25,7 @@ export default function DashboardLayout({
   // Redirect to settings if user must change password
   useEffect(() => {
     if (!loading && isAuthenticated && profile?.mustChangePassword && pathname !== "/settings") {
-      router.push("/settings?tab=security&change_password=required");
+      router.push("/settings?tab=profile&change_password=required");
     }
   }, [loading, isAuthenticated, profile?.mustChangePassword, pathname, router]);
 
