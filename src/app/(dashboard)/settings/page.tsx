@@ -902,10 +902,6 @@ export default function SettingsPage() {
             <Link2 className="w-4 h-4 mr-2" />
             Tích hợp & Kênh
           </TabsTrigger>
-          <TabsTrigger value="security">
-            <Lock className="w-4 h-4 mr-2" />
-            {t.settings.tabs.security}
-          </TabsTrigger>
           <TabsTrigger value="workspace">
             <Building className="w-4 h-4 mr-2" />
             {t.settings.tabs.workspace}
@@ -1054,6 +1050,117 @@ export default function SettingsPage() {
                 >
                   {t.common.cancel}
                 </Button>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Security Section */}
+          <Card>
+            <CardHeader>
+              <CardTitle>{t.settings.security.title}</CardTitle>
+              <CardDescription>{t.settings.security.subtitle}</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              {/* Change Password */}
+              <div className="space-y-4">
+                <h3 className="font-semibold flex items-center gap-2">
+                  <Key className="w-4 h-4" />
+                  {t.settings.security.changePassword}
+                </h3>
+                <div className="space-y-3">
+                  <div className="space-y-2">
+                    <Label htmlFor="currentPassword">{t.settings.security.currentPassword}</Label>
+                    <Input
+                      id="currentPassword"
+                      type="password"
+                      value={passwordForm.currentPassword}
+                      onChange={(e) => setPasswordForm((f) => ({ ...f, currentPassword: e.target.value }))}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="newPassword">{t.settings.security.newPassword}</Label>
+                    <Input
+                      id="newPassword"
+                      type="password"
+                      value={passwordForm.newPassword}
+                      onChange={(e) => setPasswordForm((f) => ({ ...f, newPassword: e.target.value }))}
+                    />
+                    {passwordForm.newPassword && passwordForm.newPassword.length < 8 && (
+                      <p className="text-xs text-destructive">{t.settings.security.passwordMinLength}</p>
+                    )}
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="confirmPassword">{t.settings.security.confirmPassword}</Label>
+                    <Input
+                      id="confirmPassword"
+                      type="password"
+                      value={passwordForm.confirmPassword}
+                      onChange={(e) => setPasswordForm((f) => ({ ...f, confirmPassword: e.target.value }))}
+                    />
+                    {passwordForm.confirmPassword && passwordForm.newPassword !== passwordForm.confirmPassword && (
+                      <p className="text-xs text-destructive">{t.settings.security.passwordsDoNotMatch}</p>
+                    )}
+                  </div>
+                  <Button
+                    onClick={handleChangePassword}
+                    disabled={changePasswordMutation.isPending || !passwordForm.currentPassword || passwordForm.newPassword.length < 8 || passwordForm.newPassword !== passwordForm.confirmPassword}
+                  >
+                    {changePasswordMutation.isPending ? (
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    ) : null}
+                    {t.settings.security.updatePassword}
+                  </Button>
+                </div>
+              </div>
+
+              {/* Two-Factor Authentication */}
+              <div className="space-y-4 pt-6 border-t">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h3 className="font-semibold flex items-center gap-2 mb-1">
+                      <Shield className="w-4 h-4" />
+                      {t.settings.security.twoFactor}
+                    </h3>
+                    <p className="text-sm text-muted-foreground">
+                      {t.settings.security.twoFactorDesc}
+                    </p>
+                  </div>
+                  <Switch checked={twoFactorEnabled} onCheckedChange={setTwoFactorEnabled} />
+                </div>
+                {twoFactorEnabled && (
+                  <div className="bg-accent/50 p-4 rounded-lg space-y-2">
+                    <p className="text-sm font-medium">{t.settings.security.twoFactorEnabled}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {t.settings.security.twoFactorEnabledDesc}
+                    </p>
+                    <Button variant="outline" size="sm">
+                      {t.settings.security.viewRecoveryCodes}
+                    </Button>
+                  </div>
+                )}
+              </div>
+
+              {/* Active Sessions */}
+              <div className="space-y-4 pt-6 border-t">
+                <h3 className="font-semibold flex items-center gap-2">
+                  <Smartphone className="w-4 h-4" />
+                  {t.settings.security.activeSessions}
+                </h3>
+                <div className="space-y-3">
+                  <div className="flex items-start justify-between p-3 border rounded-lg">
+                    <div className="flex items-start gap-3">
+                      <Monitor className="w-5 h-5 text-muted-foreground mt-1" />
+                      <div>
+                        <p className="font-medium">{t.settings.security.currentSession}</p>
+                        <p className="text-xs text-muted-foreground">
+                          {currentUser?.email || profile?.email || "unknown"}
+                        </p>
+                        <p className="text-xs text-muted-foreground">{t.settings.security.lastActive}: {language === "vi" ? "Hiện tại" : "Now"}</p>
+                      </div>
+                    </div>
+                    <Badge variant="default">{language === "vi" ? "Hiện tại" : "Current"}</Badge>
+                  </div>
+                </div>
               </div>
             </CardContent>
           </Card>
@@ -1698,119 +1805,6 @@ export default function SettingsPage() {
               </CardContent>
             </Card>
           )}
-        </TabsContent>
-
-        {/* Security Tab */}
-        <TabsContent value="security" className="space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle>{t.settings.security.title}</CardTitle>
-              <CardDescription>{t.settings.security.subtitle}</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              {/* Change Password */}
-              <div className="space-y-4">
-                <h3 className="font-semibold flex items-center gap-2">
-                  <Key className="w-4 h-4" />
-                  {t.settings.security.changePassword}
-                </h3>
-                <div className="space-y-3">
-                  <div className="space-y-2">
-                    <Label htmlFor="currentPassword">{t.settings.security.currentPassword}</Label>
-                    <Input
-                      id="currentPassword"
-                      type="password"
-                      value={passwordForm.currentPassword}
-                      onChange={(e) => setPasswordForm((f) => ({ ...f, currentPassword: e.target.value }))}
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="newPassword">{t.settings.security.newPassword}</Label>
-                    <Input
-                      id="newPassword"
-                      type="password"
-                      value={passwordForm.newPassword}
-                      onChange={(e) => setPasswordForm((f) => ({ ...f, newPassword: e.target.value }))}
-                    />
-                    {passwordForm.newPassword && passwordForm.newPassword.length < 8 && (
-                      <p className="text-xs text-destructive">{t.settings.security.passwordMinLength}</p>
-                    )}
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="confirmPassword">{t.settings.security.confirmPassword}</Label>
-                    <Input
-                      id="confirmPassword"
-                      type="password"
-                      value={passwordForm.confirmPassword}
-                      onChange={(e) => setPasswordForm((f) => ({ ...f, confirmPassword: e.target.value }))}
-                    />
-                    {passwordForm.confirmPassword && passwordForm.newPassword !== passwordForm.confirmPassword && (
-                      <p className="text-xs text-destructive">{t.settings.security.passwordsDoNotMatch}</p>
-                    )}
-                  </div>
-                  <Button
-                    onClick={handleChangePassword}
-                    disabled={changePasswordMutation.isPending || !passwordForm.currentPassword || passwordForm.newPassword.length < 8 || passwordForm.newPassword !== passwordForm.confirmPassword}
-                  >
-                    {changePasswordMutation.isPending ? (
-                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                    ) : null}
-                    {t.settings.security.updatePassword}
-                  </Button>
-                </div>
-              </div>
-
-              {/* Two-Factor Authentication */}
-              <div className="space-y-4 pt-6 border-t">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <h3 className="font-semibold flex items-center gap-2 mb-1">
-                      <Shield className="w-4 h-4" />
-                      {t.settings.security.twoFactor}
-                    </h3>
-                    <p className="text-sm text-muted-foreground">
-                      {t.settings.security.twoFactorDesc}
-                    </p>
-                  </div>
-                  <Switch checked={twoFactorEnabled} onCheckedChange={setTwoFactorEnabled} />
-                </div>
-                {twoFactorEnabled && (
-                  <div className="bg-accent/50 p-4 rounded-lg space-y-2">
-                    <p className="text-sm font-medium">{t.settings.security.twoFactorEnabled}</p>
-                    <p className="text-xs text-muted-foreground">
-                      {t.settings.security.twoFactorEnabledDesc}
-                    </p>
-                    <Button variant="outline" size="sm">
-                      {t.settings.security.viewRecoveryCodes}
-                    </Button>
-                  </div>
-                )}
-              </div>
-
-              {/* Active Sessions */}
-              <div className="space-y-4 pt-6 border-t">
-                <h3 className="font-semibold flex items-center gap-2">
-                  <Smartphone className="w-4 h-4" />
-                  {t.settings.security.activeSessions}
-                </h3>
-                <div className="space-y-3">
-                  <div className="flex items-start justify-between p-3 border rounded-lg">
-                    <div className="flex items-start gap-3">
-                      <Monitor className="w-5 h-5 text-muted-foreground mt-1" />
-                      <div>
-                        <p className="font-medium">{t.settings.security.currentSession}</p>
-                        <p className="text-xs text-muted-foreground">
-                          {currentUser?.email || profile?.email || "unknown"}
-                        </p>
-                        <p className="text-xs text-muted-foreground">{t.settings.security.lastActive}: {language === "vi" ? "Hiện tại" : "Now"}</p>
-                      </div>
-                    </div>
-                    <Badge variant="default">{language === "vi" ? "Hiện tại" : "Current"}</Badge>
-                  </div>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
         </TabsContent>
 
         {/* Workspace Tab */}

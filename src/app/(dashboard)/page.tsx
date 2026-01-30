@@ -155,7 +155,7 @@ export default function DashboardPage() {
       graphic_designer: "Graphic Designer",
       video_producer: "Video Producer",
     };
-    return roleMap[profile?.role || ""] || "Content Creator";
+    return roleMap[profile?.role || ""] || "Admin";
   };
 
   const [selectedRole, setSelectedRole] = useState<RoleType>(getUserRoleType());
