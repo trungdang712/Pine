@@ -1,11 +1,28 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useRef } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import {
   Search,
   Download,
@@ -20,12 +37,15 @@ import {
   Folder,
   File,
   Sparkles,
+  Loader2,
 } from "lucide-react";
 import { trpc } from "@/lib/trpc";
-import { PageLoading } from "@/components/ui/loading-spinner";
+import { PageLoading, LoadingSpinner } from "@/components/ui/loading-spinner";
 import { PageError } from "@/components/ui/error-display";
 import { toast } from "sonner";
 import { useLanguage } from "@/i18n";
+import { useUpload } from "@/hooks/use-upload";
+import { useAuth } from "@/hooks/use-auth";
 
 function formatFileSize(bytes: number | null | undefined): string {
   if (!bytes) return "N/A";
@@ -46,9 +66,24 @@ function parseFormats(formatsJson: string | null): string[] {
 
 export default function BrandLibraryPage() {
   const { t } = useLanguage();
+  const { profile } = useAuth();
   const [copiedColor, setCopiedColor] = useState<string | null>(null);
   const [searchBrand, setSearchBrand] = useState("");
   const [searchMedia, setSearchMedia] = useState("");
+
+  // Upload dialog state
+  const [isUploadOpen, setIsUploadOpen] = useState(false);
+  const [uploadFile, setUploadFile] = useState<File | null>(null);
+  const [uploadData, setUploadData] = useState({
+    name: "",
+    description: "",
+    category: "logo" as "logo" | "guideline" | "template" | "photo" | "video" | "font" | "icon",
+    usageNotes: "",
+  });
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Check if user is admin
+  const isAdmin = profile?.role === "super_admin" || profile?.role === "admin";
 
   // tRPC queries
   const brandColorsQuery = trpc.library.getBrandColors.useQuery();
@@ -58,6 +93,16 @@ export default function BrandLibraryPage() {
 
   const downloadMutation = trpc.library.downloadBrandAsset.useMutation({
     onSuccess: (data) => {
+      // Actually trigger the download
+      if (data?.fileUrl) {
+        const link = document.createElement("a");
+        link.href = data.fileUrl;
+        link.download = data.name ?? "asset";
+        link.target = "_blank";
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+      }
       toast.success(`Download started: ${data?.name ?? "Asset"}`);
       void recentQuery.refetch();
     },
@@ -65,6 +110,74 @@ export default function BrandLibraryPage() {
       toast.error(err.message);
     },
   });
+
+  // Upload mutation
+  const createBrandAssetMutation = trpc.library.createBrandAsset.useMutation({
+    onSuccess: () => {
+      toast.success(t.library.brand.uploadSuccess ?? "Logo uploaded successfully");
+      setIsUploadOpen(false);
+      setUploadFile(null);
+      setUploadData({
+        name: "",
+        description: "",
+        category: "logo",
+        usageNotes: "",
+      });
+      void brandAssetsQuery.refetch();
+    },
+    onError: (err) => {
+      toast.error(err.message);
+    },
+  });
+
+  // Upload hook
+  const { upload: uploadFileToStorage, uploading: isUploading } = useUpload({
+    bucket: "brand-assets",
+    onSuccess: (result) => {
+      // After file is uploaded to storage, create the brand asset record
+      createBrandAssetMutation.mutate({
+        name: uploadData.name || uploadFile?.name || "Untitled",
+        description: uploadData.description || undefined,
+        category: uploadData.category,
+        fileUrl: result.url,
+        fileType: uploadFile?.name.split(".").pop()?.toUpperCase(),
+        fileSize: result.size,
+        usageNotes: uploadData.usageNotes || undefined,
+        formats: uploadFile?.name.split(".").pop()?.toUpperCase()
+          ? [uploadFile.name.split(".").pop()!.toUpperCase()]
+          : undefined,
+      });
+    },
+    onError: (error) => {
+      toast.error(`Upload failed: ${error.message}`);
+    },
+  });
+
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      setUploadFile(file);
+      // Pre-fill name from filename
+      if (!uploadData.name) {
+        const nameWithoutExt = file.name.replace(/\.[^/.]+$/, "");
+        setUploadData((prev) => ({ ...prev, name: nameWithoutExt }));
+      }
+    }
+  };
+
+  const handleUpload = async () => {
+    if (!uploadFile) {
+      toast.error("Please select a file");
+      return;
+    }
+    if (!uploadData.name) {
+      toast.error("Please enter a name");
+      return;
+    }
+
+    // Upload to Supabase Storage
+    await uploadFileToStorage(uploadFile, `logos/${Date.now()}`);
+  };
 
   const isLoading =
     brandColorsQuery.isLoading ||
@@ -424,15 +537,23 @@ export default function BrandLibraryPage() {
           )}
 
           {/* Logos */}
-          {organizedBrand.logos.length > 0 && (
+          {(organizedBrand.logos.length > 0 || isAdmin) && (
             <div>
               <div className="flex items-center justify-between mb-3">
                 <h3 className="font-semibold flex items-center gap-2">
                   {t.library.brand.logos}
                 </h3>
-                <Button variant="ghost" size="sm">
-                  {t.library.brand.downloadAll}
-                </Button>
+                <div className="flex gap-2">
+                  {isAdmin && (
+                    <Button variant="outline" size="sm" onClick={() => setIsUploadOpen(true)}>
+                      <Upload className="w-4 h-4 mr-2" />
+                      {t.library.brand.uploadLogo ?? "Upload Logo"}
+                    </Button>
+                  )}
+                  <Button variant="ghost" size="sm">
+                    {t.library.brand.downloadAll}
+                  </Button>
+                </div>
               </div>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {organizedBrand.logos.map((logo) => {
@@ -847,6 +968,138 @@ export default function BrandLibraryPage() {
             )}
         </TabsContent>
       </Tabs>
+
+      {/* Upload Dialog */}
+      <Dialog open={isUploadOpen} onOpenChange={setIsUploadOpen}>
+        <DialogContent className="sm:max-w-[500px]">
+          <DialogHeader>
+            <DialogTitle>{t.library.brand.uploadLogo ?? "Upload Brand Asset"}</DialogTitle>
+            <DialogDescription>
+              {t.library.brand.uploadDescription ?? "Upload a logo or brand asset to the library"}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            {/* File Input */}
+            <div>
+              <Label>{t.library.assets.selectFile ?? "Select File"}</Label>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept=".ai,.eps,.svg,.png,.pdf,.jpg,.jpeg,.gif"
+                onChange={handleFileSelect}
+                className="hidden"
+              />
+              <div
+                className="mt-2 border-2 border-dashed rounded-lg p-6 text-center cursor-pointer hover:border-primary transition-colors"
+                onClick={() => fileInputRef.current?.click()}
+              >
+                {uploadFile ? (
+                  <div className="flex items-center justify-center gap-2">
+                    <FileText className="w-6 h-6 text-primary" />
+                    <span className="font-medium">{uploadFile.name}</span>
+                    <Badge variant="secondary">{formatFileSize(uploadFile.size)}</Badge>
+                  </div>
+                ) : (
+                  <div>
+                    <Upload className="w-8 h-8 text-muted-foreground mx-auto mb-2" />
+                    <p className="text-sm text-muted-foreground">
+                      {t.library.assets.dragDrop ?? "Click to select or drag and drop"}
+                    </p>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      AI, EPS, SVG, PNG, PDF, JPG
+                    </p>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Name */}
+            <div>
+              <Label htmlFor="asset-name">{t.library.brand.assetName ?? "Name"} *</Label>
+              <Input
+                id="asset-name"
+                placeholder={t.library.brand.assetNamePlaceholder ?? "Enter asset name"}
+                value={uploadData.name}
+                onChange={(e) => setUploadData({ ...uploadData, name: e.target.value })}
+                className="mt-1"
+              />
+            </div>
+
+            {/* Category */}
+            <div>
+              <Label>{t.library.brand.category ?? "Category"}</Label>
+              <Select
+                value={uploadData.category}
+                onValueChange={(value) =>
+                  setUploadData({
+                    ...uploadData,
+                    category: value as typeof uploadData.category,
+                  })
+                }
+              >
+                <SelectTrigger className="mt-1">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="logo">Logo</SelectItem>
+                  <SelectItem value="guideline">{t.library.brand.guidelines}</SelectItem>
+                  <SelectItem value="template">{t.library.brand.templates}</SelectItem>
+                  <SelectItem value="font">{t.library.brand.fonts}</SelectItem>
+                  <SelectItem value="photo">Photo</SelectItem>
+                  <SelectItem value="icon">Icon</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Description */}
+            <div>
+              <Label htmlFor="asset-description">{t.tasks.description}</Label>
+              <Textarea
+                id="asset-description"
+                placeholder={t.library.brand.descriptionPlaceholder ?? "Enter description"}
+                value={uploadData.description}
+                onChange={(e) => setUploadData({ ...uploadData, description: e.target.value })}
+                className="mt-1"
+                rows={2}
+              />
+            </div>
+
+            {/* Usage Notes */}
+            <div>
+              <Label htmlFor="usage-notes">{t.library.brand.usageNotes ?? "Usage Notes"}</Label>
+              <Textarea
+                id="usage-notes"
+                placeholder={t.library.brand.usageNotesPlaceholder ?? "How should this asset be used?"}
+                value={uploadData.usageNotes}
+                onChange={(e) => setUploadData({ ...uploadData, usageNotes: e.target.value })}
+                className="mt-1"
+                rows={2}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsUploadOpen(false)}>
+              {t.common.cancel}
+            </Button>
+            <Button
+              onClick={handleUpload}
+              disabled={isUploading || createBrandAssetMutation.isPending || !uploadFile}
+            >
+              {isUploading || createBrandAssetMutation.isPending ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  {t.common.loading}
+                </>
+              ) : (
+                <>
+                  <Upload className="w-4 h-4 mr-2" />
+                  {t.common.upload}
+                </>
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

@@ -370,6 +370,7 @@ export interface Translations {
       reject: string;
       requestRevision: string;
       addComment: string;
+      waitingForManager: string;
     };
     ideas: {
       title: string;
@@ -529,6 +530,15 @@ export interface Translations {
       guidelines: string;
       templates: string;
       downloadAll: string;
+      uploadLogo: string;
+      uploadDescription: string;
+      uploadSuccess: string;
+      assetName: string;
+      assetNamePlaceholder: string;
+      category: string;
+      descriptionPlaceholder: string;
+      usageNotes: string;
+      usageNotesPlaceholder: string;
     };
     assets: {
       title: string;
@@ -539,6 +549,8 @@ export interface Translations {
       videos: string;
       documents: string;
       audio: string;
+      selectFile: string;
+      dragDrop: string;
       filters: {
         all: string;
         images: string;

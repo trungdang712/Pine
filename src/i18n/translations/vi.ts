@@ -368,6 +368,7 @@ export const vi: Translations = {
       reject: "Từ chối",
       requestRevision: "Yêu cầu chỉnh sửa",
       addComment: "Thêm nhận xét",
+      waitingForManager: "Đang chờ Manager duyệt",
     },
     ideas: {
       title: "Ý tưởng sáng tạo",
@@ -527,6 +528,15 @@ export const vi: Translations = {
       guidelines: "Hướng dẫn sử dụng",
       templates: "Mẫu thiết kế",
       downloadAll: "Tải tất cả",
+      uploadLogo: "Tải lên logo",
+      uploadDescription: "Tải lên logo hoặc tài nguyên thương hiệu",
+      uploadSuccess: "Đã tải lên thành công",
+      assetName: "Tên tài nguyên",
+      assetNamePlaceholder: "Nhập tên tài nguyên",
+      category: "Danh mục",
+      descriptionPlaceholder: "Nhập mô tả",
+      usageNotes: "Hướng dẫn sử dụng",
+      usageNotesPlaceholder: "Tài nguyên này nên được sử dụng như thế nào?",
     },
     assets: {
       title: "Thư viện tài nguyên",
@@ -537,6 +547,8 @@ export const vi: Translations = {
       videos: "Video",
       documents: "Tài liệu",
       audio: "Âm thanh",
+      selectFile: "Chọn tệp",
+      dragDrop: "Nhấp để chọn hoặc kéo thả",
       filters: {
         all: "Tất cả",
         images: "Hình ảnh",

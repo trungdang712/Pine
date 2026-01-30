@@ -66,6 +66,25 @@ export default function PendingApprovalPage() {
   // Check if user can approve at different layers
   const isAdmin = profile?.role === "super_admin" || profile?.role === "admin";
   const isManager = profile?.role === "marketing_manager" || isAdmin;
+  const isOnlyAdmin = isAdmin && profile?.role !== "marketing_manager";
+
+  // Function to check if current user can approve a specific proposal
+  const canApprove = (proposal: { currentLayer?: number; totalLayers?: number }) => {
+    const currentLayer = (proposal as unknown as { currentLayer: number }).currentLayer || 1;
+    const totalLayers = (proposal as unknown as { totalLayers: number }).totalLayers || 1;
+
+    // Manager can approve at Layer 1
+    if (isManager && !isOnlyAdmin && currentLayer === 1) return true;
+    if (isManager && currentLayer === 1) return true;
+
+    // Admin can only approve 2-layer proposals when at Layer 2
+    // Admin can also approve 1-layer proposals (they act as manager fallback)
+    if (isAdmin && totalLayers === 1) return true;
+    if (isAdmin && totalLayers === 2 && currentLayer === 2) return true;
+
+    // Admin cannot approve at Layer 1 for 2-layer proposals
+    return false;
+  };
 
   // Fetch pending approvals with layer filter
   const { data: pendingProposals, isLoading, error, refetch } =
@@ -323,31 +342,37 @@ export default function PendingApprovalPage() {
                           )}
                         </div>
                       </div>
-                      <div className="flex gap-2">
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          className="text-red-600 hover:text-red-700"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            openDetail(proposal.id);
-                          }}
-                        >
-                          <XCircle className="h-4 w-4 mr-1" />
-                          {t.proposals.pending.reject}
-                        </Button>
-                        <Button
-                          size="sm"
-                          className="bg-green-600 hover:bg-green-700"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            openDetail(proposal.id);
-                          }}
-                        >
-                          <CheckCircle className="h-4 w-4 mr-1" />
-                          {t.proposals.pending.approve}
-                        </Button>
-                      </div>
+                      {canApprove({ currentLayer, totalLayers }) ? (
+                        <div className="flex gap-2">
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="text-red-600 hover:text-red-700"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              openDetail(proposal.id);
+                            }}
+                          >
+                            <XCircle className="h-4 w-4 mr-1" />
+                            {t.proposals.pending.reject}
+                          </Button>
+                          <Button
+                            size="sm"
+                            className="bg-green-600 hover:bg-green-700"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              openDetail(proposal.id);
+                            }}
+                          >
+                            <CheckCircle className="h-4 w-4 mr-1" />
+                            {t.proposals.pending.approve}
+                          </Button>
+                        </div>
+                      ) : (
+                        <Badge variant="outline" className="text-muted-foreground">
+                          {t.proposals.pending.waitingForManager}
+                        </Badge>
+                      )}
                     </div>
                   </div>
                 </CardContent>
@@ -469,22 +494,34 @@ export default function PendingApprovalPage() {
                 <Button variant="outline" onClick={() => setIsDetailOpen(false)}>
                   {t.common.close}
                 </Button>
-                <Button
-                  variant="destructive"
-                  onClick={handleReject}
-                  disabled={rejectMutation.isPending}
-                >
-                  <XCircle className="h-4 w-4 mr-1" />
-                  {rejectMutation.isPending ? t.common.loading : t.proposals.pending.reject}
-                </Button>
-                <Button
-                  className="bg-green-600 hover:bg-green-700"
-                  onClick={handleApprove}
-                  disabled={approveMutation.isPending}
-                >
-                  <CheckCircle className="h-4 w-4 mr-1" />
-                  {approveMutation.isPending ? t.common.loading : t.proposals.pending.approve}
-                </Button>
+                {canApprove({
+                  currentLayer: (selectedProposal as unknown as { currentLayer: number }).currentLayer || 1,
+                  totalLayers: (selectedProposal as unknown as { totalLayers: number }).totalLayers || 1,
+                }) ? (
+                  <>
+                    <Button
+                      variant="destructive"
+                      onClick={handleReject}
+                      disabled={rejectMutation.isPending}
+                    >
+                      <XCircle className="h-4 w-4 mr-1" />
+                      {rejectMutation.isPending ? t.common.loading : t.proposals.pending.reject}
+                    </Button>
+                    <Button
+                      className="bg-green-600 hover:bg-green-700"
+                      onClick={handleApprove}
+                      disabled={approveMutation.isPending}
+                    >
+                      <CheckCircle className="h-4 w-4 mr-1" />
+                      {approveMutation.isPending ? t.common.loading : t.proposals.pending.approve}
+                    </Button>
+                  </>
+                ) : (
+                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                    <Clock className="h-4 w-4" />
+                    {t.proposals.pending.waitingForManager}
+                  </div>
+                )}
               </DialogFooter>
             </>
           )}

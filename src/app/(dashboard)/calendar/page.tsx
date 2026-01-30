@@ -855,29 +855,6 @@ export default function CalendarPage() {
             </div>
           </div>
 
-          {/* Status Legend */}
-          <div className="flex flex-wrap items-center gap-4 mt-4 text-sm text-muted-foreground">
-            <div className="flex items-center gap-2">
-              <div className="w-8 h-2 border-l-2 border-gray-300 bg-white" />
-              <span>{statusDisplayNames.planned}</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <div className="w-8 h-2 border-l-2 border-yellow-500 bg-white" />
-              <span>{statusDisplayNames.in_production}</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <div className="w-8 h-2 border-l-2 border-orange-500 bg-white" />
-              <span>{statusDisplayNames.ready_for_review}</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <div className="w-8 h-2 border-l-2 border-green-500 bg-white" />
-              <span>{statusDisplayNames.approved}</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <div className="w-8 h-2 bg-blue-50 border" />
-              <span>{statusDisplayNames.published}</span>
-            </div>
-          </div>
         </CardContent>
       </Card>
 

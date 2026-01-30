@@ -1,8 +1,10 @@
 "use client";
 
 import { useState, useMemo } from "react";
+import { useRouter } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Progress } from "@/components/ui/progress";
 import {
@@ -13,12 +15,20 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle,
+} from "@/components/ui/sheet";
+import {
   Users,
   CheckSquare,
   Clock,
   AlertTriangle,
   Calendar,
   TrendingUp,
+  ExternalLink,
 } from "lucide-react";
 import { getInitials } from "@/lib/utils";
 import { trpc } from "@/lib/trpc";
@@ -42,7 +52,9 @@ const statusColors: Record<string, string> = {
 
 export default function TeamTasksPage() {
   const { t } = useLanguage();
+  const router = useRouter();
   const [selectedMember, setSelectedMember] = useState<string>("all");
+  const [selectedMemberDetail, setSelectedMemberDetail] = useState<string | null>(null);
 
   const statusLabels: Record<string, string> = {
     todo: t.tasks.statuses.todo,
@@ -74,44 +86,75 @@ export default function TeamTasksPage() {
   const isLoading = usersQuery.isLoading || tasksQuery.isLoading || statsQuery.isLoading;
   const error = usersQuery.error || tasksQuery.error || statsQuery.error;
 
+  // Role priority for sorting (lower = higher priority)
+  const rolePriority: Record<string, number> = {
+    super_admin: 0,
+    admin: 1,
+    marketing_manager: 2,
+    content_creator: 3,
+    digital_marketing: 4,
+    graphic_designer: 5,
+    video_producer: 6,
+  };
+
   // Build team member data from real users + tasks
   const teamMembers = useMemo(() => {
     if (!usersQuery.data || !tasksQuery.data) return [];
 
     const allTasks = tasksQuery.data.tasks;
 
-    return usersQuery.data.map((user) => {
-      const memberTasks = allTasks.filter(
-        (t) => t.assignee?.id === user.id
-      );
+    return usersQuery.data
+      .map((user) => {
+        const memberTasks = allTasks.filter(
+          (t) => t.assignee?.id === user.id
+        );
 
-      const total = memberTasks.length;
-      const completed = memberTasks.filter((t) => t.status === "done").length;
-      const inProgress = memberTasks.filter((t) => t.status === "in_progress").length;
-      const overdue = memberTasks.filter(
-        (t) => t.status !== "done" && t.dueDate && new Date(t.dueDate) < new Date()
-      ).length;
+        const total = memberTasks.length;
+        const completed = memberTasks.filter((t) => t.status === "done").length;
+        const inProgress = memberTasks.filter((t) => t.status === "in_progress").length;
+        const overdue = memberTasks.filter(
+          (t) => t.status !== "done" && t.dueDate && new Date(t.dueDate) < new Date()
+        ).length;
 
-      // Show active tasks (not done)
-      const activeTasks = memberTasks
-        .filter((t) => t.status !== "done")
-        .slice(0, 5);
+        // Show active tasks (not done)
+        const activeTasks = memberTasks
+          .filter((t) => t.status !== "done")
+          .slice(0, 5);
 
-      return {
-        id: user.id,
-        name: user.name,
-        role: roleLabels[user.role] ?? user.role,
-        avatar: user.avatar,
-        stats: { total, completed, inProgress, overdue },
-        tasks: activeTasks.map((t) => ({
+        // All tasks for detail view
+        const allMemberTasks = memberTasks.map((t) => ({
           id: t.id,
           title: t.title,
           status: t.status,
           priority: t.priority,
           dueDate: t.dueDate ? new Date(t.dueDate).toISOString().split("T")[0] : "",
-        })),
-      };
-    });
+        }));
+
+        return {
+          id: user.id,
+          name: user.name,
+          role: roleLabels[user.role] ?? user.role,
+          rawRole: user.role, // Keep raw role for sorting
+          avatar: user.avatar,
+          stats: { total, completed, inProgress, overdue },
+          tasks: activeTasks.map((t) => ({
+            id: t.id,
+            title: t.title,
+            status: t.status,
+            priority: t.priority,
+            dueDate: t.dueDate ? new Date(t.dueDate).toISOString().split("T")[0] : "",
+          })),
+          allTasks: allMemberTasks,
+        };
+      })
+      .sort((a, b) => {
+        // Sort by role priority first
+        const priorityA = rolePriority[a.rawRole] ?? 99;
+        const priorityB = rolePriority[b.rawRole] ?? 99;
+        if (priorityA !== priorityB) return priorityA - priorityB;
+        // Secondary sort by name
+        return a.name.localeCompare(b.name);
+      });
   }, [usersQuery.data, tasksQuery.data]);
 
   if (isLoading) return <PageLoading text={t.common.loading} />;
@@ -228,7 +271,11 @@ export default function TeamTasksPage() {
               : 0;
 
           return (
-            <Card key={member.id}>
+            <Card
+              key={member.id}
+              className="cursor-pointer hover:shadow-md transition-shadow"
+              onClick={() => setSelectedMemberDetail(member.id)}
+            >
               <CardHeader>
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-4">
@@ -282,7 +329,11 @@ export default function TeamTasksPage() {
                       {member.tasks.map((task) => (
                         <div
                           key={task.id}
-                          className="flex items-center justify-between p-3 rounded-lg border hover:bg-muted/50 transition-colors"
+                          className="flex items-center justify-between p-3 rounded-lg border hover:bg-muted/50 transition-colors cursor-pointer"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            router.push(`/tasks?taskId=${task.id}`);
+                          }}
                         >
                           <div className="flex items-center gap-3">
                             <div
@@ -311,6 +362,7 @@ export default function TeamTasksPage() {
                                 {new Date(task.dueDate).toLocaleDateString("vi-VN")}
                               </span>
                             )}
+                            <ExternalLink className="h-3 w-3 text-muted-foreground" />
                           </div>
                         </div>
                       ))}
@@ -361,6 +413,122 @@ export default function TeamTasksPage() {
           </div>
         </CardContent>
       </Card>
+
+      {/* Member Detail Sheet */}
+      <Sheet open={!!selectedMemberDetail} onOpenChange={(open) => !open && setSelectedMemberDetail(null)}>
+        <SheetContent side="right" className="w-[400px] sm:w-[540px] overflow-y-auto">
+          {(() => {
+            const member = teamMembers.find((m) => m.id === selectedMemberDetail);
+            if (!member) return null;
+
+            const completionRate =
+              member.stats.total > 0
+                ? Math.round((member.stats.completed / member.stats.total) * 100)
+                : 0;
+
+            return (
+              <>
+                <SheetHeader>
+                  <div className="flex items-center gap-4">
+                    <Avatar className="h-14 w-14">
+                      <AvatarImage src={member.avatar ?? ""} />
+                      <AvatarFallback>{getInitials(member.name)}</AvatarFallback>
+                    </Avatar>
+                    <div>
+                      <SheetTitle>{member.name}</SheetTitle>
+                      <SheetDescription>{member.role}</SheetDescription>
+                    </div>
+                  </div>
+                </SheetHeader>
+
+                {/* Stats */}
+                <div className="grid grid-cols-2 gap-3 mt-6">
+                  <div className="p-3 bg-muted/50 rounded-lg">
+                    <p className="text-xs text-muted-foreground">{t.common.completed}</p>
+                    <p className="text-xl font-bold">
+                      {member.stats.completed}/{member.stats.total}
+                    </p>
+                    <Progress value={completionRate} className="h-1 mt-1" />
+                  </div>
+                  <div className="p-3 bg-muted/50 rounded-lg">
+                    <p className="text-xs text-muted-foreground">{t.common.inProgress}</p>
+                    <p className="text-xl font-bold">{member.stats.inProgress}</p>
+                  </div>
+                  {member.stats.overdue > 0 && (
+                    <div className="p-3 bg-red-50 rounded-lg col-span-2">
+                      <p className="text-xs text-red-600">{t.common.overdue}</p>
+                      <p className="text-xl font-bold text-red-600">{member.stats.overdue}</p>
+                    </div>
+                  )}
+                </div>
+
+                {/* All Tasks */}
+                <div className="mt-6">
+                  <h3 className="font-semibold mb-3">{t.tasks.team.assignedTasks} ({member.allTasks.length})</h3>
+                  <div className="space-y-2 max-h-[400px] overflow-y-auto">
+                    {member.allTasks.length === 0 ? (
+                      <p className="text-sm text-muted-foreground italic">{t.tasks.noTasks}</p>
+                    ) : (
+                      member.allTasks.map((task) => (
+                        <div
+                          key={task.id}
+                          className="flex items-center justify-between p-3 rounded-lg border hover:bg-muted/50 transition-colors cursor-pointer"
+                          onClick={() => {
+                            setSelectedMemberDetail(null);
+                            router.push(`/tasks?taskId=${task.id}`);
+                          }}
+                        >
+                          <div className="flex items-center gap-3">
+                            <div
+                              className={`h-2 w-2 rounded-full ${
+                                task.priority === "urgent"
+                                  ? "bg-red-500"
+                                  : task.priority === "high"
+                                  ? "bg-orange-500"
+                                  : task.priority === "normal"
+                                  ? "bg-blue-500"
+                                  : "bg-gray-400"
+                              }`}
+                            />
+                            <span className={`font-medium ${task.status === "done" ? "line-through text-muted-foreground" : ""}`}>
+                              {task.title}
+                            </span>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <Badge className={statusColors[task.status] ?? ""} variant="secondary">
+                              {statusLabels[task.status] ?? task.status}
+                            </Badge>
+                            {task.dueDate && (
+                              <span className="text-xs text-muted-foreground">
+                                {new Date(task.dueDate).toLocaleDateString("vi-VN")}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                </div>
+
+                {/* View All Tasks Button */}
+                <div className="mt-4">
+                  <Button
+                    variant="outline"
+                    className="w-full"
+                    onClick={() => {
+                      setSelectedMemberDetail(null);
+                      router.push(`/tasks?assignee=${member.id}`);
+                    }}
+                  >
+                    <ExternalLink className="h-4 w-4 mr-2" />
+                    {t.common.viewAll}
+                  </Button>
+                </div>
+              </>
+            );
+          })()}
+        </SheetContent>
+      </Sheet>
     </div>
   );
 }

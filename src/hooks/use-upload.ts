@@ -11,7 +11,7 @@ interface UploadResult {
 }
 
 interface UseUploadOptions {
-  bucket: "assets" | "attachments";
+  bucket: "assets" | "attachments" | "brand-assets";
   onProgress?: (progress: number) => void;
   onSuccess?: (result: UploadResult) => void;
   onError?: (error: Error) => void;

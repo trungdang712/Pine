@@ -368,6 +368,7 @@ export const en: Translations = {
       reject: "Reject",
       requestRevision: "Request Revision",
       addComment: "Add Comment",
+      waitingForManager: "Waiting for Manager approval",
     },
     ideas: {
       title: "Innovation Ideas",
@@ -527,6 +528,15 @@ export const en: Translations = {
       guidelines: "Guidelines",
       templates: "Templates",
       downloadAll: "Download All",
+      uploadLogo: "Upload Logo",
+      uploadDescription: "Upload a logo or brand asset to the library",
+      uploadSuccess: "Uploaded successfully",
+      assetName: "Asset Name",
+      assetNamePlaceholder: "Enter asset name",
+      category: "Category",
+      descriptionPlaceholder: "Enter description",
+      usageNotes: "Usage Notes",
+      usageNotesPlaceholder: "How should this asset be used?",
     },
     assets: {
       title: "Asset Library",
@@ -537,6 +547,8 @@ export const en: Translations = {
       videos: "Videos",
       documents: "Documents",
       audio: "Audio",
+      selectFile: "Select File",
+      dragDrop: "Click to select or drag and drop",
       filters: {
         all: "All",
         images: "Images",
