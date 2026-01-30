@@ -22,7 +22,7 @@ model User {
   password           String    @default("")
   name               String
   avatar             String?
-  role               String    @default("content_creator") // super_admin, admin, marketing_manager, content_creator, digital_marketing, graphic_designer, video_producer, sales_manager, sales_consultant
+  role               String    @default("content_creator") // super_admin, marketing_manager, content_creator, digital_marketing, graphic_designer, video_producer, sales_manager, sales_consultant
   team               String?   // admin, marketing, sales
   doctorId           String?
   mustChangePassword Boolean   @default(false)

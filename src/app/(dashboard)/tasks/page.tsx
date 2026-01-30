@@ -859,7 +859,7 @@ export default function TasksPage() {
                   const currentStatus = taskDetails?.status ?? selectedTask.status;
                   const isAssignee = selectedTask.assignee?.id === profile?.id;
                   const isCreator = selectedTask.creator?.id === profile?.id;
-                  const isManager = ["super_admin", "admin", "marketing_manager"].includes(profile?.role ?? "");
+                  const isManager = ["super_admin", "marketing_manager"].includes(profile?.role ?? "");
                   const canReview = isCreator || isManager;
 
                   return (

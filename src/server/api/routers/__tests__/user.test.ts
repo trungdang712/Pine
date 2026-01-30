@@ -31,7 +31,7 @@ describe('User Router', () => {
           email: 'admin@greenfield.com',
           name: 'Admin User',
           avatar: null,
-          role: 'admin',
+          role: 'super_admin',
           createdAt: new Date('2025-01-01'),
         },
         {

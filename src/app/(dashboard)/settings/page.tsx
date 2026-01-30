@@ -187,7 +187,7 @@ export default function SettingsPage() {
     }
   }, [currentUser, profileFormInitialized]);
 
-  const isAdmin = profile?.role === "admin" || profile?.role === "super_admin" || profile?.role === "marketing_manager";
+  const isAdmin = profile?.role === "super_admin" || profile?.role === "marketing_manager";
 
   const { data: teamMembers, isLoading: teamLoading, error: teamError, refetch: refetchTeam } = trpc.user.getAll.useQuery(undefined, {
     enabled: isAuthenticated && isAdmin,
@@ -618,7 +618,6 @@ export default function SettingsPage() {
   const getRoleDisplay = (role: string) => {
     const roleMap: Record<string, string> = {
       super_admin: "Super Admin",
-      admin: "Admin",
       marketing_manager: "Marketing Manager",
       content_creator: "Content Creator",
       digital_marketing: "Digital Marketing",
@@ -681,7 +680,7 @@ export default function SettingsPage() {
       name: inviteForm.name,
       email: inviteForm.email,
       password: inviteForm.password,
-      role: inviteForm.role as "admin" | "marketing_manager" | "content_creator" | "digital_marketing" | "graphic_designer" | "video_producer",
+      role: inviteForm.role as "marketing_manager" | "content_creator" | "digital_marketing" | "graphic_designer" | "video_producer",
     });
   };
 
@@ -689,7 +688,7 @@ export default function SettingsPage() {
     updateUserMutation.mutate({
       id: editMemberForm.id,
       name: editMemberForm.name || undefined,
-      role: editMemberForm.role as "admin" | "marketing_manager" | "content_creator" | "digital_marketing" | "graphic_designer" | "video_producer" | undefined,
+      role: editMemberForm.role as "marketing_manager" | "content_creator" | "digital_marketing" | "graphic_designer" | "video_producer" | undefined,
       isActive: editMemberForm.isActive,
     });
   };
@@ -1004,7 +1003,6 @@ export default function SettingsPage() {
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="super_admin">Super Admin</SelectItem>
-                      <SelectItem value="admin">Admin</SelectItem>
                       <SelectItem value="marketing_manager">Marketing Manager</SelectItem>
                       <SelectItem value="content_creator">Content Creator</SelectItem>
                       <SelectItem value="digital_marketing">Digital Marketing</SelectItem>
@@ -1276,7 +1274,7 @@ export default function SettingsPage() {
                           <div>
                             <div className="flex items-center gap-2">
                               <p className="font-semibold">{member.name}</p>
-                              {(member.role === "admin" || member.role === "super_admin") && (
+                              {member.role === "super_admin" && (
                                 <Badge variant="default" className="gap-1">
                                   <Crown className="w-3 h-3" />
                                   Admin
@@ -2470,7 +2468,6 @@ export default function SettingsPage() {
                   <SelectItem value="graphic_designer">Graphic Designer</SelectItem>
                   <SelectItem value="video_producer">Video Producer</SelectItem>
                   <SelectItem value="marketing_manager">Marketing Manager</SelectItem>
-                  <SelectItem value="admin">Admin</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -2511,7 +2508,6 @@ export default function SettingsPage() {
                   <SelectItem value="graphic_designer">Graphic Designer</SelectItem>
                   <SelectItem value="video_producer">Video Producer</SelectItem>
                   <SelectItem value="marketing_manager">Marketing Manager</SelectItem>
-                  <SelectItem value="admin">Admin</SelectItem>
                 </SelectContent>
               </Select>
             </div>

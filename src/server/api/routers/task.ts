@@ -294,7 +294,7 @@ export const taskRouter = createTRPCRouter({
         select: { role: true },
       });
 
-      if (task.creatorId !== ctx.session.user.id && !["super_admin", "admin", "marketing_manager"].includes(user?.role ?? "")) {
+      if (task.creatorId !== ctx.session.user.id && !["super_admin", "marketing_manager"].includes(user?.role ?? "")) {
         throw new TRPCError({ code: "FORBIDDEN", message: "Not authorized to delete this task" });
       }
 
@@ -486,7 +486,7 @@ export const taskRouter = createTRPCRouter({
       });
 
       const isCreator = task.creatorId === ctx.session.user.id;
-      const isManager = ["super_admin", "admin", "marketing_manager"].includes(user?.role ?? "");
+      const isManager = ["super_admin", "marketing_manager"].includes(user?.role ?? "");
 
       if (!isCreator && !isManager) {
         throw new TRPCError({ code: "FORBIDDEN", message: "Only the task creator or manager can approve" });
@@ -592,7 +592,7 @@ export const taskRouter = createTRPCRouter({
       });
 
       const isCreator = task.creatorId === ctx.session.user.id;
-      const isManager = ["super_admin", "admin", "marketing_manager"].includes(user?.role ?? "");
+      const isManager = ["super_admin", "marketing_manager"].includes(user?.role ?? "");
 
       if (!isCreator && !isManager) {
         throw new TRPCError({ code: "FORBIDDEN", message: "Only the task creator or manager can request revision" });

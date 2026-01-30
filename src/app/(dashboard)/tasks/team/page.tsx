@@ -71,7 +71,7 @@ export default function TeamTasksPage() {
   };
 
   const roleLabels: Record<string, string> = {
-    admin: t.dashboard.roles.admin,
+    super_admin: t.dashboard.roles.admin,
     marketing_manager: t.dashboard.roles.marketingManager,
     content_creator: t.dashboard.roles.contentCreator,
     digital_marketing: t.dashboard.roles.digitalMarketing,
@@ -89,12 +89,11 @@ export default function TeamTasksPage() {
   // Role priority for sorting (lower = higher priority)
   const rolePriority: Record<string, number> = {
     super_admin: 0,
-    admin: 1,
-    marketing_manager: 2,
-    content_creator: 3,
-    digital_marketing: 4,
-    graphic_designer: 5,
-    video_producer: 6,
+    marketing_manager: 1,
+    content_creator: 2,
+    digital_marketing: 3,
+    graphic_designer: 4,
+    video_producer: 5,
   };
 
   // Build team member data from real users + tasks

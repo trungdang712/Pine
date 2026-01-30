@@ -83,7 +83,7 @@ export default function BrandLibraryPage() {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Check if user is admin
-  const isAdmin = profile?.role === "super_admin" || profile?.role === "admin";
+  const isAdmin = profile?.role === "super_admin";
 
   // tRPC queries
   const brandColorsQuery = trpc.library.getBrandColors.useQuery();

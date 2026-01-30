@@ -108,7 +108,7 @@ export function createAdminSession(overrides: Partial<MockUser> = {}) {
     id: 'admin-1',
     email: 'admin@example.com',
     name: 'Admin User',
-    role: 'admin',
+    role: 'super_admin',
     ...overrides,
   })
 }
@@ -145,7 +145,7 @@ export const fixtures = {
       password: '$2a$12$hashedpassword', // bcrypt hash placeholder
       name: 'Admin User',
       avatar: null,
-      role: 'admin',
+      role: 'super_admin',
       isActive: true,
       createdAt: new Date('2025-01-01'),
       updatedAt: new Date('2025-01-01'),

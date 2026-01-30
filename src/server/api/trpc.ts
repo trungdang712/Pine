@@ -90,7 +90,7 @@ const enforceUserIsAdmin = t.middleware(async ({ ctx, next }) => {
 
   const user = ctx.session.user;
 
-  if (!["super_admin", "admin", "marketing_manager"].includes(user.role)) {
+  if (!["super_admin", "marketing_manager"].includes(user.role)) {
     throw new TRPCError({ code: "FORBIDDEN", message: "Admin access required" });
   }
 

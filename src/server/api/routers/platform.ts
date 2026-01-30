@@ -60,7 +60,7 @@ export const platformRouter = createTRPCRouter({
         select: { role: true },
       });
 
-      if (!["super_admin", "admin", "marketing_manager"].includes(user?.role ?? "")) {
+      if (!["super_admin", "marketing_manager"].includes(user?.role ?? "")) {
         throw new TRPCError({ code: "FORBIDDEN", message: "Only admins can create platforms" });
       }
 
@@ -98,7 +98,7 @@ export const platformRouter = createTRPCRouter({
         select: { role: true },
       });
 
-      if (!["super_admin", "admin", "marketing_manager"].includes(user?.role ?? "")) {
+      if (!["super_admin", "marketing_manager"].includes(user?.role ?? "")) {
         throw new TRPCError({ code: "FORBIDDEN", message: "Only admins can update platforms" });
       }
 
@@ -127,7 +127,7 @@ export const platformRouter = createTRPCRouter({
         select: { role: true },
       });
 
-      if (!["super_admin", "admin"].includes(user?.role ?? "")) {
+      if (!["super_admin"].includes(user?.role ?? "")) {
         throw new TRPCError({ code: "FORBIDDEN", message: "Only super admins can delete platforms" });
       }
 

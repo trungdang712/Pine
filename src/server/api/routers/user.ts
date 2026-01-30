@@ -101,7 +101,6 @@ export const userRouter = createTRPCRouter({
         password: z.string().min(8),
         name: z.string().min(1),
         role: z.enum([
-          "admin",
           "marketing_manager",
           "content_creator",
           "digital_marketing",
@@ -172,7 +171,6 @@ export const userRouter = createTRPCRouter({
         name: z.string().min(1).optional(),
         role: z
           .enum([
-            "admin",
             "marketing_manager",
             "content_creator",
             "digital_marketing",

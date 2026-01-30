@@ -126,7 +126,7 @@ export const libraryRouter = createTRPCRouter({
 
       if (
         asset.uploadedById !== ctx.session.user.id &&
-        !["super_admin", "admin", "marketing_manager"].includes(user?.role ?? "")
+        !["super_admin", "marketing_manager"].includes(user?.role ?? "")
       ) {
         throw new TRPCError({ code: "FORBIDDEN" });
       }
@@ -158,7 +158,7 @@ export const libraryRouter = createTRPCRouter({
 
       if (
         asset.uploadedById !== ctx.session.user.id &&
-        !["super_admin", "admin", "marketing_manager"].includes(user?.role ?? "")
+        !["super_admin", "marketing_manager"].includes(user?.role ?? "")
       ) {
         throw new TRPCError({ code: "FORBIDDEN" });
       }

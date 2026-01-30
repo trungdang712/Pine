@@ -78,7 +78,7 @@ async function resolveUsers(): Promise<{
 
     // Assign specific real users to seed roles
     const admin =
-      pick(["nhung", "trung"], ["super_admin", "admin"]) ?? realUsers[0];
+      pick(["nhung", "trung"], ["super_admin"]) ?? realUsers[0];
     const manager =
       pick(["hoai.tt"], ["marketing_manager"]) ?? realUsers[0];
     const digitalMarketer =
@@ -157,7 +157,7 @@ async function resolveUsers(): Promise<{
       email: "admin@greenfield.clinic",
       password: adminPassword,
       name: "Admin User",
-      role: "admin",
+      role: "super_admin",
       points: { totalPoints: 0, weeklyPoints: 0, monthlyPoints: 0 },
     },
     {

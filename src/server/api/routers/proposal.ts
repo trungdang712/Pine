@@ -14,10 +14,10 @@ function getRequiredLayers(category: string): number {
 // Helper function to check if user can approve at a specific layer
 function canApproveAtLayer(role: string, layer: number): boolean {
   if (layer === 1) {
-    return ["super_admin", "admin", "marketing_manager"].includes(role);
+    return ["super_admin", "marketing_manager"].includes(role);
   }
   if (layer === 2) {
-    return ["super_admin", "admin"].includes(role);
+    return ["super_admin"].includes(role);
   }
   return false;
 }
@@ -144,7 +144,7 @@ export const proposalRouter = createTRPCRouter({
       });
 
       const userRole = currentUser?.role ?? "";
-      const isAdmin = ["super_admin", "admin"].includes(userRole);
+      const isAdmin = ["super_admin"].includes(userRole);
       const isManager = userRole === "marketing_manager";
       const layerFilter = input?.layerFilter ?? "all";
 
@@ -350,7 +350,7 @@ export const proposalRouter = createTRPCRouter({
 
       if (
         proposal.creatorId !== ctx.session.user.id &&
-        !["super_admin", "admin", "marketing_manager"].includes(user?.role ?? "")
+        !["super_admin", "marketing_manager"].includes(user?.role ?? "")
       ) {
         throw new TRPCError({ code: "FORBIDDEN", message: "Not authorized to update this proposal" });
       }
@@ -405,12 +405,12 @@ export const proposalRouter = createTRPCRouter({
         select: { id: true },
       });
 
-      // If no marketing managers, fallback to admins
+      // If no marketing managers, fallback to super_admin
       const approvers = layer1Approvers.length > 0
         ? layer1Approvers
         : await ctx.prisma.user.findMany({
             where: {
-              role: { in: ["admin", "super_admin"] },
+              role: "super_admin",
               isActive: true
             },
             select: { id: true },
@@ -558,7 +558,7 @@ export const proposalRouter = createTRPCRouter({
         // Progress to Layer 2 - create Layer 2 approval steps
         const layer2Approvers = await ctx.prisma.user.findMany({
           where: {
-            role: { in: ["admin", "super_admin"] },
+            role: "super_admin",
             isActive: true,
           },
           select: { id: true },

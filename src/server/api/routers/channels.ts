@@ -64,7 +64,7 @@ export const channelsRouter = createTRPCRouter({
         select: { role: true },
       });
 
-      if (!["super_admin", "admin", "marketing_manager"].includes(user?.role ?? "")) {
+      if (!["super_admin", "marketing_manager"].includes(user?.role ?? "")) {
         throw new TRPCError({ code: "FORBIDDEN", message: "Not authorized to create channels" });
       }
 
@@ -94,7 +94,7 @@ export const channelsRouter = createTRPCRouter({
         select: { role: true },
       });
 
-      if (!["super_admin", "admin", "marketing_manager"].includes(user?.role ?? "")) {
+      if (!["super_admin", "marketing_manager"].includes(user?.role ?? "")) {
         throw new TRPCError({ code: "FORBIDDEN", message: "Not authorized to update channels" });
       }
 
@@ -115,7 +115,7 @@ export const channelsRouter = createTRPCRouter({
         select: { role: true },
       });
 
-      if (!["super_admin", "admin", "marketing_manager"].includes(user?.role ?? "")) {
+      if (!["super_admin", "marketing_manager"].includes(user?.role ?? "")) {
         throw new TRPCError({ code: "FORBIDDEN", message: "Not authorized to delete channels" });
       }
 

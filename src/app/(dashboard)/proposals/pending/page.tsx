@@ -64,7 +64,7 @@ export default function PendingApprovalPage() {
   const utils = trpc.useUtils();
 
   // Check if user can approve at different layers
-  const isAdmin = profile?.role === "super_admin" || profile?.role === "admin";
+  const isAdmin = profile?.role === "super_admin";
   const isManager = profile?.role === "marketing_manager" || isAdmin;
   const isOnlyAdmin = isAdmin && profile?.role !== "marketing_manager";
 

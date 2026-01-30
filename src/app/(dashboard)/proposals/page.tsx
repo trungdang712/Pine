@@ -230,7 +230,7 @@ export default function ProposalsPage() {
     addComment.mutate({ proposalId: selectedProposalId, content: newComment });
   };
 
-  const isManager = profile?.role === "super_admin" || profile?.role === "admin" || profile?.role === "marketing_manager";
+  const isManager = profile?.role === "super_admin" || profile?.role === "marketing_manager";
 
   // Check if current user can approve
   const canApprove = isManager && selectedProposal?.approvals?.some(

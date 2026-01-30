@@ -523,10 +523,10 @@ describe('Task Router', () => {
 
     it('allows admin to delete any task', async () => {
       mockPrisma.task.findUnique.mockResolvedValue(fixtures.tasks.todo)
-      mockPrisma.user.findUnique.mockResolvedValue({ role: 'admin' })
+      mockPrisma.user.findUnique.mockResolvedValue({ role: 'super_admin' })
       mockPrisma.task.delete.mockResolvedValue(fixtures.tasks.todo)
 
-      const session = createMockSession({ id: 'admin-1', role: 'admin' })
+      const session = createMockSession({ id: 'admin-1', role: 'super_admin' })
       const caller = createTestCaller(mockPrisma, session)
       const result = await caller.task.delete({ id: 'task-1' })
 

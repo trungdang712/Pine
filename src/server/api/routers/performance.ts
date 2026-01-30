@@ -326,7 +326,7 @@ export const performanceRouter = createTRPCRouter({
           select: { role: true },
         });
 
-        if (!["super_admin", "admin", "marketing_manager"].includes(user?.role ?? "")) {
+        if (!["super_admin", "marketing_manager"].includes(user?.role ?? "")) {
           throw new TRPCError({ code: "FORBIDDEN", message: "Cannot view other users' ratings" });
         }
       }
