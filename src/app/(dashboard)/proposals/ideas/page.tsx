@@ -60,11 +60,11 @@ const getStatusConfig = (t: ReturnType<typeof useLanguage>["t"]) => ({
 });
 
 const categoryLabels: Record<IdeaCategory, string> = {
-  content_format: "Content Format",
-  process_improvement: "Process Improvement",
-  new_platform: "New Platform",
-  campaign_concept: "Campaign Concept",
-  automation: "Automation",
+  content_format: "Định dạng nội dung",
+  process_improvement: "Cải tiến quy trình",
+  new_platform: "Nền tảng mới",
+  campaign_concept: "Ý tưởng chiến dịch",
+  automation: "Tự động hóa",
 };
 
 export default function InnovationIdeasPage() {
@@ -110,7 +110,7 @@ export default function InnovationIdeasPage() {
       setIdeaTitle("");
       setIdeaDescription("");
       setIdeaCategory("content_format");
-      toast.success("Y tuong da duoc gui! +30 diem");
+      toast.success("Ý tưởng đã được gửi! +30 điểm");
     },
     onError: (err) => toast.error(err.message),
   });
@@ -120,7 +120,7 @@ export default function InnovationIdeasPage() {
     onSuccess: () => {
       utils.gamification.getAllIdeas.invalidate();
       utils.gamification.getIdeaById.invalidate();
-      toast.success("Da vote! +2 diem");
+      toast.success("Đã vote! +2 điểm");
     },
     onError: (err) => toast.error(err.message),
   });
@@ -130,7 +130,7 @@ export default function InnovationIdeasPage() {
     onSuccess: () => {
       utils.gamification.getAllIdeas.invalidate();
       utils.gamification.getIdeaById.invalidate();
-      toast.success("Da bo vote");
+      toast.success("Đã bỏ vote");
     },
     onError: (err) => toast.error(err.message),
   });
@@ -142,18 +142,18 @@ export default function InnovationIdeasPage() {
       utils.gamification.getAllIdeas.invalidate();
       setNewComment("");
       setReplyTo(null);
-      toast.success("Da them comment! +3 diem");
+      toast.success("Đã thêm bình luận! +3 điểm");
     },
     onError: (err) => toast.error(err.message),
   });
 
   const handleSubmitIdea = () => {
     if (!ideaTitle.trim()) {
-      toast.error("Vui long nhap tieu de y tuong");
+      toast.error("Vui lòng nhập tiêu đề ý tưởng");
       return;
     }
     if (!ideaDescription.trim() || ideaDescription.trim().length < 10) {
-      toast.error("Mo ta phai co it nhat 10 ky tu");
+      toast.error("Mô tả phải có ít nhất 10 ký tự");
       return;
     }
     submitIdeaMutation.mutate({
@@ -243,11 +243,11 @@ export default function InnovationIdeasPage() {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="content_format">Content Format</SelectItem>
-                    <SelectItem value="process_improvement">Process Improvement</SelectItem>
-                    <SelectItem value="new_platform">New Platform</SelectItem>
-                    <SelectItem value="campaign_concept">Campaign Concept</SelectItem>
-                    <SelectItem value="automation">Automation</SelectItem>
+                    <SelectItem value="content_format">Định dạng nội dung</SelectItem>
+                    <SelectItem value="process_improvement">Cải tiến quy trình</SelectItem>
+                    <SelectItem value="new_platform">Nền tảng mới</SelectItem>
+                    <SelectItem value="campaign_concept">Ý tưởng chiến dịch</SelectItem>
+                    <SelectItem value="automation">Tự động hóa</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -298,7 +298,7 @@ export default function InnovationIdeasPage() {
             </div>
             <div>
               <p className="text-2xl font-bold">{stats.totalVotes}</p>
-              <p className="text-sm text-muted-foreground">Tong so vote</p>
+              <p className="text-sm text-muted-foreground">Tổng số vote</p>
             </div>
           </CardContent>
         </Card>
@@ -336,11 +336,11 @@ export default function InnovationIdeasPage() {
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">{t.common.all}</SelectItem>
-              <SelectItem value="content_format">Content Format</SelectItem>
-              <SelectItem value="process_improvement">Process Improvement</SelectItem>
-              <SelectItem value="new_platform">New Platform</SelectItem>
-              <SelectItem value="campaign_concept">Campaign Concept</SelectItem>
-              <SelectItem value="automation">Automation</SelectItem>
+              <SelectItem value="content_format">Định dạng nội dung</SelectItem>
+              <SelectItem value="process_improvement">Cải tiến quy trình</SelectItem>
+              <SelectItem value="new_platform">Nền tảng mới</SelectItem>
+              <SelectItem value="campaign_concept">Ý tưởng chiến dịch</SelectItem>
+              <SelectItem value="automation">Tự động hóa</SelectItem>
             </SelectContent>
           </Select>
         </div>
@@ -348,12 +348,12 @@ export default function InnovationIdeasPage() {
           <TrendingUp className="h-4 w-4 text-muted-foreground" />
           <Select value={sortBy} onValueChange={(v) => setSortBy(v as SortBy)}>
             <SelectTrigger className="w-[180px]">
-              <SelectValue placeholder="Sap xep" />
+              <SelectValue placeholder="Sắp xếp" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="recent">Moi nhat</SelectItem>
-              <SelectItem value="top_voted">Nhieu vote nhat</SelectItem>
-              <SelectItem value="most_discussed">Nhieu binh luan nhat</SelectItem>
+              <SelectItem value="recent">Mới nhất</SelectItem>
+              <SelectItem value="top_voted">Nhiều vote nhất</SelectItem>
+              <SelectItem value="most_discussed">Nhiều bình luận nhất</SelectItem>
             </SelectContent>
           </Select>
         </div>
@@ -503,7 +503,7 @@ export default function InnovationIdeasPage() {
               <div className="space-y-6 py-4">
                 {/* Description */}
                 <div>
-                  <Label className="text-sm text-muted-foreground">Mo ta</Label>
+                  <Label className="text-sm text-muted-foreground">Mô tả</Label>
                   <p className="mt-2 text-sm p-3 bg-muted/50 rounded-md whitespace-pre-wrap">
                     {selectedIdea.description}
                   </p>
@@ -520,13 +520,13 @@ export default function InnovationIdeasPage() {
                 {/* Comments Section */}
                 <div>
                   <Label className="text-sm text-muted-foreground mb-3 block">
-                    Binh luan ({selectedIdea.comments?.length ?? 0})
+                    Bình luận ({selectedIdea.comments?.length ?? 0})
                   </Label>
 
                   {/* Comment Input */}
                   <div className="flex gap-2 mb-4">
                     <Textarea
-                      placeholder={replyTo ? "Tra loi binh luan..." : "Them binh luan..."}
+                      placeholder={replyTo ? "Trả lời bình luận..." : "Thêm bình luận..."}
                       value={newComment}
                       onChange={(e) => setNewComment(e.target.value)}
                       rows={2}
@@ -546,7 +546,7 @@ export default function InnovationIdeasPage() {
                           variant="ghost"
                           onClick={() => setReplyTo(null)}
                         >
-                          Huy
+                          Hủy
                         </Button>
                       )}
                     </div>
@@ -577,7 +577,7 @@ export default function InnovationIdeasPage() {
                               className="text-xs mt-1 h-auto py-1 px-2"
                               onClick={() => setReplyTo(comment.id)}
                             >
-                              Tra loi
+                              Trả lời
                             </Button>
                           </div>
                         </div>
@@ -610,7 +610,7 @@ export default function InnovationIdeasPage() {
                     ))}
                     {(!selectedIdea.comments || selectedIdea.comments.length === 0) && (
                       <p className="text-sm text-muted-foreground text-center py-4">
-                        Chua co binh luan nao
+                        Chưa có bình luận nào
                       </p>
                     )}
                   </div>
