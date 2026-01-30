@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useAuth } from "@/hooks/use-auth";
 import { KPICard } from "@/components/dashboard/kpi-card";
@@ -159,6 +159,13 @@ export default function DashboardPage() {
   };
 
   const [selectedRole, setSelectedRole] = useState<RoleType>(getUserRoleType());
+
+  // Update selectedRole when profile loads or changes
+  useEffect(() => {
+    if (profile?.role) {
+      setSelectedRole(getUserRoleType());
+    }
+  }, [profile?.role]);
 
   // Get action label from translations
   const getActionLabel = (key: string): string => {
