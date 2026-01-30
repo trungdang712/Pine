@@ -468,16 +468,11 @@ function generateGoogleOAuthUrl(platform: "google_ads" | "google_analytics"): st
 }
 
 function generateFacebookOAuthUrl(): string {
-  // Permissions needed for ads and page management
+  // Marketing API + Page permissions
   const permissions = [
-    "ads_read",
-    "ads_management",
     "pages_show_list",
     "pages_read_engagement",
-    "pages_read_user_content",
-    "read_insights",
-    "instagram_basic",
-    "instagram_manage_insights",
+    "ads_read",
     "business_management",
   ];
 

@@ -200,7 +200,9 @@ export async function GET(request: Request) {
     };
 
     // Calculate token expiration (long-lived tokens last ~60 days)
-    const tokenExpiresAt = new Date(Date.now() + longLivedToken.expires_in * 1000);
+    // Default to 60 days if expires_in is not provided
+    const expiresInSeconds = longLivedToken.expires_in ?? 60 * 24 * 60 * 60;
+    const tokenExpiresAt = new Date(Date.now() + expiresInSeconds * 1000);
 
     // Store tokens in database for Facebook
     await prisma.integrationConfig.upsert({
@@ -277,16 +279,11 @@ export async function GET(request: Request) {
  * This is called from the frontend when user clicks "Connect"
  */
 export function generateFacebookOAuthUrl(): string {
-  // Permissions needed for ads and page management
+  // Marketing API + Page permissions
   const permissions = [
-    "ads_read",
-    "ads_management",
     "pages_show_list",
     "pages_read_engagement",
-    "pages_read_user_content",
-    "read_insights",
-    "instagram_basic",
-    "instagram_manage_insights",
+    "ads_read",
     "business_management",
   ];
 

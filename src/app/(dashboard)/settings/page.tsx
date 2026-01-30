@@ -760,65 +760,21 @@ export default function SettingsPage() {
     return ["google_ads", "google_analytics", "facebook"].includes(platform);
   };
 
-  // Helper to get OAuth URL and redirect
+  // Helper to get OAuth URL from server and redirect
   const handleOAuthConnect = async (platform: "google_ads" | "google_analytics" | "facebook") => {
     setOauthLoading(true);
     try {
-      // Build OAuth URL based on platform
-      const baseUrl = window.location.origin;
-      let oauthUrl = "";
+      // Fetch OAuth URL from server (where env vars are available)
+      const result = await utils.client.integration.getOAuthUrl.query({ platform });
 
-      if (platform === "google_ads" || platform === "google_analytics") {
-        // Google OAuth
-        const scopes = platform === "google_ads"
-          ? ["https://www.googleapis.com/auth/adwords"]
-          : ["https://www.googleapis.com/auth/analytics.readonly"];
-        scopes.push(
-          "https://www.googleapis.com/auth/userinfo.email",
-          "https://www.googleapis.com/auth/userinfo.profile"
-        );
-        const state = btoa(JSON.stringify({ platform, returnUrl: "/settings?tab=integrations" }));
-        const params = new URLSearchParams({
-          client_id: process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID || "",
-          redirect_uri: `${baseUrl}/api/auth/callback/google`,
-          response_type: "code",
-          scope: scopes.join(" "),
-          access_type: "offline",
-          prompt: "consent",
-          state,
-        });
-        oauthUrl = `https://accounts.google.com/o/oauth2/v2/auth?${params.toString()}`;
-      } else if (platform === "facebook") {
-        // Facebook OAuth
-        const permissions = [
-          "ads_read",
-          "ads_management",
-          "pages_show_list",
-          "pages_read_engagement",
-          "pages_read_user_content",
-          "read_insights",
-          "instagram_basic",
-          "instagram_manage_insights",
-          "business_management",
-        ];
-        const state = btoa(JSON.stringify({ returnUrl: "/settings?tab=integrations" }));
-        const params = new URLSearchParams({
-          client_id: process.env.NEXT_PUBLIC_FACEBOOK_APP_ID || "",
-          redirect_uri: `${baseUrl}/api/auth/callback/facebook`,
-          response_type: "code",
-          scope: permissions.join(","),
-          state,
-        });
-        oauthUrl = `https://www.facebook.com/v19.0/dialog/oauth?${params.toString()}`;
-      }
-
-      if (oauthUrl) {
-        window.location.href = oauthUrl;
+      if (result.url) {
+        window.location.href = result.url;
       } else {
         toast.error("OAuth not configured for this platform");
         setOauthLoading(false);
       }
-    } catch {
+    } catch (err) {
+      console.error("OAuth error:", err);
       toast.error("Failed to initiate OAuth");
       setOauthLoading(false);
     }
@@ -944,7 +900,7 @@ export default function SettingsPage() {
           </TabsTrigger>
           <TabsTrigger value="integrations">
             <Link2 className="w-4 h-4 mr-2" />
-            {t.settings.tabs.integrations}
+            Tích hợp & Kênh
           </TabsTrigger>
           <TabsTrigger value="security">
             <Lock className="w-4 h-4 mr-2" />
@@ -962,18 +918,6 @@ export default function SettingsPage() {
             <TabsTrigger value="templates">
               <ListTodo className="w-4 h-4 mr-2" />
               Task Templates
-            </TabsTrigger>
-          )}
-          {isAdmin && (
-            <TabsTrigger value="channels">
-              <Link2 className="w-4 h-4 mr-2" />
-              Channels
-            </TabsTrigger>
-          )}
-          {isAdmin && (
-            <TabsTrigger value="platforms">
-              <Globe className="w-4 h-4 mr-2" />
-              Platforms
             </TabsTrigger>
           )}
         </TabsList>
@@ -1442,7 +1386,30 @@ export default function SettingsPage() {
                                       <Button
                                         variant="outline"
                                         size="sm"
-                                        onClick={() => {
+                                        onClick={async () => {
+                                          // For Facebook, sync both campaigns and posts
+                                          if (integration.platform === "facebook") {
+                                            setSyncLoading(integration.platform);
+                                            try {
+                                              // Sync campaigns first (ads)
+                                              await triggerSyncMutation.mutateAsync({
+                                                platform: "facebook",
+                                                syncType: "campaigns",
+                                              });
+                                              // Then sync posts
+                                              await triggerSyncMutation.mutateAsync({
+                                                platform: "facebook",
+                                                syncType: "posts",
+                                              });
+                                              toast.success("Facebook sync completed");
+                                            } catch {
+                                              // Error handled by mutation
+                                            } finally {
+                                              setSyncLoading(null);
+                                            }
+                                            return;
+                                          }
+
                                           const syncType = integration.platform === "google_analytics"
                                             ? "landing_pages"
                                             : integration.platform === "zalo"
@@ -1531,6 +1498,206 @@ export default function SettingsPage() {
               )}
             </CardContent>
           </Card>
+
+          {/* Social Channels Section */}
+          {isAdmin && (
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between">
+                <div>
+                  <CardTitle>Social Channels</CardTitle>
+                  <CardDescription>
+                    Quản lý các kênh social media của bạn. Mỗi platform có thể có nhiều accounts/pages khác nhau.
+                  </CardDescription>
+                </div>
+                <Button onClick={handleAddChannel}>
+                  <Plus className="w-4 h-4 mr-2" />
+                  Thêm Channel
+                </Button>
+              </CardHeader>
+              <CardContent>
+                {channelsLoading ? (
+                  <div className="flex items-center justify-center py-8">
+                    <Loader2 className="w-6 h-6 animate-spin" />
+                  </div>
+                ) : socialChannels && socialChannels.length > 0 ? (
+                  <div className="space-y-4">
+                    {["facebook", "instagram", "zalo", "tiktok", "youtube", "website"].map((platform) => {
+                      const platformChannels = socialChannels.filter((c) => c.platform === platform);
+                      if (platformChannels.length === 0) return null;
+                      return (
+                        <div key={platform} className="space-y-2">
+                          <h4 className="font-medium flex items-center gap-2">
+                            {getChannelIcon(platform)} {platform.charAt(0).toUpperCase() + platform.slice(1)}
+                            <Badge variant="outline">{platformChannels.length}</Badge>
+                          </h4>
+                          <div className="space-y-2 pl-6">
+                            {platformChannels.map((channel) => (
+                              <div
+                                key={channel.id}
+                                className="flex items-center justify-between p-3 border rounded-lg"
+                              >
+                                <div className="flex items-center gap-3">
+                                  {channel.avatarUrl ? (
+                                    // eslint-disable-next-line @next/next/no-img-element
+                                    <img
+                                      src={channel.avatarUrl}
+                                      alt={channel.name}
+                                      className="w-10 h-10 rounded-full object-cover"
+                                    />
+                                  ) : (
+                                    <div className="w-10 h-10 rounded-full bg-muted flex items-center justify-center text-lg">
+                                      {getChannelIcon(channel.platform)}
+                                    </div>
+                                  )}
+                                  <div>
+                                    <p className="font-medium">{channel.name}</p>
+                                    {channel.description && (
+                                      <p className="text-sm text-muted-foreground">{channel.description}</p>
+                                    )}
+                                    {channel.accountUrl && (
+                                      <a
+                                        href={channel.accountUrl}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="text-xs text-primary hover:underline"
+                                      >
+                                        {channel.accountUrl}
+                                      </a>
+                                    )}
+                                  </div>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                  <Badge variant={channel.isActive ? "default" : "secondary"}>
+                                    {channel.isActive ? "Active" : "Inactive"}
+                                  </Badge>
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => handleEditChannel(channel)}
+                                  >
+                                    <Edit className="w-4 h-4" />
+                                  </Button>
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    className="text-destructive"
+                                    onClick={() => {
+                                      if (confirm("Are you sure you want to delete this channel?")) {
+                                        deleteChannelMutation.mutate({ id: channel.id });
+                                      }
+                                    }}
+                                  >
+                                    <Trash2 className="w-4 h-4" />
+                                  </Button>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <div className="text-center py-8 text-muted-foreground">
+                    <p>Chưa có channel nào.</p>
+                    <p className="text-sm">Thêm channel đầu tiên để bắt đầu quản lý nội dung.</p>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Platforms Section */}
+          {isAdmin && (
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between">
+                <div>
+                  <CardTitle>Platforms</CardTitle>
+                  <CardDescription>
+                    Manage available platforms for content creation and analytics. Custom platforms can be added dynamically.
+                  </CardDescription>
+                </div>
+                <Button onClick={handleAddPlatform}>
+                  <Plus className="w-4 h-4 mr-2" />
+                  Add Platform
+                </Button>
+              </CardHeader>
+              <CardContent>
+                {platformsLoading ? (
+                  <div className="flex items-center justify-center py-8">
+                    <Loader2 className="w-6 h-6 animate-spin" />
+                  </div>
+                ) : allPlatforms && allPlatforms.length > 0 ? (
+                  <div className="space-y-4">
+                    {["social", "advertising", "analytics", "website"].map((category) => {
+                      const categoryPlatforms = allPlatforms.filter((p) => p.category === category);
+                      if (categoryPlatforms.length === 0) return null;
+                      return (
+                        <div key={category} className="space-y-2">
+                          <h4 className="font-medium flex items-center gap-2">
+                            {getCategoryDisplay(category)}
+                            <Badge variant="outline">{categoryPlatforms.length}</Badge>
+                          </h4>
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                            {categoryPlatforms.map((platform) => (
+                              <div
+                                key={platform.id}
+                                className={`flex items-center justify-between p-3 border rounded-lg ${!platform.isActive ? "opacity-60" : ""}`}
+                              >
+                                <div className="flex items-center gap-3">
+                                  <div
+                                    className="w-10 h-10 rounded-full flex items-center justify-center text-white font-bold"
+                                    style={{ backgroundColor: platform.color }}
+                                  >
+                                    {platform.icon || platform.displayName.charAt(0).toUpperCase()}
+                                  </div>
+                                  <div>
+                                    <p className="font-medium">{platform.displayName}</p>
+                                    <p className="text-xs text-muted-foreground">Code: {platform.code}</p>
+                                  </div>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                  <Badge variant={platform.isActive ? "default" : "secondary"}>
+                                    {platform.isActive ? "Active" : "Inactive"}
+                                  </Badge>
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => handleEditPlatform(platform)}
+                                  >
+                                    <Edit className="w-4 h-4" />
+                                  </Button>
+                                  {platform.isActive && (
+                                    <Button
+                                      variant="outline"
+                                      size="sm"
+                                      className="text-destructive"
+                                      onClick={() => {
+                                        if (confirm("Are you sure you want to deactivate this platform?")) {
+                                          deletePlatformMutation.mutate({ id: platform.id });
+                                        }
+                                      }}
+                                    >
+                                      <Trash2 className="w-4 h-4" />
+                                    </Button>
+                                  )}
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <div className="text-center py-8 text-muted-foreground">
+                    <p>No platforms configured.</p>
+                    <p className="text-sm">Add your first platform to start managing content across channels.</p>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          )}
         </TabsContent>
 
         {/* Security Tab */}
@@ -1895,210 +2062,6 @@ export default function SettingsPage() {
                 ) : (
                   <div className="text-center py-8 text-muted-foreground">
                     No templates found
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          </TabsContent>
-        )}
-
-        {/* Channels Tab */}
-        {isAdmin && (
-          <TabsContent value="channels" className="space-y-6">
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between">
-                <div>
-                  <CardTitle>Social Channels</CardTitle>
-                  <CardDescription>
-                    Quản lý các kênh social media của bạn. Mỗi platform có thể có nhiều accounts/pages khác nhau.
-                  </CardDescription>
-                </div>
-                <Button onClick={handleAddChannel}>
-                  <Plus className="w-4 h-4 mr-2" />
-                  Thêm Channel
-                </Button>
-              </CardHeader>
-              <CardContent>
-                {channelsLoading ? (
-                  <div className="flex items-center justify-center py-8">
-                    <Loader2 className="w-6 h-6 animate-spin" />
-                  </div>
-                ) : socialChannels && socialChannels.length > 0 ? (
-                  <div className="space-y-4">
-                    {["facebook", "instagram", "zalo", "tiktok", "youtube", "website"].map((platform) => {
-                      const platformChannels = socialChannels.filter((c) => c.platform === platform);
-                      if (platformChannels.length === 0) return null;
-                      return (
-                        <div key={platform} className="space-y-2">
-                          <h4 className="font-medium flex items-center gap-2">
-                            {getChannelIcon(platform)} {platform.charAt(0).toUpperCase() + platform.slice(1)}
-                            <Badge variant="outline">{platformChannels.length}</Badge>
-                          </h4>
-                          <div className="space-y-2 pl-6">
-                            {platformChannels.map((channel) => (
-                              <div
-                                key={channel.id}
-                                className="flex items-center justify-between p-3 border rounded-lg"
-                              >
-                                <div className="flex items-center gap-3">
-                                  {channel.avatarUrl ? (
-                                    // eslint-disable-next-line @next/next/no-img-element
-                                    <img
-                                      src={channel.avatarUrl}
-                                      alt={channel.name}
-                                      className="w-10 h-10 rounded-full object-cover"
-                                    />
-                                  ) : (
-                                    <div className="w-10 h-10 rounded-full bg-muted flex items-center justify-center text-lg">
-                                      {getChannelIcon(channel.platform)}
-                                    </div>
-                                  )}
-                                  <div>
-                                    <p className="font-medium">{channel.name}</p>
-                                    {channel.description && (
-                                      <p className="text-sm text-muted-foreground">{channel.description}</p>
-                                    )}
-                                    {channel.accountUrl && (
-                                      <a
-                                        href={channel.accountUrl}
-                                        target="_blank"
-                                        rel="noopener noreferrer"
-                                        className="text-xs text-primary hover:underline"
-                                      >
-                                        {channel.accountUrl}
-                                      </a>
-                                    )}
-                                  </div>
-                                </div>
-                                <div className="flex items-center gap-2">
-                                  <Badge variant={channel.isActive ? "default" : "secondary"}>
-                                    {channel.isActive ? "Active" : "Inactive"}
-                                  </Badge>
-                                  <Button
-                                    variant="outline"
-                                    size="sm"
-                                    onClick={() => handleEditChannel(channel)}
-                                  >
-                                    <Edit className="w-4 h-4" />
-                                  </Button>
-                                  <Button
-                                    variant="outline"
-                                    size="sm"
-                                    className="text-destructive"
-                                    onClick={() => {
-                                      if (confirm("Are you sure you want to delete this channel?")) {
-                                        deleteChannelMutation.mutate({ id: channel.id });
-                                      }
-                                    }}
-                                  >
-                                    <Trash2 className="w-4 h-4" />
-                                  </Button>
-                                </div>
-                              </div>
-                            ))}
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                ) : (
-                  <div className="text-center py-8 text-muted-foreground">
-                    <p>Chưa có channel nào.</p>
-                    <p className="text-sm">Thêm channel đầu tiên để bắt đầu quản lý nội dung.</p>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          </TabsContent>
-        )}
-
-        {/* Platforms Tab */}
-        {isAdmin && (
-          <TabsContent value="platforms" className="space-y-6">
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between">
-                <div>
-                  <CardTitle>Platforms</CardTitle>
-                  <CardDescription>
-                    Manage available platforms for content creation and analytics. Custom platforms can be added dynamically.
-                  </CardDescription>
-                </div>
-                <Button onClick={handleAddPlatform}>
-                  <Plus className="w-4 h-4 mr-2" />
-                  Add Platform
-                </Button>
-              </CardHeader>
-              <CardContent>
-                {platformsLoading ? (
-                  <div className="flex items-center justify-center py-8">
-                    <Loader2 className="w-6 h-6 animate-spin" />
-                  </div>
-                ) : allPlatforms && allPlatforms.length > 0 ? (
-                  <div className="space-y-4">
-                    {["social", "advertising", "analytics", "website"].map((category) => {
-                      const categoryPlatforms = allPlatforms.filter((p) => p.category === category);
-                      if (categoryPlatforms.length === 0) return null;
-                      return (
-                        <div key={category} className="space-y-2">
-                          <h4 className="font-medium flex items-center gap-2">
-                            {getCategoryDisplay(category)}
-                            <Badge variant="outline">{categoryPlatforms.length}</Badge>
-                          </h4>
-                          <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-                            {categoryPlatforms.map((platform) => (
-                              <div
-                                key={platform.id}
-                                className={`flex items-center justify-between p-3 border rounded-lg ${!platform.isActive ? "opacity-60" : ""}`}
-                              >
-                                <div className="flex items-center gap-3">
-                                  <div
-                                    className="w-10 h-10 rounded-full flex items-center justify-center text-white font-bold"
-                                    style={{ backgroundColor: platform.color }}
-                                  >
-                                    {platform.icon || platform.displayName.charAt(0).toUpperCase()}
-                                  </div>
-                                  <div>
-                                    <p className="font-medium">{platform.displayName}</p>
-                                    <p className="text-xs text-muted-foreground">Code: {platform.code}</p>
-                                  </div>
-                                </div>
-                                <div className="flex items-center gap-2">
-                                  <Badge variant={platform.isActive ? "default" : "secondary"}>
-                                    {platform.isActive ? "Active" : "Inactive"}
-                                  </Badge>
-                                  <Button
-                                    variant="outline"
-                                    size="sm"
-                                    onClick={() => handleEditPlatform(platform)}
-                                  >
-                                    <Edit className="w-4 h-4" />
-                                  </Button>
-                                  {platform.isActive && (
-                                    <Button
-                                      variant="outline"
-                                      size="sm"
-                                      className="text-destructive"
-                                      onClick={() => {
-                                        if (confirm("Are you sure you want to deactivate this platform?")) {
-                                          deletePlatformMutation.mutate({ id: platform.id });
-                                        }
-                                      }}
-                                    >
-                                      <Trash2 className="w-4 h-4" />
-                                    </Button>
-                                  )}
-                                </div>
-                              </div>
-                            ))}
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                ) : (
-                  <div className="text-center py-8 text-muted-foreground">
-                    <p>No platforms configured.</p>
-                    <p className="text-sm">Add your first platform to start managing content across channels.</p>
                   </div>
                 )}
               </CardContent>

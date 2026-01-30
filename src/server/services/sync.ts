@@ -615,16 +615,36 @@ export class SyncService {
    */
   private async upsertFacebookPost(
     post: FacebookPost,
-    client: FacebookAdsClient
+    _client: FacebookAdsClient
   ): Promise<void> {
-    // Get post insights
-    const insights = await client.getPostInsights(post.id);
+    // Try to get post insights (may fail without pages_read_engagement permission)
+    let insights = {
+      post_reach: 0,
+      post_impressions: 0,
+      post_engaged_users: 0,
+      post_clicks: 0,
+    };
 
-    // Calculate engagement
+    // Note: Post insights require pages_read_engagement permission
+    // For now, we skip insights since the permission isn't granted
+    // TODO: Enable this when app has proper permissions
+    // try {
+    //   insights = await client.getPostInsights(post.id);
+    // } catch (error) {
+    //   console.log(`[Sync] Could not get insights for post ${post.id}: ${error}`);
+    // }
+
+    // Calculate engagement from post data (if available)
     const reactions = post.reactions?.summary?.total_count ?? 0;
     const comments = post.comments?.summary?.total_count ?? 0;
     const shares = post.shares?.count ?? 0;
     const engagement = reactions + comments + shares;
+
+    // Get image URL from full_picture or attachments
+    let mediaUrl = post.full_picture ?? null;
+    if (!mediaUrl && post.attachments?.data?.[0]?.media?.image?.src) {
+      mediaUrl = post.attachments.data[0].media.image.src;
+    }
 
     await prisma.socialPost.upsert({
       where: { id: post.id },
@@ -633,7 +653,7 @@ export class SyncService {
         platform: "facebook",
         externalId: post.id,
         content: post.message ?? null,
-        mediaUrl: post.full_picture ?? null,
+        mediaUrl,
         publishedAt: new Date(post.created_time),
         reach: insights.post_reach,
         impressions: insights.post_impressions,
@@ -644,7 +664,7 @@ export class SyncService {
       },
       update: {
         content: post.message ?? null,
-        mediaUrl: post.full_picture ?? null,
+        mediaUrl,
         reach: insights.post_reach,
         impressions: insights.post_impressions,
         engagement,

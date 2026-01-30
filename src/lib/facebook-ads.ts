@@ -56,6 +56,13 @@ export interface FacebookPost {
   shares?: { count: number };
   reactions?: { summary: { total_count: number } };
   comments?: { summary: { total_count: number } };
+  attachments?: {
+    data: Array<{
+      media?: { image?: { src: string } };
+      type?: string;
+      url?: string;
+    }>;
+  };
 }
 
 export interface FacebookPostInsights {
@@ -345,9 +352,10 @@ export class FacebookAdsClient extends ApiClient {
       throw new Error("Credentials not initialized");
     }
 
+    // Use basic fields that don't require pages_read_engagement permission
+    // reactions/comments summary require additional permissions
     const params: Record<string, string> = {
-      fields:
-        "id,message,created_time,permalink_url,full_picture,shares,reactions.summary(true),comments.summary(true)",
+      fields: "id,message,created_time,permalink_url,full_picture,attachments{media,type,url}",
       limit: limit.toString(),
     };
 
