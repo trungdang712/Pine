@@ -17,12 +17,21 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
   Clock,
   CheckCircle,
   XCircle,
   Calendar,
   DollarSign,
   User,
+  Filter,
+  ArrowRight,
 } from "lucide-react";
 import { trpc } from "@/lib/trpc";
 import { PageLoading } from "@/components/ui/loading-spinner";
@@ -31,8 +40,10 @@ import { PageEmpty } from "@/components/ui/empty-state";
 import { toast } from "sonner";
 import { format } from "date-fns";
 import { useLanguage } from "@/i18n";
+import { useAuth } from "@/hooks/use-auth";
 
 type ProposalPriority = "urgent" | "high" | "normal" | "low";
+type LayerFilter = "all" | "layer1" | "layer2";
 
 const getPriorityConfig = (t: ReturnType<typeof useLanguage>["t"]) => ({
   urgent: { label: t.tasks.priorities.urgent, color: "border-red-500 text-red-500 bg-red-50" },
@@ -43,16 +54,22 @@ const getPriorityConfig = (t: ReturnType<typeof useLanguage>["t"]) => ({
 
 export default function PendingApprovalPage() {
   const { t } = useLanguage();
+  const { profile } = useAuth();
   const priorityConfig = getPriorityConfig(t);
   const [selectedProposalId, setSelectedProposalId] = useState<string | null>(null);
   const [isDetailOpen, setIsDetailOpen] = useState(false);
   const [feedback, setFeedback] = useState("");
+  const [layerFilter, setLayerFilter] = useState<LayerFilter>("all");
 
   const utils = trpc.useUtils();
 
-  // Fetch pending approvals
+  // Check if user can approve at different layers
+  const isAdmin = profile?.role === "super_admin" || profile?.role === "admin";
+  const isManager = profile?.role === "marketing_manager" || isAdmin;
+
+  // Fetch pending approvals with layer filter
   const { data: pendingProposals, isLoading, error, refetch } =
-    trpc.proposal.getPendingApprovals.useQuery();
+    trpc.proposal.getPendingApprovals.useQuery({ layerFilter });
 
   // Fetch detail of selected proposal
   const { data: selectedProposal } = trpc.proposal.getById.useQuery(
@@ -126,18 +143,43 @@ export default function PendingApprovalPage() {
     ? new Intl.NumberFormat("vi-VN", { notation: "compact", maximumFractionDigits: 0 }).format(totalBudget)
     : "0";
 
+  // Calculate layer-specific counts
+  const layer1Count = proposals.filter(
+    (p) => (p as unknown as { currentLayer: number }).currentLayer === 1
+  ).length;
+  const layer2Count = proposals.filter(
+    (p) => (p as unknown as { currentLayer: number }).currentLayer === 2
+  ).length;
+
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div>
-        <h1 className="text-2xl font-bold">{t.proposals.pending.title}</h1>
-        <p className="text-muted-foreground">
-          {t.proposals.pending.subtitle}
-        </p>
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-bold">{t.proposals.pending.title}</h1>
+          <p className="text-muted-foreground">
+            {t.proposals.pending.subtitle}
+          </p>
+        </div>
+
+        {/* Layer Filter */}
+        <div className="flex items-center gap-2">
+          <Filter className="h-4 w-4 text-muted-foreground" />
+          <Select value={layerFilter} onValueChange={(v) => setLayerFilter(v as LayerFilter)}>
+            <SelectTrigger className="w-[180px]">
+              <SelectValue placeholder="Loc theo layer" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Tat ca ({proposals.length})</SelectItem>
+              {isManager && <SelectItem value="layer1">Layer 1 - Manager ({layer1Count})</SelectItem>}
+              {isAdmin && <SelectItem value="layer2">Layer 2 - Admin ({layer2Count})</SelectItem>}
+            </SelectContent>
+          </Select>
+        </div>
       </div>
 
       {/* Stats */}
-      <div className="grid gap-4 md:grid-cols-3">
+      <div className="grid gap-4 md:grid-cols-4">
         <Card>
           <CardContent className="p-4 flex items-center gap-3">
             <div className="p-2 rounded-lg bg-yellow-100">
@@ -149,21 +191,32 @@ export default function PendingApprovalPage() {
             </div>
           </CardContent>
         </Card>
-        <Card>
+        <Card className={layerFilter === "layer1" ? "ring-2 ring-blue-500" : ""}>
           <CardContent className="p-4 flex items-center gap-3">
-            <div className="p-2 rounded-lg bg-red-100">
-              <Clock className="h-5 w-5 text-red-600" />
+            <div className="p-2 rounded-lg bg-blue-100">
+              <User className="h-5 w-5 text-blue-600" />
             </div>
             <div>
-              <p className="text-2xl font-bold">{highPriorityCount}</p>
-              <p className="text-sm text-muted-foreground">{t.tasks.priorities.high}</p>
+              <p className="text-2xl font-bold">{layer1Count}</p>
+              <p className="text-sm text-muted-foreground">Layer 1 (Manager)</p>
+            </div>
+          </CardContent>
+        </Card>
+        <Card className={layerFilter === "layer2" ? "ring-2 ring-purple-500" : ""}>
+          <CardContent className="p-4 flex items-center gap-3">
+            <div className="p-2 rounded-lg bg-purple-100">
+              <CheckCircle className="h-5 w-5 text-purple-600" />
+            </div>
+            <div>
+              <p className="text-2xl font-bold">{layer2Count}</p>
+              <p className="text-sm text-muted-foreground">Layer 2 (Admin)</p>
             </div>
           </CardContent>
         </Card>
         <Card>
           <CardContent className="p-4 flex items-center gap-3">
-            <div className="p-2 rounded-lg bg-blue-100">
-              <DollarSign className="h-5 w-5 text-blue-600" />
+            <div className="p-2 rounded-lg bg-green-100">
+              <DollarSign className="h-5 w-5 text-green-600" />
             </div>
             <div>
               <p className="text-2xl font-bold">{totalBudgetDisplay}</p>
@@ -194,13 +247,19 @@ export default function PendingApprovalPage() {
             const approvalProgress =
               totalApprovals > 0 ? (approvedCount / totalApprovals) * 100 : 0;
 
+            // Get current layer info
+            const currentLayer = (proposal as unknown as { currentLayer: number }).currentLayer || 1;
+            const totalLayers = (proposal as unknown as { totalLayers: number }).totalLayers || 1;
+
             return (
               <Card
                 key={proposal.id}
                 className={`cursor-pointer hover:shadow-md transition-shadow ${
                   priority === "high" || priority === "urgent"
                     ? "border-l-4 border-l-red-500"
-                    : ""
+                    : currentLayer === 2
+                    ? "border-l-4 border-l-purple-500"
+                    : "border-l-4 border-l-blue-500"
                 }`}
                 onClick={() => openDetail(proposal.id)}
               >
@@ -208,6 +267,15 @@ export default function PendingApprovalPage() {
                   <div className="flex items-start justify-between">
                     <div className="flex-1">
                       <div className="flex items-center gap-2 mb-2">
+                        <Badge
+                          variant="outline"
+                          className={currentLayer === 1
+                            ? "border-blue-500 text-blue-500 bg-blue-50"
+                            : "border-purple-500 text-purple-500 bg-purple-50"
+                          }
+                        >
+                          Layer {currentLayer}/{totalLayers}
+                        </Badge>
                         <Badge variant="outline" className={priorityInfo.color}>
                           {priorityInfo.label}
                         </Badge>
@@ -237,11 +305,23 @@ export default function PendingApprovalPage() {
                       </div>
                     </div>
                     <div className="ml-4 flex flex-col items-end gap-2">
-                      <div className="w-32">
+                      <div className="w-40">
                         <p className="text-xs text-muted-foreground mb-1 text-right">
-                          {t.proposals.status}
+                          Layer {currentLayer} of {totalLayers}
                         </p>
-                        <Progress value={approvalProgress} className="h-2" />
+                        <div className="flex items-center gap-1">
+                          <div className={`h-2 flex-1 rounded-full ${
+                            currentLayer >= 1 ? "bg-blue-500" : "bg-gray-200"
+                          }`} />
+                          {totalLayers === 2 && (
+                            <>
+                              <ArrowRight className="h-3 w-3 text-muted-foreground" />
+                              <div className={`h-2 flex-1 rounded-full ${
+                                currentLayer >= 2 ? "bg-purple-500" : "bg-gray-200"
+                              }`} />
+                            </>
+                          )}
+                        </div>
                       </div>
                       <div className="flex gap-2">
                         <Button

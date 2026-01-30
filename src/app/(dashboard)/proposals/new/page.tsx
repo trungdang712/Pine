@@ -20,8 +20,11 @@ import { trpc } from "@/lib/trpc";
 import { toast } from "sonner";
 import { useLanguage } from "@/i18n";
 
-type ProposalCategory = "content" | "design" | "video" | "campaign" | "event" | "partnership";
+type ProposalCategory = "content" | "design" | "video" | "budget" | "campaign" | "event" | "partnership";
 type ProposalPriority = "urgent" | "high" | "normal" | "low";
+
+// Categories that require 2-layer approval
+const TWO_LAYER_CATEGORIES = ["budget", "campaign", "event", "partnership"];
 
 export default function NewProposalPage() {
   const { t } = useLanguage();
@@ -186,14 +189,22 @@ export default function NewProposalPage() {
                   <SelectValue placeholder={t.proposals.new.category} />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="campaign">Campaign</SelectItem>
-                  <SelectItem value="content">Content</SelectItem>
-                  <SelectItem value="design">Design</SelectItem>
-                  <SelectItem value="video">Video Production</SelectItem>
-                  <SelectItem value="partnership">Partnership</SelectItem>
-                  <SelectItem value="event">Event</SelectItem>
+                  <SelectItem value="content">Noi dung (1 lop duyet)</SelectItem>
+                  <SelectItem value="design">Thiet ke (1 lop duyet)</SelectItem>
+                  <SelectItem value="video">Video (1 lop duyet)</SelectItem>
+                  <SelectItem value="budget">Ngan sach (2 lop duyet)</SelectItem>
+                  <SelectItem value="campaign">Chien dich (2 lop duyet)</SelectItem>
+                  <SelectItem value="event">Su kien (2 lop duyet)</SelectItem>
+                  <SelectItem value="partnership">Hop tac (2 lop duyet)</SelectItem>
                 </SelectContent>
               </Select>
+              {formData.category && (
+                <p className="text-xs text-muted-foreground mt-1">
+                  {TWO_LAYER_CATEGORIES.includes(formData.category)
+                    ? "Danh muc nay can duyet 2 lop: Manager -> Admin"
+                    : "Danh muc nay chi can duyet 1 lop: Manager"}
+                </p>
+              )}
             </div>
             <div className="grid gap-2">
               <Label>

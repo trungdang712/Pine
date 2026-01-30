@@ -61,6 +61,11 @@ model User {
   budgetsApproved       MonthlyBudget[]   @relation("BudgetApprover")
   redditPosts           RedditPost[]
   redditNotifications   RedditNotificationConfig[]
+  // Innovation Hub relations
+  ideaVotes             IdeaVote[]
+  ideaComments          IdeaComment[]
+  proposalCollaborations ProposalCollaborator[]
+  badges                UserBadge[]
 }
 
 model UserAlert {
@@ -377,21 +382,24 @@ model Proposal {
   id          String    @id @default(cuid())
   title       String
   description String
-  category    String    // content, design, video, campaign, event, partnership
+  category    String    // content, design, video (1-layer) | budget, campaign, event, partnership (2-layer)
   priority    String    @default("normal") // urgent, high, normal, low
-  status      String    @default("draft") // draft, submitted, under_review, approved, rejected, in_progress, completed
+  status      String    @default("draft") // draft, submitted, layer1_review, layer2_review, approved, rejected, in_progress, completed
   creatorId   String
   dueDate     DateTime?
   budget      Float?
+  currentLayer  Int     @default(1)  // Current approval layer (1 or 2)
+  totalLayers   Int     @default(1)  // Total layers required (1 or 2 based on category)
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
 
-  creator      User              @relation("ProposalCreator", fields: [creatorId], references: [id])
-  comments     ProposalComment[]
-  approvals    ApprovalStep[]
-  tasks        Task[]
+  creator       User              @relation("ProposalCreator", fields: [creatorId], references: [id])
+  comments      ProposalComment[]
+  approvals     ApprovalStep[]
+  tasks         Task[]
   calendarItems ContentCalendarItem[]
-  attachments  ProposalAttachment[]
+  attachments   ProposalAttachment[]
+  collaborators ProposalCollaborator[]
 }
 
 model ProposalComment {
@@ -422,6 +430,7 @@ model ApprovalStep {
   id         String    @id @default(cuid())
   proposalId String
   approverId String
+  layer      Int       @default(1)  // 1 = Manager, 2 = Admin
   stepNumber Int
   status     String    @default("pending") // pending, approved, rejected, revision_requested
   comments   String?
@@ -431,7 +440,9 @@ model ApprovalStep {
   proposal Proposal @relation(fields: [proposalId], references: [id], onDelete: Cascade)
   approver User     @relation(fields: [approverId], references: [id])
 
-  @@unique([proposalId, stepNumber])
+  @@unique([proposalId, layer, approverId])  // One approval per layer per approver
+  @@index([proposalId])
+  @@index([approverId])
 }
 
 model ApprovalWorkflow {
@@ -652,11 +663,90 @@ model InnovationIdea {
   status        String    @default("submitted") // submitted, reviewing, approved, implemented, rejected
   impactScore   Int?      // 1-10, rated by manager
   submitterId   String
+  voteCount     Int       @default(0)  // Denormalized vote count for performance
   implementedAt DateTime?
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
 
-  submitter User @relation(fields: [submitterId], references: [id])
+  submitter   User          @relation(fields: [submitterId], references: [id])
+  votes       IdeaVote[]
+  comments    IdeaComment[]
+  ideaOfMonth IdeaOfMonth?
+}
+
+// Voting for ideas
+model IdeaVote {
+  id        String   @id @default(cuid())
+  ideaId    String
+  voterId   String
+  createdAt DateTime @default(now())
+
+  idea  InnovationIdea @relation(fields: [ideaId], references: [id], onDelete: Cascade)
+  voter User           @relation(fields: [voterId], references: [id], onDelete: Cascade)
+
+  @@unique([ideaId, voterId])  // One vote per user per idea
+  @@index([ideaId])
+}
+
+// Comments for ideas with threading support
+model IdeaComment {
+  id        String    @id @default(cuid())
+  ideaId    String
+  authorId  String
+  content   String
+  parentId  String?   // For reply threading
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  idea    InnovationIdea @relation(fields: [ideaId], references: [id], onDelete: Cascade)
+  author  User           @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  parent  IdeaComment?   @relation("IdeaCommentReplies", fields: [parentId], references: [id])
+  replies IdeaComment[]  @relation("IdeaCommentReplies")
+
+  @@index([ideaId])
+  @@index([authorId])
+}
+
+// Proposal collaborators
+model ProposalCollaborator {
+  id         String   @id @default(cuid())
+  proposalId String
+  userId     String
+  role       String   @default("contributor")  // contributor, reviewer, co-owner
+  addedAt    DateTime @default(now())
+
+  proposal Proposal @relation(fields: [proposalId], references: [id], onDelete: Cascade)
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([proposalId, userId])
+  @@index([proposalId])
+}
+
+// Innovation badges
+model UserBadge {
+  id        String   @id @default(cuid())
+  userId    String
+  badgeType String   // first_seed, idea_machine, trending, star_innovator, game_changer, collaborator, innovation_champion
+  earnedAt  DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, badgeType])
+  @@index([userId])
+}
+
+// Idea of the month
+model IdeaOfMonth {
+  id         String   @id @default(cuid())
+  ideaId     String   @unique
+  month      Int
+  year       Int
+  selectedAt DateTime @default(now())
+  selectedBy String
+
+  idea InnovationIdea @relation(fields: [ideaId], references: [id])
+
+  @@unique([month, year])
 }
 
 model Reward {
