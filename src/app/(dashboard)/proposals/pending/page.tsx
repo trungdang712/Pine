@@ -85,7 +85,7 @@ export default function PendingApprovalPage() {
       utils.proposal.getMyProposals.invalidate();
       setIsDetailOpen(false);
       setFeedback("");
-      toast.success("Proposal da duoc phe duyet");
+      toast.success(t.proposals.messages.proposalApproved);
     },
     onError: (err) => toast.error(err.message),
   });
@@ -97,7 +97,7 @@ export default function PendingApprovalPage() {
       utils.proposal.getMyProposals.invalidate();
       setIsDetailOpen(false);
       setFeedback("");
-      toast.success("Proposal da bi tu choi");
+      toast.success(t.proposals.messages.proposalRejected);
     },
     onError: (err) => toast.error(err.message),
   });
@@ -119,7 +119,7 @@ export default function PendingApprovalPage() {
   const handleReject = () => {
     if (!selectedProposalId) return;
     if (!feedback.trim()) {
-      toast.error("Vui long nhap ly do tu choi");
+      toast.error(t.proposals.messages.pleaseEnterRejectReason);
       return;
     }
     rejectMutation.mutate({
@@ -167,12 +167,12 @@ export default function PendingApprovalPage() {
           <Filter className="h-4 w-4 text-muted-foreground" />
           <Select value={layerFilter} onValueChange={(v) => setLayerFilter(v as LayerFilter)}>
             <SelectTrigger className="w-[180px]">
-              <SelectValue placeholder="Loc theo layer" />
+              <SelectValue placeholder={t.proposals.filter.filterByLayer} />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">Tat ca ({proposals.length})</SelectItem>
-              {isManager && <SelectItem value="layer1">Layer 1 - Manager ({layer1Count})</SelectItem>}
-              {isAdmin && <SelectItem value="layer2">Layer 2 - Admin ({layer2Count})</SelectItem>}
+              <SelectItem value="all">{t.proposals.filter.all} ({proposals.length})</SelectItem>
+              {isManager && <SelectItem value="layer1">{t.proposals.layers.layer1} - {t.proposals.layers.manager} ({layer1Count})</SelectItem>}
+              {isAdmin && <SelectItem value="layer2">{t.proposals.layers.layer2} - {t.proposals.layers.admin} ({layer2Count})</SelectItem>}
             </SelectContent>
           </Select>
         </div>
@@ -198,7 +198,7 @@ export default function PendingApprovalPage() {
             </div>
             <div>
               <p className="text-2xl font-bold">{layer1Count}</p>
-              <p className="text-sm text-muted-foreground">Layer 1 (Manager)</p>
+              <p className="text-sm text-muted-foreground">{t.proposals.layers.layer1} ({t.proposals.layers.manager})</p>
             </div>
           </CardContent>
         </Card>
@@ -209,7 +209,7 @@ export default function PendingApprovalPage() {
             </div>
             <div>
               <p className="text-2xl font-bold">{layer2Count}</p>
-              <p className="text-sm text-muted-foreground">Layer 2 (Admin)</p>
+              <p className="text-sm text-muted-foreground">{t.proposals.layers.layer2} ({t.proposals.layers.admin})</p>
             </div>
           </CardContent>
         </Card>
@@ -274,7 +274,7 @@ export default function PendingApprovalPage() {
                             : "border-purple-500 text-purple-500 bg-purple-50"
                           }
                         >
-                          Layer {currentLayer}/{totalLayers}
+                          {t.proposals.layers.layer} {currentLayer}/{totalLayers}
                         </Badge>
                         <Badge variant="outline" className={priorityInfo.color}>
                           {priorityInfo.label}
@@ -307,7 +307,7 @@ export default function PendingApprovalPage() {
                     <div className="ml-4 flex flex-col items-end gap-2">
                       <div className="w-40">
                         <p className="text-xs text-muted-foreground mb-1 text-right">
-                          Layer {currentLayer} of {totalLayers}
+                          {t.proposals.layers.layer} {currentLayer} / {totalLayers}
                         </p>
                         <div className="flex items-center gap-1">
                           <div className={`h-2 flex-1 rounded-full ${

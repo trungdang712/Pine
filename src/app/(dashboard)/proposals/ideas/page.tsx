@@ -59,18 +59,19 @@ const getStatusConfig = (t: ReturnType<typeof useLanguage>["t"]) => ({
   rejected: { label: t.proposals.statuses.rejected, color: "bg-gray-100 text-gray-700", icon: Clock },
 });
 
-const categoryLabels: Record<IdeaCategory, string> = {
-  content_format: "Định dạng nội dung",
-  process_improvement: "Cải tiến quy trình",
-  new_platform: "Nền tảng mới",
-  campaign_concept: "Ý tưởng chiến dịch",
-  automation: "Tự động hóa",
-};
+const getCategoryLabels = (t: ReturnType<typeof useLanguage>["t"]): Record<IdeaCategory, string> => ({
+  content_format: t.proposals.ideas.categories.contentFormat,
+  process_improvement: t.proposals.ideas.categories.processImprovement,
+  new_platform: t.proposals.ideas.categories.newPlatform,
+  campaign_concept: t.proposals.ideas.categories.campaignConcept,
+  automation: t.proposals.ideas.categories.automation,
+});
 
 export default function InnovationIdeasPage() {
   const { t } = useLanguage();
   const { profile } = useAuth();
   const statusConfig = getStatusConfig(t);
+  const categoryLabels = getCategoryLabels(t);
   const [isNewIdeaOpen, setIsNewIdeaOpen] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState<string>("all");
   const [sortBy, setSortBy] = useState<SortBy>("recent");
@@ -110,7 +111,7 @@ export default function InnovationIdeasPage() {
       setIdeaTitle("");
       setIdeaDescription("");
       setIdeaCategory("content_format");
-      toast.success("Ý tưởng đã được gửi! +30 điểm");
+      toast.success(t.proposals.ideas.messages.ideaSubmitted);
     },
     onError: (err) => toast.error(err.message),
   });
@@ -120,7 +121,7 @@ export default function InnovationIdeasPage() {
     onSuccess: () => {
       utils.gamification.getAllIdeas.invalidate();
       utils.gamification.getIdeaById.invalidate();
-      toast.success("Đã vote! +2 điểm");
+      toast.success(t.proposals.ideas.messages.voted);
     },
     onError: (err) => toast.error(err.message),
   });
@@ -130,7 +131,7 @@ export default function InnovationIdeasPage() {
     onSuccess: () => {
       utils.gamification.getAllIdeas.invalidate();
       utils.gamification.getIdeaById.invalidate();
-      toast.success("Đã bỏ vote");
+      toast.success(t.proposals.ideas.messages.unvoted);
     },
     onError: (err) => toast.error(err.message),
   });
@@ -142,18 +143,18 @@ export default function InnovationIdeasPage() {
       utils.gamification.getAllIdeas.invalidate();
       setNewComment("");
       setReplyTo(null);
-      toast.success("Đã thêm bình luận! +3 điểm");
+      toast.success(t.proposals.ideas.messages.commentAdded);
     },
     onError: (err) => toast.error(err.message),
   });
 
   const handleSubmitIdea = () => {
     if (!ideaTitle.trim()) {
-      toast.error("Vui lòng nhập tiêu đề ý tưởng");
+      toast.error(t.proposals.ideas.messages.pleaseEnterTitle);
       return;
     }
     if (!ideaDescription.trim() || ideaDescription.trim().length < 10) {
-      toast.error("Mô tả phải có ít nhất 10 ký tự");
+      toast.error(t.proposals.ideas.messages.descriptionMinLength);
       return;
     }
     submitIdeaMutation.mutate({
@@ -243,11 +244,11 @@ export default function InnovationIdeasPage() {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="content_format">Định dạng nội dung</SelectItem>
-                    <SelectItem value="process_improvement">Cải tiến quy trình</SelectItem>
-                    <SelectItem value="new_platform">Nền tảng mới</SelectItem>
-                    <SelectItem value="campaign_concept">Ý tưởng chiến dịch</SelectItem>
-                    <SelectItem value="automation">Tự động hóa</SelectItem>
+                    <SelectItem value="content_format">{t.proposals.ideas.categories.contentFormat}</SelectItem>
+                    <SelectItem value="process_improvement">{t.proposals.ideas.categories.processImprovement}</SelectItem>
+                    <SelectItem value="new_platform">{t.proposals.ideas.categories.newPlatform}</SelectItem>
+                    <SelectItem value="campaign_concept">{t.proposals.ideas.categories.campaignConcept}</SelectItem>
+                    <SelectItem value="automation">{t.proposals.ideas.categories.automation}</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -298,7 +299,7 @@ export default function InnovationIdeasPage() {
             </div>
             <div>
               <p className="text-2xl font-bold">{stats.totalVotes}</p>
-              <p className="text-sm text-muted-foreground">Tổng số vote</p>
+              <p className="text-sm text-muted-foreground">{t.proposals.ideas.totalVotes}</p>
             </div>
           </CardContent>
         </Card>
@@ -336,11 +337,11 @@ export default function InnovationIdeasPage() {
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">{t.common.all}</SelectItem>
-              <SelectItem value="content_format">Định dạng nội dung</SelectItem>
-              <SelectItem value="process_improvement">Cải tiến quy trình</SelectItem>
-              <SelectItem value="new_platform">Nền tảng mới</SelectItem>
-              <SelectItem value="campaign_concept">Ý tưởng chiến dịch</SelectItem>
-              <SelectItem value="automation">Tự động hóa</SelectItem>
+              <SelectItem value="content_format">{t.proposals.ideas.categories.contentFormat}</SelectItem>
+              <SelectItem value="process_improvement">{t.proposals.ideas.categories.processImprovement}</SelectItem>
+              <SelectItem value="new_platform">{t.proposals.ideas.categories.newPlatform}</SelectItem>
+              <SelectItem value="campaign_concept">{t.proposals.ideas.categories.campaignConcept}</SelectItem>
+              <SelectItem value="automation">{t.proposals.ideas.categories.automation}</SelectItem>
             </SelectContent>
           </Select>
         </div>
@@ -348,12 +349,12 @@ export default function InnovationIdeasPage() {
           <TrendingUp className="h-4 w-4 text-muted-foreground" />
           <Select value={sortBy} onValueChange={(v) => setSortBy(v as SortBy)}>
             <SelectTrigger className="w-[180px]">
-              <SelectValue placeholder="Sắp xếp" />
+              <SelectValue placeholder={t.proposals.ideas.sort.label} />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="recent">Mới nhất</SelectItem>
-              <SelectItem value="top_voted">Nhiều vote nhất</SelectItem>
-              <SelectItem value="most_discussed">Nhiều bình luận nhất</SelectItem>
+              <SelectItem value="recent">{t.proposals.ideas.sort.recent}</SelectItem>
+              <SelectItem value="top_voted">{t.proposals.ideas.sort.topVoted}</SelectItem>
+              <SelectItem value="most_discussed">{t.proposals.ideas.sort.mostDiscussed}</SelectItem>
             </SelectContent>
           </Select>
         </div>
@@ -503,7 +504,7 @@ export default function InnovationIdeasPage() {
               <div className="space-y-6 py-4">
                 {/* Description */}
                 <div>
-                  <Label className="text-sm text-muted-foreground">Mô tả</Label>
+                  <Label className="text-sm text-muted-foreground">{t.proposals.ideas.detail.description}</Label>
                   <p className="mt-2 text-sm p-3 bg-muted/50 rounded-md whitespace-pre-wrap">
                     {selectedIdea.description}
                   </p>
@@ -520,13 +521,13 @@ export default function InnovationIdeasPage() {
                 {/* Comments Section */}
                 <div>
                   <Label className="text-sm text-muted-foreground mb-3 block">
-                    Bình luận ({selectedIdea.comments?.length ?? 0})
+                    {t.proposals.ideas.detail.comments} ({selectedIdea.comments?.length ?? 0})
                   </Label>
 
                   {/* Comment Input */}
                   <div className="flex gap-2 mb-4">
                     <Textarea
-                      placeholder={replyTo ? "Trả lời bình luận..." : "Thêm bình luận..."}
+                      placeholder={replyTo ? t.proposals.ideas.detail.replyToComment : t.proposals.ideas.detail.addComment}
                       value={newComment}
                       onChange={(e) => setNewComment(e.target.value)}
                       rows={2}
@@ -546,7 +547,7 @@ export default function InnovationIdeasPage() {
                           variant="ghost"
                           onClick={() => setReplyTo(null)}
                         >
-                          Hủy
+                          {t.proposals.ideas.detail.cancel}
                         </Button>
                       )}
                     </div>
@@ -577,7 +578,7 @@ export default function InnovationIdeasPage() {
                               className="text-xs mt-1 h-auto py-1 px-2"
                               onClick={() => setReplyTo(comment.id)}
                             >
-                              Trả lời
+                              {t.proposals.ideas.detail.reply}
                             </Button>
                           </div>
                         </div>
@@ -610,7 +611,7 @@ export default function InnovationIdeasPage() {
                     ))}
                     {(!selectedIdea.comments || selectedIdea.comments.length === 0) && (
                       <p className="text-sm text-muted-foreground text-center py-4">
-                        Chưa có bình luận nào
+                        {t.proposals.ideas.detail.noComments}
                       </p>
                     )}
                   </div>

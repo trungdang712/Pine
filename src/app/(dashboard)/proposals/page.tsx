@@ -30,36 +30,23 @@ const TWO_LAYER_CATEGORIES = ["budget", "campaign", "event", "partnership"];
 const getStatusConfig = (t: ReturnType<typeof useLanguage>["t"]) => ({
   draft: { label: t.proposals.statuses.draft, variant: "outline" as const },
   submitted: { label: t.proposals.statuses.submitted, variant: "secondary" as const },
-  layer1_review: { label: "Layer 1 Review", variant: "secondary" as const },
-  layer2_review: { label: "Layer 2 Review", variant: "secondary" as const },
+  layer1_review: { label: `${t.proposals.statuses.underReview} ${t.proposals.layers.layer1}`, variant: "secondary" as const },
+  layer2_review: { label: `${t.proposals.statuses.underReview} ${t.proposals.layers.layer2}`, variant: "secondary" as const },
   approved: { label: t.proposals.statuses.approved, variant: "default" as const },
   rejected: { label: t.proposals.statuses.rejected, variant: "destructive" as const },
   in_progress: { label: t.common.inProgress, variant: "default" as const },
   completed: { label: t.common.completed, variant: "default" as const },
 });
 
-// Updated categories with layer info
-const CATEGORIES = [
-  // 1-layer approval
-  { value: "content", label: "Noi dung", layers: 1 },
-  { value: "design", label: "Thiet ke", layers: 1 },
-  { value: "video", label: "Video", layers: 1 },
-  // 2-layer approval
-  { value: "budget", label: "Ngan sach", layers: 2 },
-  { value: "campaign", label: "Chien dich", layers: 2 },
-  { value: "event", label: "Su kien", layers: 2 },
-  { value: "partnership", label: "Hop tac", layers: 2 },
-];
-
-const categoryLabels: Record<ProposalCategory, string> = {
-  content: "Noi dung",
-  design: "Thiet ke",
-  video: "Video",
-  budget: "Ngan sach",
-  campaign: "Chien dich",
-  event: "Su kien",
-  partnership: "Hop tac",
-};
+const getCategoryLabels = (t: ReturnType<typeof useLanguage>["t"]): Record<ProposalCategory, string> => ({
+  content: t.proposals.categories.content,
+  design: t.proposals.categories.design,
+  video: t.proposals.categories.video,
+  budget: t.proposals.categories.budget,
+  campaign: t.proposals.categories.campaign,
+  event: t.proposals.categories.event,
+  partnership: t.proposals.categories.partnership,
+});
 
 const getPriorityConfig = (t: ReturnType<typeof useLanguage>["t"]) => ({
   urgent: { label: t.tasks.priorities.urgent, variant: "destructive" as const },
@@ -74,6 +61,7 @@ export default function ProposalsPage() {
 
   const statusConfig = getStatusConfig(t);
   const priorityConfig = getPriorityConfig(t);
+  const categoryLabels = getCategoryLabels(t);
 
   const [selectedProposalId, setSelectedProposalId] = useState<string | null>(null);
   const [isDetailOpen, setIsDetailOpen] = useState(false);
@@ -108,7 +96,7 @@ export default function ProposalsPage() {
       utils.proposal.getMyProposals.invalidate();
       setIsNewProposalOpen(false);
       resetNewProposalForm();
-      toast.success("Proposal đã được tạo thành công");
+      toast.success(t.proposals.messages.proposalCreated);
     },
     onError: (error) => toast.error(error.message),
   });
@@ -117,7 +105,7 @@ export default function ProposalsPage() {
     onSuccess: () => {
       utils.proposal.getMyProposals.invalidate();
       utils.proposal.getById.invalidate();
-      toast.success("Proposal đã được gửi để duyệt");
+      toast.success(t.proposals.messages.proposalSubmitted);
     },
     onError: (error) => toast.error(error.message),
   });
@@ -128,7 +116,7 @@ export default function ProposalsPage() {
       utils.proposal.getById.invalidate();
       setIsApprovalModalOpen(false);
       setApprovalComment("");
-      toast.success("Proposal đã được duyệt");
+      toast.success(t.proposals.messages.proposalApproved);
     },
     onError: (error) => toast.error(error.message),
   });
@@ -139,7 +127,7 @@ export default function ProposalsPage() {
       utils.proposal.getById.invalidate();
       setIsApprovalModalOpen(false);
       setApprovalComment("");
-      toast.success("Proposal đã bị từ chối");
+      toast.success(t.proposals.messages.proposalRejected);
     },
     onError: (error) => toast.error(error.message),
   });
@@ -150,7 +138,7 @@ export default function ProposalsPage() {
       utils.proposal.getById.invalidate();
       setIsApprovalModalOpen(false);
       setApprovalComment("");
-      toast.success("Đã yêu cầu chỉnh sửa");
+      toast.success(t.proposals.messages.revisionRequested);
     },
     onError: (error) => toast.error(error.message),
   });
@@ -159,7 +147,7 @@ export default function ProposalsPage() {
     onSuccess: () => {
       utils.proposal.getById.invalidate();
       setNewComment("");
-      toast.success("Comment đã được thêm");
+      toast.success(t.proposals.messages.commentAdded);
     },
     onError: (error) => toast.error(error.message),
   });
@@ -199,13 +187,13 @@ export default function ProposalsPage() {
       approveProposal.mutate({ proposalId: selectedProposalId, comments: approvalComment || undefined });
     } else if (approvalAction === "reject") {
       if (!approvalComment.trim()) {
-        toast.error("Vui lòng nhập lý do từ chối");
+        toast.error(t.proposals.messages.pleaseEnterRejectReason);
         return;
       }
       rejectProposal.mutate({ proposalId: selectedProposalId, comments: approvalComment });
     } else if (approvalAction === "revision") {
       if (!approvalComment.trim()) {
-        toast.error("Vui lòng nhập yêu cầu chỉnh sửa");
+        toast.error(t.proposals.messages.pleaseEnterRevisionRequest);
         return;
       }
       requestRevision.mutate({ proposalId: selectedProposalId, comments: approvalComment });
@@ -214,7 +202,7 @@ export default function ProposalsPage() {
 
   const handleCreateProposal = (submit: boolean) => {
     if (!newTitle.trim() || !newDescription.trim()) {
-      toast.error("Vui lòng nhập tiêu đề và mô tả");
+      toast.error(t.proposals.messages.pleaseEnterTitleAndDesc);
       return;
     }
 
@@ -271,7 +259,7 @@ export default function ProposalsPage() {
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-muted-foreground">Total Proposals</p>
+                <p className="text-sm text-muted-foreground">{t.proposals.stats.total}</p>
                 <p className="text-2xl font-semibold">{stats.total}</p>
               </div>
               <BarChart3 className="w-8 h-8 text-muted-foreground" />
@@ -282,7 +270,7 @@ export default function ProposalsPage() {
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-muted-foreground">Under Review</p>
+                <p className="text-sm text-muted-foreground">{t.proposals.stats.underReview}</p>
                 <p className="text-2xl font-semibold">{stats.underReview}</p>
               </div>
               <Clock className="w-8 h-8 text-yellow-500" />
@@ -293,7 +281,7 @@ export default function ProposalsPage() {
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-muted-foreground">Approved</p>
+                <p className="text-sm text-muted-foreground">{t.proposals.stats.approved}</p>
                 <p className="text-2xl font-semibold">{stats.approved}</p>
               </div>
               <CheckCircle className="w-8 h-8 text-green-500" />
@@ -304,7 +292,7 @@ export default function ProposalsPage() {
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-muted-foreground">Rejected</p>
+                <p className="text-sm text-muted-foreground">{t.proposals.stats.rejected}</p>
                 <p className="text-2xl font-semibold">{stats.rejected}</p>
               </div>
               <XCircle className="w-8 h-8 text-red-500" />
@@ -356,10 +344,10 @@ export default function ProposalsPage() {
                     <div className="space-y-2">
                       <div className="flex items-center justify-between text-sm">
                         <span className="font-medium">
-                          Dang o: Layer {(proposal as unknown as { currentLayer: number }).currentLayer || 1} / {(proposal as unknown as { totalLayers: number }).totalLayers || 1}
+                          {t.proposals.layers.currentLayer}: {t.proposals.layers.layer} {(proposal as unknown as { currentLayer: number }).currentLayer || 1} / {(proposal as unknown as { totalLayers: number }).totalLayers || 1}
                         </span>
                         <Badge variant="outline" className="text-xs">
-                          {(proposal as unknown as { currentLayer: number }).currentLayer === 1 ? "Manager Review" : "Admin Review"}
+                          {(proposal as unknown as { currentLayer: number }).currentLayer === 1 ? t.proposals.layers.managerReview : t.proposals.layers.adminReview}
                         </Badge>
                       </div>
                       <Progress
@@ -431,38 +419,38 @@ export default function ProposalsPage() {
                 {/* Proposal Info */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
-                    <Label className="text-sm text-muted-foreground">Category</Label>
+                    <Label className="text-sm text-muted-foreground">{t.proposals.detail.category}</Label>
                     <p className="mt-1">{categoryLabels[selectedProposal.category as ProposalCategory]}</p>
                   </div>
                   <div>
-                    <Label className="text-sm text-muted-foreground">Priority</Label>
+                    <Label className="text-sm text-muted-foreground">{t.proposals.detail.priority}</Label>
                     <p className="mt-1">{priorityConfig[selectedProposal.priority as ProposalPriority]?.label}</p>
                   </div>
                   <div>
-                    <Label className="text-sm text-muted-foreground">Submitted By</Label>
+                    <Label className="text-sm text-muted-foreground">{t.proposals.detail.submittedBy}</Label>
                     <p className="mt-1">{selectedProposal.creator.name}</p>
                   </div>
                   <div>
-                    <Label className="text-sm text-muted-foreground">Created Date</Label>
-                    <p className="mt-1">{format(new Date(selectedProposal.createdAt), "MMM d, yyyy")}</p>
+                    <Label className="text-sm text-muted-foreground">{t.proposals.detail.createdDate}</Label>
+                    <p className="mt-1">{format(new Date(selectedProposal.createdAt), "dd/MM/yyyy")}</p>
                   </div>
                   {selectedProposal.budget && (
                     <div>
-                      <Label className="text-sm text-muted-foreground">Budget</Label>
+                      <Label className="text-sm text-muted-foreground">{t.proposals.detail.budget}</Label>
                       <p className="mt-1 font-medium">{new Intl.NumberFormat('vi-VN').format(selectedProposal.budget)} VND</p>
                     </div>
                   )}
                   {selectedProposal.dueDate && (
                     <div>
-                      <Label className="text-sm text-muted-foreground">Due Date</Label>
-                      <p className="mt-1">{format(new Date(selectedProposal.dueDate), "MMM d, yyyy")}</p>
+                      <Label className="text-sm text-muted-foreground">{t.proposals.detail.dueDate}</Label>
+                      <p className="mt-1">{format(new Date(selectedProposal.dueDate), "dd/MM/yyyy")}</p>
                     </div>
                   )}
                 </div>
 
                 {/* Description */}
                 <div>
-                  <Label className="text-sm text-muted-foreground">Description</Label>
+                  <Label className="text-sm text-muted-foreground">{t.proposals.detail.description}</Label>
                   <p className="mt-2 text-sm p-3 bg-muted/50 rounded-md">{selectedProposal.description}</p>
                 </div>
 
@@ -470,7 +458,7 @@ export default function ProposalsPage() {
                 {selectedProposal.approvals && selectedProposal.approvals.length > 0 && (
                   <div>
                     <Label className="text-sm text-muted-foreground mb-3 block">
-                      Quy trinh duyet ({(selectedProposal as unknown as { totalLayers: number }).totalLayers || 1} lop)
+                      {t.proposals.layers.approvalProcess} ({(selectedProposal as unknown as { totalLayers: number }).totalLayers || 1} {t.proposals.layers.layerCount})
                     </Label>
                     <div className="flex flex-wrap items-center gap-4">
                       {/* Layer 1 */}
@@ -499,7 +487,7 @@ export default function ProposalsPage() {
                               ? <XCircle className="w-5 h-5" />
                               : "1"}
                           </div>
-                          <span className="font-semibold">Layer 1: Manager</span>
+                          <span className="font-semibold">{t.proposals.layers.layer1}: {t.proposals.layers.manager}</span>
                         </div>
                         <div className="space-y-1">
                           {selectedProposal.approvals
@@ -511,9 +499,9 @@ export default function ProposalsPage() {
                                   step.status === "approved" ? "default" :
                                   step.status === "rejected" ? "destructive" : "secondary"
                                 } className="text-xs">
-                                  {step.status === "approved" ? "Da duyet" :
-                                   step.status === "rejected" ? "Tu choi" :
-                                   step.status === "revision_requested" ? "Yeu cau sua" : "Cho duyet"}
+                                  {step.status === "approved" ? t.proposals.approval.approved :
+                                   step.status === "rejected" ? t.proposals.approval.rejected :
+                                   step.status === "revision_requested" ? t.proposals.approval.revisionRequested : t.proposals.approval.pending}
                                 </Badge>
                               </div>
                             ))}
@@ -551,7 +539,7 @@ export default function ProposalsPage() {
                                   ? <XCircle className="w-5 h-5" />
                                   : "2"}
                               </div>
-                              <span className="font-semibold">Layer 2: Admin</span>
+                              <span className="font-semibold">{t.proposals.layers.layer2}: {t.proposals.layers.admin}</span>
                             </div>
                             <div className="space-y-1">
                               {selectedProposal.approvals
@@ -570,7 +558,7 @@ export default function ProposalsPage() {
                                   </div>
                                 ))}
                               {selectedProposal.approvals.filter(a => (a as unknown as { layer: number }).layer === 2).length === 0 && (
-                                <p className="text-xs text-muted-foreground italic">Chua den buoc nay</p>
+                                <p className="text-xs text-muted-foreground italic">{t.proposals.layers.notReachedYet}</p>
                               )}
                             </div>
                           </div>
@@ -583,7 +571,7 @@ export default function ProposalsPage() {
                 {/* Comments & Feedback */}
                 <div>
                   <Label className="text-sm text-muted-foreground mb-3 block">
-                    Comments & Feedback ({selectedProposal.comments?.length ?? 0})
+                    {t.proposals.detail.commentsAndFeedback} ({selectedProposal.comments?.length ?? 0})
                   </Label>
                   <div className="space-y-4 mb-4 max-h-[200px] overflow-y-auto">
                     {selectedProposal.comments?.map((comment) => (
@@ -746,19 +734,19 @@ export default function ProposalsPage() {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="content">Noi dung (1 lop duyet)</SelectItem>
-                    <SelectItem value="design">Thiet ke (1 lop duyet)</SelectItem>
-                    <SelectItem value="video">Video (1 lop duyet)</SelectItem>
-                    <SelectItem value="budget">Ngan sach (2 lop duyet)</SelectItem>
-                    <SelectItem value="campaign">Chien dich (2 lop duyet)</SelectItem>
-                    <SelectItem value="event">Su kien (2 lop duyet)</SelectItem>
-                    <SelectItem value="partnership">Hop tac (2 lop duyet)</SelectItem>
+                    <SelectItem value="content">{t.proposals.categories.content} ({t.proposals.layers.oneLayerApproval})</SelectItem>
+                    <SelectItem value="design">{t.proposals.categories.design} ({t.proposals.layers.oneLayerApproval})</SelectItem>
+                    <SelectItem value="video">{t.proposals.categories.video} ({t.proposals.layers.oneLayerApproval})</SelectItem>
+                    <SelectItem value="budget">{t.proposals.categories.budget} ({t.proposals.layers.twoLayerApproval})</SelectItem>
+                    <SelectItem value="campaign">{t.proposals.categories.campaign} ({t.proposals.layers.twoLayerApproval})</SelectItem>
+                    <SelectItem value="event">{t.proposals.categories.event} ({t.proposals.layers.twoLayerApproval})</SelectItem>
+                    <SelectItem value="partnership">{t.proposals.categories.partnership} ({t.proposals.layers.twoLayerApproval})</SelectItem>
                   </SelectContent>
                 </Select>
                 <p className="text-xs text-muted-foreground mt-1">
                   {TWO_LAYER_CATEGORIES.includes(newCategory)
-                    ? "Danh muc nay can duyet 2 lop: Manager -> Admin"
-                    : "Danh muc nay chi can duyet 1 lop: Manager"}
+                    ? t.proposals.layers.twoLayerDesc
+                    : t.proposals.layers.oneLayerDesc}
                 </p>
               </div>
 

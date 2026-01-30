@@ -56,7 +56,7 @@ export default function NewProposalPage() {
     onSuccess: () => {
       utils.proposal.getMyProposals.invalidate();
       utils.proposal.getPendingApprovals.invalidate();
-      toast.success("De xuat da duoc gui de duyet");
+      toast.success(t.proposals.messages.proposalSubmitted);
       router.push("/proposals");
     },
     onError: (err) => {
@@ -77,15 +77,15 @@ export default function NewProposalPage() {
 
   const validateForm = (): boolean => {
     if (!formData.title.trim()) {
-      toast.error("Vui long nhap tieu de");
+      toast.error(t.proposals.messages.pleaseEnterTitle);
       return false;
     }
     if (!formData.category) {
-      toast.error("Vui long chon danh muc");
+      toast.error(t.proposals.messages.pleaseSelectCategory);
       return false;
     }
     if (!formData.description.trim()) {
-      toast.error("Vui long nhap mo ta");
+      toast.error(t.proposals.messages.pleaseEnterDescription);
       return false;
     }
     return true;
@@ -100,7 +100,7 @@ export default function NewProposalPage() {
       title: formData.title.trim(),
       description: formData.description.trim() +
         (formData.expectedOutcome.trim()
-          ? `\n\nKet qua mong doi: ${formData.expectedOutcome.trim()}`
+          ? `\n\n${t.proposals.messages.expectedOutcome}: ${formData.expectedOutcome.trim()}`
           : ""),
       category: formData.category as ProposalCategory,
       priority: formData.priority as ProposalPriority,
@@ -117,7 +117,7 @@ export default function NewProposalPage() {
     setIsSubmitting(true);
     createProposal.mutate(buildMutationInput(), {
       onSuccess: () => {
-        toast.success("Ban nhap da duoc luu");
+        toast.success(t.proposals.messages.draftSaved);
         router.push("/proposals");
       },
     });
@@ -189,20 +189,20 @@ export default function NewProposalPage() {
                   <SelectValue placeholder={t.proposals.new.category} />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="content">Noi dung (1 lop duyet)</SelectItem>
-                  <SelectItem value="design">Thiet ke (1 lop duyet)</SelectItem>
-                  <SelectItem value="video">Video (1 lop duyet)</SelectItem>
-                  <SelectItem value="budget">Ngan sach (2 lop duyet)</SelectItem>
-                  <SelectItem value="campaign">Chien dich (2 lop duyet)</SelectItem>
-                  <SelectItem value="event">Su kien (2 lop duyet)</SelectItem>
-                  <SelectItem value="partnership">Hop tac (2 lop duyet)</SelectItem>
+                  <SelectItem value="content">{t.proposals.categories.content} ({t.proposals.layers.oneLayerApproval})</SelectItem>
+                  <SelectItem value="design">{t.proposals.categories.design} ({t.proposals.layers.oneLayerApproval})</SelectItem>
+                  <SelectItem value="video">{t.proposals.categories.video} ({t.proposals.layers.oneLayerApproval})</SelectItem>
+                  <SelectItem value="budget">{t.proposals.categories.budget} ({t.proposals.layers.twoLayerApproval})</SelectItem>
+                  <SelectItem value="campaign">{t.proposals.categories.campaign} ({t.proposals.layers.twoLayerApproval})</SelectItem>
+                  <SelectItem value="event">{t.proposals.categories.event} ({t.proposals.layers.twoLayerApproval})</SelectItem>
+                  <SelectItem value="partnership">{t.proposals.categories.partnership} ({t.proposals.layers.twoLayerApproval})</SelectItem>
                 </SelectContent>
               </Select>
               {formData.category && (
                 <p className="text-xs text-muted-foreground mt-1">
                   {TWO_LAYER_CATEGORIES.includes(formData.category)
-                    ? "Danh muc nay can duyet 2 lop: Manager -> Admin"
-                    : "Danh muc nay chi can duyet 1 lop: Manager"}
+                    ? t.proposals.layers.twoLayerDesc
+                    : t.proposals.layers.oneLayerDesc}
                 </p>
               )}
             </div>

@@ -379,6 +379,38 @@ export interface Translations {
       voteUp: string;
       voteDown: string;
       votes: string;
+      totalVotes: string;
+      implemented: string;
+      categories: {
+        contentFormat: string;
+        processImprovement: string;
+        newPlatform: string;
+        campaignConcept: string;
+        automation: string;
+      };
+      sort: {
+        label: string;
+        recent: string;
+        topVoted: string;
+        mostDiscussed: string;
+      };
+      detail: {
+        description: string;
+        comments: string;
+        reply: string;
+        cancel: string;
+        noComments: string;
+        addComment: string;
+        replyToComment: string;
+      };
+      messages: {
+        ideaSubmitted: string;
+        voted: string;
+        unvoted: string;
+        commentAdded: string;
+        pleaseEnterTitle: string;
+        descriptionMinLength: string;
+      };
     };
     new: {
       title: string;
@@ -389,6 +421,74 @@ export interface Translations {
       attachments: string;
       submitForReview: string;
       saveDraft: string;
+    };
+    stats: {
+      total: string;
+      underReview: string;
+      approved: string;
+      rejected: string;
+    };
+    categories: {
+      content: string;
+      design: string;
+      video: string;
+      budget: string;
+      campaign: string;
+      event: string;
+      partnership: string;
+    };
+    layers: {
+      layer: string;
+      layer1: string;
+      layer2: string;
+      manager: string;
+      admin: string;
+      managerReview: string;
+      adminReview: string;
+      currentLayer: string;
+      approvalProcess: string;
+      layerCount: string;
+      notReachedYet: string;
+      oneLayerApproval: string;
+      twoLayerApproval: string;
+      oneLayerDesc: string;
+      twoLayerDesc: string;
+    };
+    approval: {
+      approved: string;
+      rejected: string;
+      revisionRequested: string;
+      pending: string;
+    };
+    detail: {
+      category: string;
+      priority: string;
+      submittedBy: string;
+      createdDate: string;
+      budget: string;
+      dueDate: string;
+      description: string;
+      commentsAndFeedback: string;
+    };
+    messages: {
+      proposalCreated: string;
+      proposalSubmitted: string;
+      proposalApproved: string;
+      proposalRejected: string;
+      revisionRequested: string;
+      commentAdded: string;
+      draftSaved: string;
+      pleaseEnterTitle: string;
+      pleaseSelectCategory: string;
+      pleaseEnterDescription: string;
+      pleaseEnterTitleAndDesc: string;
+      pleaseEnterRejectReason: string;
+      pleaseEnterRevisionRequest: string;
+      expectedOutcome: string;
+    };
+    filter: {
+      filterByLayer: string;
+      all: string;
     };
   };
   inbox: {
