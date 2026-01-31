@@ -125,6 +125,7 @@ export const en: Translations = {
     noUpcomingContent: "No upcoming content",
     recentNotifications: "Recent Notifications",
     noNewNotifications: "No new notifications",
+    deleteAllRead: "Delete all read",
     quickActions: "Quick Actions",
     roles: {
       admin: "Admin",

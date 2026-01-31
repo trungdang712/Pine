@@ -127,6 +127,7 @@ export interface Translations {
     noUpcomingContent: string;
     recentNotifications: string;
     noNewNotifications: string;
+    deleteAllRead: string;
     quickActions: string;
     roles: {
       admin: string;

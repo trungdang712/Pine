@@ -1,6 +1,9 @@
 import { z } from "zod";
 import { createTRPCRouter, protectedProcedure } from "../trpc";
 
+// Notifications expire after 10 days
+const ALERT_EXPIRY_DAYS = 10;
+
 export const alertsRouter = createTRPCRouter({
   getMyAlerts: protectedProcedure
     .input(
@@ -10,7 +13,14 @@ export const alertsRouter = createTRPCRouter({
       }).optional()
     )
     .query(async ({ ctx, input }) => {
-      const where: Record<string, unknown> = { userId: ctx.session.user.id };
+      // Calculate expiry date (10 days ago)
+      const alertExpiryDate = new Date();
+      alertExpiryDate.setDate(alertExpiryDate.getDate() - ALERT_EXPIRY_DAYS);
+
+      const where: Record<string, unknown> = {
+        userId: ctx.session.user.id,
+        createdAt: { gte: alertExpiryDate },
+      };
 
       if (input?.unreadOnly) {
         where.isRead = false;
@@ -24,10 +34,15 @@ export const alertsRouter = createTRPCRouter({
     }),
 
   getUnreadCount: protectedProcedure.query(async ({ ctx }) => {
+    // Calculate expiry date (10 days ago)
+    const alertExpiryDate = new Date();
+    alertExpiryDate.setDate(alertExpiryDate.getDate() - ALERT_EXPIRY_DAYS);
+
     return ctx.prisma.userAlert.count({
       where: {
         userId: ctx.session.user.id,
         isRead: false,
+        createdAt: { gte: alertExpiryDate },
       },
     });
   }),
@@ -72,5 +87,20 @@ export const alertsRouter = createTRPCRouter({
     });
 
     return { success: true };
+  }),
+
+  // Cleanup expired alerts (older than 10 days) for the current user
+  cleanupExpired: protectedProcedure.mutation(async ({ ctx }) => {
+    const alertExpiryDate = new Date();
+    alertExpiryDate.setDate(alertExpiryDate.getDate() - ALERT_EXPIRY_DAYS);
+
+    const result = await ctx.prisma.userAlert.deleteMany({
+      where: {
+        userId: ctx.session.user.id,
+        createdAt: { lt: alertExpiryDate },
+      },
+    });
+
+    return { deletedCount: result.count };
   }),
 });

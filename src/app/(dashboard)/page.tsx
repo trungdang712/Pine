@@ -35,6 +35,7 @@ import {
   Bell,
   ChevronDown,
   ChevronUp,
+  Trash2,
 } from "lucide-react";
 import { LucideIcon } from "lucide-react";
 import { trpc } from "@/lib/trpc";
@@ -204,7 +205,16 @@ export default function DashboardPage() {
   const taskStats = dashboardData?.taskStats;
   const calendarItems = dashboardData?.calendarItems ?? [];
   const recentAlerts = dashboardData?.alerts ?? [];
+  const unreadCount = dashboardData?.unreadCount ?? 0;
   const myPoints = dashboardData?.points;
+
+  // Mutation to delete all read notifications
+  const utils = trpc.useUtils();
+  const deleteAllReadMutation = trpc.alerts.deleteAllRead.useMutation({
+    onSuccess: () => {
+      utils.dashboard.getData.invalidate();
+    },
+  });
 
   const currentDate = new Date().toLocaleDateString(language === "vi" ? "vi-VN" : "en-US", {
     weekday: "long",
@@ -447,11 +457,28 @@ export default function DashboardPage() {
 
         {/* Recent Notifications */}
         <Card>
-          <CardHeader>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="flex items-center gap-2">
               <Bell className="w-5 h-5" />
               {t.dashboard.recentNotifications}
+              {unreadCount > 0 && (
+                <Badge variant="destructive" className="ml-1">
+                  {unreadCount}
+                </Badge>
+              )}
             </CardTitle>
+            {recentAlerts.some(a => a.isRead) && (
+              <Button
+                variant="ghost"
+                size="sm"
+                className="text-muted-foreground hover:text-destructive"
+                onClick={() => deleteAllReadMutation.mutate()}
+                disabled={deleteAllReadMutation.isPending}
+              >
+                <Trash2 className="w-4 h-4 mr-1" />
+                {t.dashboard.deleteAllRead}
+              </Button>
+            )}
           </CardHeader>
           <CardContent>
             {isLoading ? (

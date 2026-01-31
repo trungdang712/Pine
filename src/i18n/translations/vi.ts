@@ -125,6 +125,7 @@ export const vi: Translations = {
     noUpcomingContent: "Không có nội dung nào sắp tới",
     recentNotifications: "Thông báo gần đây",
     noNewNotifications: "Không có thông báo mới",
+    deleteAllRead: "Xóa tất cả đã đọc",
     quickActions: "Hành động nhanh",
     roles: {
       admin: "Admin",
