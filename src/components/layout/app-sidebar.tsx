@@ -161,14 +161,11 @@ export function AppSidebar() {
         <SidebarGroup>
           <SidebarGroupLabel className="text-lg mb-2 px-2 py-4">
             <div className="flex items-center gap-2">
-              <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center">
-                <span className="text-primary-foreground font-bold text-sm">
-                  GF
-                </span>
-              </div>
-              <span className="font-semibold text-sidebar-foreground">
-                Greenfield Dental
-              </span>
+              <img
+                src="https://adbfuurtaoyutukczfdm.supabase.co/storage/v1/object/public/assets/logos/original/Greenfield-original.png"
+                alt="Greenfield Dental"
+                className="h-8 w-auto"
+              />
             </div>
           </SidebarGroupLabel>
           <SidebarGroupContent>

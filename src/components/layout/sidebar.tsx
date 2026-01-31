@@ -101,10 +101,11 @@ export function Sidebar() {
     <div className="flex h-full w-64 flex-col border-r border-gray-200 bg-white">
       {/* Logo */}
       <div className="flex h-16 items-center gap-2 border-b border-gray-200 px-6">
-        <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-teal-600">
-          <span className="text-lg font-bold text-white">G</span>
-        </div>
-        <span className="font-semibold text-gray-900">Greenfield Dental</span>
+        <img
+          src="https://adbfuurtaoyutukczfdm.supabase.co/storage/v1/object/public/assets/logos/original/Greenfield-original.png"
+          alt="Greenfield Dental"
+          className="h-8 w-auto"
+        />
       </div>
 
       {/* Navigation */}
