@@ -1890,6 +1890,27 @@ export default function SettingsPage() {
                 )}
               </div>
 
+              {/* Task Categories */}
+              <div className="space-y-2">
+                <Label>{language === "vi" ? "Danh mục công việc" : "Task Categories"}</Label>
+                <p className="text-sm text-muted-foreground">
+                  {language === "vi"
+                    ? "Quản lý các danh mục để phân loại công việc trong team"
+                    : "Manage categories to organize tasks within the team"}
+                </p>
+                <div className="flex flex-wrap gap-2 mt-2">
+                  {["Content", "Design", "Video", "Campaign", "Admin"].map((category) => (
+                    <Badge key={category} variant="secondary" className="px-3 py-1.5 text-sm">
+                      {category}
+                    </Badge>
+                  ))}
+                  <Button variant="outline" size="sm" className="h-8">
+                    <Plus className="w-4 h-4 mr-1" />
+                    {language === "vi" ? "Thêm danh mục" : "Add category"}
+                  </Button>
+                </div>
+              </div>
+
               <div className="flex items-center gap-2 pt-4 border-t">
                 <Button onClick={() => toast.success(language === "vi" ? "Đã lưu cài đặt workspace" : "Workspace settings saved")}>
                   <Save className="w-4 h-4 mr-2" />

@@ -507,6 +507,11 @@ export default function TasksPage() {
     updateTask.mutate({ id: selectedTask.id, priority });
   };
 
+  const handleDueDateChange = (dueDate: string) => {
+    if (!selectedTask) return;
+    updateTask.mutate({ id: selectedTask.id, dueDate: dueDate ? new Date(dueDate) : null });
+  };
+
   const activeFiltersCount = [filterAssignee, filterPriority, filterCategory].filter(
     (f) => f !== "all"
   ).length;
@@ -765,7 +770,6 @@ export default function TasksPage() {
             <>
               <DialogHeader>
                 <DialogTitle className="text-xl">{selectedTask.title}</DialogTitle>
-                <DialogDescription>Task ID: #{selectedTask.id.slice(0, 8)}</DialogDescription>
               </DialogHeader>
 
               <div className="space-y-6">
@@ -817,10 +821,12 @@ export default function TasksPage() {
                   </div>
                   <div>
                     <Label className="text-sm text-muted-foreground">{t.tasks.dueDate}</Label>
-                    <div className="mt-1 p-2 border rounded-md bg-muted/50">
-                      {selectedTask.dueDate
-                        ? format(new Date(selectedTask.dueDate), "MMM d, yyyy")
-                        : "No due date"}
+                    <div className="mt-1">
+                      <Input
+                        type="date"
+                        value={selectedTask.dueDate ? format(new Date(selectedTask.dueDate), "yyyy-MM-dd") : ""}
+                        onChange={(e) => handleDueDateChange(e.target.value)}
+                      />
                     </div>
                   </div>
                 </div>

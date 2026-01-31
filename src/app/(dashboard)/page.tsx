@@ -143,7 +143,7 @@ export default function DashboardPage() {
   const { t, language } = useLanguage();
   // For Vietnamese names, the given name is the last word
   const nameParts = profile?.name?.split(" ") || [];
-  const userName = nameParts[nameParts.length - 1] || "";
+  const userName = nameParts[nameParts.length - 1] || profile?.email?.split("@")[0] || "bạn";
   const isAdmin = profile?.role === "super_admin" || profile?.role === "marketing_manager";
   const dateLocale = language === "vi" ? viLocale : enUS;
 
