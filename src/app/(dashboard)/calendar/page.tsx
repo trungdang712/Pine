@@ -51,7 +51,7 @@ import { toast } from "sonner";
 import { useLanguage } from "@/i18n";
 import { usePlatforms } from "@/hooks/use-platforms";
 import { PlatformFilterSelect, PlatformSelect } from "@/components/platform";
-import { PlatformLegend, PlatformDot } from "@/components/platform";
+import { PlatformDot } from "@/components/platform";
 
 type Platform = "facebook" | "instagram" | "zalo" | "tiktok" | "website";
 type ContentStatus = "planned" | "in_production" | "ready_for_review" | "approved" | "scheduled" | "published" | "needs_revision";
@@ -788,9 +788,6 @@ export default function CalendarPage() {
           </div>
         </CardHeader>
         <CardContent>
-          {/* Platform Legend */}
-          <PlatformLegend className="mb-4" />
-
           {/* Calendar Grid */}
           <div className="border rounded-lg overflow-x-auto">
             {/* Week Day Headers */}
