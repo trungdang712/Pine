@@ -11,14 +11,14 @@
   --popover: #ffffff;
   --popover-foreground: #343c3b;
   /* Greenfield Dental primary colors */
-  --primary: #364b3d;
+  --primary: #6c947f;
   --primary-foreground: #ffffff;
   /* Greenfield Dental secondary colors */
   --secondary: #eee9dd;
   --secondary-foreground: #343c3b;
   --muted: #eee9dd;
-  --muted-foreground: #6c947f;
-  --accent: #6c947f;
+  --muted-foreground: #364b3d;
+  --accent: #364b3d;
   --accent-foreground: #ffffff;
   /* Greenfield orange accent */
   --orange: #e85626;
@@ -38,22 +38,22 @@
   --switch-background: #d1d5db;
   --font-weight-medium: 500;
   --font-weight-normal: 400;
-  --ring: #364b3d;
+  --ring: #6c947f;
   /* Chart colors - Greenfield theme */
-  --chart-1: #364b3d;
-  --chart-2: #6c947f;
+  --chart-1: #6c947f;
+  --chart-2: #364b3d;
   --chart-3: #99c2a7;
   --chart-4: #e85626;
   --chart-5: #eee9dd;
   --radius: 0.75rem;
   --sidebar: #ffffff;
   --sidebar-foreground: #343c3b;
-  --sidebar-primary: #364b3d;
+  --sidebar-primary: #6c947f;
   --sidebar-primary-foreground: #ffffff;
   --sidebar-accent: #eee9dd;
-  --sidebar-accent-foreground: #364b3d;
+  --sidebar-accent-foreground: #6c947f;
   --sidebar-border: #e5e7eb;
-  --sidebar-ring: #364b3d;
+  --sidebar-ring: #6c947f;
 }
 
 .dark {

@@ -1868,8 +1868,8 @@ export default function SettingsPage() {
                     <div className="space-y-2">
                       <Label className="text-xs">{t.settings.workspace.primaryColor}</Label>
                       <div className="flex items-center gap-2">
-                        <div className="w-12 h-12 rounded-lg bg-[#364B3D] border-2"></div>
-                        <Input defaultValue="#364B3D" className="flex-1" />
+                        <div className="w-12 h-12 rounded-lg bg-[#6C947F] border-2"></div>
+                        <Input defaultValue="#6C947F" className="flex-1" />
                       </div>
                     </div>
                     <div className="space-y-2">

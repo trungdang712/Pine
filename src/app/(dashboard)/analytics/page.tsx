@@ -182,11 +182,11 @@ export default function AnalyticsPage() {
 
     const genderChartData = [
       { name: "Female", value: 65, color: "#E85626" },
-      { name: "Male", value: 35, color: "#364B3D" },
+      { name: "Male", value: 35, color: "#6C947F" },
     ];
 
     const cityChartData = [
-      { name: "TP. HCM", value: 55, color: "#364B3D" },
+      { name: "TP. HCM", value: 55, color: "#6C947F" },
       { name: "Ha Noi", value: 25, color: "#E85626" },
       { name: "Da Nang", value: 12, color: "#8B5CF6" },
       { name: "Khac", value: 8, color: "#94A3B8" },
@@ -350,8 +350,8 @@ export default function AnalyticsPage() {
                       <AreaChart data={dailyPerformance}>
                         <defs>
                           <linearGradient id="colorLeads" x1="0" y1="0" x2="0" y2="1">
-                            <stop offset="5%" stopColor="#364B3D" stopOpacity={0.3} />
-                            <stop offset="95%" stopColor="#364B3D" stopOpacity={0} />
+                            <stop offset="5%" stopColor="#6C947F" stopOpacity={0.3} />
+                            <stop offset="95%" stopColor="#6C947F" stopOpacity={0} />
                           </linearGradient>
                           <linearGradient id="colorSpend" x1="0" y1="0" x2="0" y2="1">
                             <stop offset="5%" stopColor="#E85626" stopOpacity={0.3} />
@@ -368,7 +368,7 @@ export default function AnalyticsPage() {
                           yAxisId="left"
                           type="monotone"
                           dataKey="leads"
-                          stroke="#364B3D"
+                          stroke="#6C947F"
                           fillOpacity={1}
                           fill="url(#colorLeads)"
                           name="Leads"
@@ -438,7 +438,7 @@ export default function AnalyticsPage() {
                         <XAxis dataKey="range" />
                         <YAxis />
                         <Tooltip />
-                        <Bar dataKey="percentage" fill="#364B3D" name="%" />
+                        <Bar dataKey="percentage" fill="#6C947F" name="%" />
                       </BarChart>
                     </ResponsiveContainer>
                   </div>
