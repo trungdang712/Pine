@@ -136,8 +136,8 @@ export default function LandingPagesPage() {
 
   // Device data (not in DB -- static placeholder)
   const deviceData = [
-    { name: "Mobile", value: 62, color: "#0D9488" },
-    { name: "Desktop", value: 28, color: "#F59E0B" },
+    { name: "Mobile", value: 62, color: "#364B3D" },
+    { name: "Desktop", value: 28, color: "#E85626" },
     { name: "Tablet", value: 10, color: "#94A3B8" },
   ];
 

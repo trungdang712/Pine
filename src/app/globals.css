@@ -5,55 +5,55 @@
 :root {
   --font-size: 16px;
   --background: #fafafa;
-  --foreground: #1f2937;
+  --foreground: #343c3b;
   --card: #ffffff;
-  --card-foreground: #1f2937;
+  --card-foreground: #343c3b;
   --popover: #ffffff;
-  --popover-foreground: #1f2937;
-  /* Greenfield Dental primary teal */
-  --primary: #0d9488;
+  --popover-foreground: #343c3b;
+  /* Greenfield Dental primary colors */
+  --primary: #364b3d;
   --primary-foreground: #ffffff;
   /* Greenfield Dental secondary colors */
-  --secondary: #f3f4f6;
-  --secondary-foreground: #1f2937;
-  --muted: #f3f4f6;
-  --muted-foreground: #6b7280;
-  --accent: #14b8a6;
+  --secondary: #eee9dd;
+  --secondary-foreground: #343c3b;
+  --muted: #eee9dd;
+  --muted-foreground: #6c947f;
+  --accent: #6c947f;
   --accent-foreground: #ffffff;
-  /* Greenfield warm gold accent */
-  --gold: #f59e0b;
-  --gold-foreground: #ffffff;
+  /* Greenfield orange accent */
+  --orange: #e85626;
+  --orange-foreground: #ffffff;
   /* Status colors */
-  --success: #10b981;
+  --success: #6c947f;
   --success-foreground: #ffffff;
-  --warning: #f59e0b;
+  --warning: #e85626;
   --warning-foreground: #ffffff;
   --destructive: #ef4444;
   --destructive-foreground: #ffffff;
-  --info: #3b82f6;
-  --info-foreground: #ffffff;
+  --info: #99c2a7;
+  --info-foreground: #343c3b;
   --border: #e5e7eb;
   --input: #d1d5db;
   --input-background: #ffffff;
   --switch-background: #d1d5db;
   --font-weight-medium: 500;
   --font-weight-normal: 400;
-  --ring: #0d9488;
-  /* Chart colors - teal theme */
-  --chart-1: #0d9488;
-  --chart-2: #14b8a6;
-  --chart-3: #2dd4bf;
-  --chart-4: #5eead4;
-  --chart-5: #99f6e4;
+  --ring: #364b3d;
+  /* Chart colors - Greenfield theme */
+  --chart-1: #364b3d;
+  --chart-2: #6c947f;
+  --chart-3: #99c2a7;
+  --chart-4: #e85626;
+  --chart-5: #eee9dd;
   --radius: 0.75rem;
   --sidebar: #ffffff;
-  --sidebar-foreground: #1f2937;
-  --sidebar-primary: #0d9488;
+  --sidebar-foreground: #343c3b;
+  --sidebar-primary: #364b3d;
   --sidebar-primary-foreground: #ffffff;
-  --sidebar-accent: #f0fdfa;
-  --sidebar-accent-foreground: #0d9488;
+  --sidebar-accent: #eee9dd;
+  --sidebar-accent-foreground: #364b3d;
   --sidebar-border: #e5e7eb;
-  --sidebar-ring: #0d9488;
+  --sidebar-ring: #364b3d;
 }
 
 .dark {

@@ -391,12 +391,14 @@ async function main() {
   // 4. Brand colors (idempotent: delete + recreate since no unique key)
   await prisma.brandColor.deleteMany({});
   const brandColors = [
-    { name: "Teal Primary", hexCode: "#0D9488", rgbCode: "13, 148, 136", usage: "primary" },
-    { name: "Teal Dark", hexCode: "#0F766E", rgbCode: "15, 118, 110", usage: "primary" },
-    { name: "Teal Light", hexCode: "#14B8A6", rgbCode: "20, 184, 166", usage: "primary" },
-    { name: "Gold Accent", hexCode: "#F59E0B", rgbCode: "245, 158, 11", usage: "accent" },
-    { name: "Gray", hexCode: "#6B7280", rgbCode: "107, 114, 128", usage: "secondary" },
-    { name: "White", hexCode: "#FFFFFF", rgbCode: "255, 255, 255", usage: "background" },
+    // Primary Colors
+    { name: "Greenfield Dark Green", hexCode: "#364B3D", rgbCode: "54, 75, 61", usage: "primary" },
+    { name: "Greenfield Green", hexCode: "#6C947F", rgbCode: "108, 148, 127", usage: "primary" },
+    { name: "Greenfield Orange", hexCode: "#E85626", rgbCode: "232, 86, 38", usage: "primary" },
+    // Secondary Colors
+    { name: "Greenfield Cream", hexCode: "#EEE9DD", rgbCode: "238, 233, 221", usage: "secondary" },
+    { name: "Greenfield Light Green", hexCode: "#99C2A7", rgbCode: "153, 194, 167", usage: "secondary" },
+    { name: "Greenfield Charcoal", hexCode: "#343C3B", rgbCode: "52, 60, 59", usage: "secondary" },
   ];
 
   for (const color of brandColors) {

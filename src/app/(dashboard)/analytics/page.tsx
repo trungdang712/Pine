@@ -181,13 +181,13 @@ export default function AnalyticsPage() {
     ];
 
     const genderChartData = [
-      { name: "Female", value: 65, color: "#F59E0B" },
-      { name: "Male", value: 35, color: "#0D9488" },
+      { name: "Female", value: 65, color: "#E85626" },
+      { name: "Male", value: 35, color: "#364B3D" },
     ];
 
     const cityChartData = [
-      { name: "TP. HCM", value: 55, color: "#0D9488" },
-      { name: "Ha Noi", value: 25, color: "#F59E0B" },
+      { name: "TP. HCM", value: 55, color: "#364B3D" },
+      { name: "Ha Noi", value: 25, color: "#E85626" },
       { name: "Da Nang", value: 12, color: "#8B5CF6" },
       { name: "Khac", value: 8, color: "#94A3B8" },
     ];
@@ -350,12 +350,12 @@ export default function AnalyticsPage() {
                       <AreaChart data={dailyPerformance}>
                         <defs>
                           <linearGradient id="colorLeads" x1="0" y1="0" x2="0" y2="1">
-                            <stop offset="5%" stopColor="#0D9488" stopOpacity={0.3} />
-                            <stop offset="95%" stopColor="#0D9488" stopOpacity={0} />
+                            <stop offset="5%" stopColor="#364B3D" stopOpacity={0.3} />
+                            <stop offset="95%" stopColor="#364B3D" stopOpacity={0} />
                           </linearGradient>
                           <linearGradient id="colorSpend" x1="0" y1="0" x2="0" y2="1">
-                            <stop offset="5%" stopColor="#F59E0B" stopOpacity={0.3} />
-                            <stop offset="95%" stopColor="#F59E0B" stopOpacity={0} />
+                            <stop offset="5%" stopColor="#E85626" stopOpacity={0.3} />
+                            <stop offset="95%" stopColor="#E85626" stopOpacity={0} />
                           </linearGradient>
                         </defs>
                         <CartesianGrid strokeDasharray="3 3" />
@@ -368,7 +368,7 @@ export default function AnalyticsPage() {
                           yAxisId="left"
                           type="monotone"
                           dataKey="leads"
-                          stroke="#0D9488"
+                          stroke="#364B3D"
                           fillOpacity={1}
                           fill="url(#colorLeads)"
                           name="Leads"
@@ -377,7 +377,7 @@ export default function AnalyticsPage() {
                           yAxisId="right"
                           type="monotone"
                           dataKey="spend"
-                          stroke="#F59E0B"
+                          stroke="#E85626"
                           fillOpacity={1}
                           fill="url(#colorSpend)"
                           name="Spend (VND)"
@@ -438,7 +438,7 @@ export default function AnalyticsPage() {
                         <XAxis dataKey="range" />
                         <YAxis />
                         <Tooltip />
-                        <Bar dataKey="percentage" fill="#0D9488" name="%" />
+                        <Bar dataKey="percentage" fill="#364B3D" name="%" />
                       </BarChart>
                     </ResponsiveContainer>
                   </div>

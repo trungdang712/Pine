@@ -213,13 +213,13 @@ export default function BudgetPage() {
         name: "Google Ads",
         amount: budgetData.spendByPlatform?.google_ads ?? 0,
         percentage: Math.round((budgetData.spendByPlatform?.google_ads ?? 0) / total * 100),
-        color: "#0D9488"
+        color: "#364B3D"
       },
       {
         name: "Facebook",
         amount: budgetData.spendByPlatform?.facebook ?? 0,
         percentage: Math.round((budgetData.spendByPlatform?.facebook ?? 0) / total * 100),
-        color: "#F59E0B"
+        color: "#E85626"
       },
       {
         name: "Zalo",
@@ -637,8 +637,8 @@ export default function BudgetPage() {
                   <ComposedChart data={dailySpendData}>
                     <defs>
                       <linearGradient id="colorCumulative" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor="#0D9488" stopOpacity={0.3} />
-                        <stop offset="95%" stopColor="#0D9488" stopOpacity={0} />
+                        <stop offset="5%" stopColor="#364B3D" stopOpacity={0.3} />
+                        <stop offset="95%" stopColor="#364B3D" stopOpacity={0} />
                       </linearGradient>
                     </defs>
                     <CartesianGrid strokeDasharray="3 3" />
@@ -652,10 +652,10 @@ export default function BudgetPage() {
                       type="monotone"
                       dataKey="cumulative"
                       fill="url(#colorCumulative)"
-                      stroke="#0D9488"
+                      stroke="#364B3D"
                       name="Cumulative"
                     />
-                    <Bar yAxisId="left" dataKey="actual" fill="#F59E0B" name="Actual Daily" />
+                    <Bar yAxisId="left" dataKey="actual" fill="#E85626" name="Actual Daily" />
                     <Line yAxisId="left" type="monotone" dataKey="projected" stroke="#94a3b8" strokeDasharray="5 5" name="Projected" />
                   </ComposedChart>
                 </ResponsiveContainer>
@@ -779,7 +779,7 @@ export default function BudgetPage() {
                   <Tooltip />
                   <Legend />
                   <Bar dataKey="budget" fill="#94A3B8" name="Budget" />
-                  <Bar dataKey="spent" fill="#0D9488" name="Spent" />
+                  <Bar dataKey="spent" fill="#364B3D" name="Spent" />
                 </BarChart>
               </ResponsiveContainer>
             </div>

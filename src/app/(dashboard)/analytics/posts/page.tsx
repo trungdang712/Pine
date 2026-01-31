@@ -639,12 +639,12 @@ export default function PostsPage() {
                 <BarChart data={contentTypePerformance}>
                   <CartesianGrid strokeDasharray="3 3" />
                   <XAxis dataKey="type" />
-                  <YAxis yAxisId="left" orientation="left" stroke="#0D9488" />
-                  <YAxis yAxisId="right" orientation="right" stroke="#F59E0B" />
+                  <YAxis yAxisId="left" orientation="left" stroke="#364B3D" />
+                  <YAxis yAxisId="right" orientation="right" stroke="#E85626" />
                   <Tooltip />
                   <Legend />
-                  <Bar yAxisId="left" dataKey="avgER" fill="#0D9488" name="Avg ER (%)" />
-                  <Bar yAxisId="right" dataKey="avgReach" fill="#F59E0B" name="Avg Reach" />
+                  <Bar yAxisId="left" dataKey="avgER" fill="#364B3D" name="Avg ER (%)" />
+                  <Bar yAxisId="right" dataKey="avgReach" fill="#E85626" name="Avg Reach" />
                 </BarChart>
               </ResponsiveContainer>
             </div>
