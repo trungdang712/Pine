@@ -26,6 +26,8 @@ export const en: Translations = {
     viewAll: "View all",
     more: "More",
     less: "Less",
+    showMore: "Show more",
+    showLess: "Show less",
     yes: "Yes",
     no: "No",
     or: "Or",

@@ -33,6 +33,8 @@ import {
   TrendingUp,
   Plus,
   Bell,
+  ChevronDown,
+  ChevronUp,
 } from "lucide-react";
 import { LucideIcon } from "lucide-react";
 import { trpc } from "@/lib/trpc";
@@ -158,6 +160,11 @@ export default function DashboardPage() {
   };
 
   const [selectedRole, setSelectedRole] = useState<RoleType>(getUserRoleType());
+  const [showAllContent, setShowAllContent] = useState(false);
+  const [showAllAlerts, setShowAllAlerts] = useState(false);
+
+  // Number of items to show initially
+  const INITIAL_ITEMS_COUNT = 5;
 
   // Update selectedRole when profile loads or changes
   useEffect(() => {
@@ -377,7 +384,7 @@ export default function DashboardPage() {
               </div>
             ) : (
               <div className="space-y-4">
-                {calendarItems.map((item) => (
+                {(showAllContent ? calendarItems : calendarItems.slice(0, INITIAL_ITEMS_COUNT)).map((item) => (
                   <div
                     key={item.id}
                     className="flex items-start gap-3 p-3 rounded-lg border hover:bg-accent/50 transition-colors"
@@ -413,6 +420,26 @@ export default function DashboardPage() {
                     </div>
                   </div>
                 ))}
+                {calendarItems.length > INITIAL_ITEMS_COUNT && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="w-full text-muted-foreground hover:text-foreground"
+                    onClick={() => setShowAllContent(!showAllContent)}
+                  >
+                    {showAllContent ? (
+                      <>
+                        <ChevronUp className="w-4 h-4 mr-2" />
+                        {t.common.showLess}
+                      </>
+                    ) : (
+                      <>
+                        <ChevronDown className="w-4 h-4 mr-2" />
+                        {t.common.showMore} ({calendarItems.length - INITIAL_ITEMS_COUNT})
+                      </>
+                    )}
+                  </Button>
+                )}
               </div>
             )}
           </CardContent>
@@ -439,7 +466,7 @@ export default function DashboardPage() {
               </div>
             ) : (
               <div className="space-y-4">
-                {recentAlerts.map((alert) => (
+                {(showAllAlerts ? recentAlerts : recentAlerts.slice(0, INITIAL_ITEMS_COUNT)).map((alert) => (
                   <div key={alert.id} className="flex items-start gap-3">
                     <div
                       className={`w-2 h-2 rounded-full mt-2 ${
@@ -460,6 +487,26 @@ export default function DashboardPage() {
                     )}
                   </div>
                 ))}
+                {recentAlerts.length > INITIAL_ITEMS_COUNT && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="w-full text-muted-foreground hover:text-foreground"
+                    onClick={() => setShowAllAlerts(!showAllAlerts)}
+                  >
+                    {showAllAlerts ? (
+                      <>
+                        <ChevronUp className="w-4 h-4 mr-2" />
+                        {t.common.showLess}
+                      </>
+                    ) : (
+                      <>
+                        <ChevronDown className="w-4 h-4 mr-2" />
+                        {t.common.showMore} ({recentAlerts.length - INITIAL_ITEMS_COUNT})
+                      </>
+                    )}
+                  </Button>
+                )}
               </div>
             )}
           </CardContent>

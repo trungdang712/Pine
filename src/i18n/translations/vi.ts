@@ -26,6 +26,8 @@ export const vi: Translations = {
     viewAll: "Xem tất cả",
     more: "Thêm",
     less: "Ít hơn",
+    showMore: "Xem thêm",
+    showLess: "Thu gọn",
     yes: "Có",
     no: "Không",
     or: "Hoặc",

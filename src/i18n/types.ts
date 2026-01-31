@@ -28,6 +28,8 @@ export interface Translations {
     viewAll: string;
     more: string;
     less: string;
+    showMore: string;
+    showLess: string;
     yes: string;
     no: string;
     or: string;
