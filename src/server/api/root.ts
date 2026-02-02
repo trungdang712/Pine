@@ -15,6 +15,7 @@ import { integrationRouter } from "./routers/integration";
 import { dashboardRouter } from "./routers/dashboard";
 import { channelsRouter } from "./routers/channels";
 import { platformRouter } from "./routers/platform";
+import { reportRouter } from "./routers/report";
 
 export const appRouter = createTRPCRouter({
   user: userRouter,
@@ -33,6 +34,7 @@ export const appRouter = createTRPCRouter({
   dashboard: dashboardRouter,
   channels: channelsRouter,
   platform: platformRouter,
+  report: reportRouter,
 });
 
 export type AppRouter = typeof appRouter;

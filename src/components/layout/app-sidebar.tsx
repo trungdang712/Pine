@@ -21,6 +21,7 @@ import {
   Users,
   Palette,
   Ear,
+  FileBarChart,
 } from "lucide-react";
 import {
   Sidebar,
@@ -70,6 +71,7 @@ const getNavigationItems = (): NavItem[] => [
       { titleKey: "postPerformance", icon: FileText, url: "/analytics/posts" },
       { titleKey: "landingPages", icon: FileText, url: "/analytics/landing" },
       { titleKey: "budget", icon: DollarSign, url: "/analytics/budget" },
+      { titleKey: "report", icon: FileBarChart, url: "/analytics/report" },
     ],
   },
   {

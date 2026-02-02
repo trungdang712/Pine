@@ -63,6 +63,7 @@ export interface Translations {
     postPerformance: string;
     landingPages: string;
     budget: string;
+    report: string;
     socialListening: string;
     contentCalendar: string;
     tasks: string;
@@ -342,6 +343,16 @@ export interface Translations {
       onTrack: string;
       byChannel: string;
       byCampaign: string;
+    };
+    report: {
+      title: string;
+      subtitle: string;
+      selectMonth: string;
+      exportPdf: string;
+      generating: string;
+      downloadReport: string;
+      printReport: string;
+      noData: string;
     };
   };
   proposals: {
