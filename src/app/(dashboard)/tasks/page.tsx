@@ -509,7 +509,7 @@ export default function TasksPage() {
 
   const handleDueDateChange = (dueDate: string) => {
     if (!selectedTask) return;
-    updateTask.mutate({ id: selectedTask.id, dueDate: dueDate ? new Date(dueDate) : null });
+    updateTask.mutate({ id: selectedTask.id, dueDate: dueDate ? new Date(dueDate).toISOString() : null });
   };
 
   const activeFiltersCount = [filterAssignee, filterPriority, filterCategory].filter(
