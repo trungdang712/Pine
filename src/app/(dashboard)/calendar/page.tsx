@@ -212,20 +212,22 @@ export default function CalendarPage() {
     platform: "" as Platform | "",
     channelId: "",
     contentType: "",
-    date: "",
-    time: "10:00",
+    datetime: "",  // Combined date+time field
     assignee: "",
     status: "planned" as ContentStatus,
     tags: "",
   });
+
+  // State for inline task creation in create form
+  const [createTasksOnSubmit, setCreateTasksOnSubmit] = useState(false);
+  const [inlineTaskAssignees, setInlineTaskAssignees] = useState<Record<string, string>>({});
 
   // Form state for editing content
   const [editContent, setEditContent] = useState({
     platform: "" as Platform | "",
     channelId: "" as string | "",
     status: "" as ContentStatus | "",
-    date: "",
-    time: "",
+    datetime: "",  // Combined date+time field
     description: "",
     contentType: "" as ContentType | "",
     assignee: "",
@@ -284,8 +286,16 @@ export default function CalendarPage() {
       toast.success("Content created successfully");
       setIsNewContentOpen(false);
 
-      // Store info for task template modal - use API response data to avoid stale closure
-      if (data.contentType) {
+      // If createTasksOnSubmit is enabled and we have a template, create tasks directly
+      if (createTasksOnSubmit && data.contentType && data.scheduledAt) {
+        createTasksMutation.mutate({
+          calendarItemId: data.id,
+          contentType: data.contentType as ContentType,
+          scheduledAt: new Date(data.scheduledAt).toISOString(),
+          assigneeIds: inlineTaskAssignees,
+        });
+      } else if (data.contentType && !createTasksOnSubmit) {
+        // Show task template modal only if tasks were not created inline
         setNewlyCreatedItemId(data.id);
         setNewlyCreatedContentType(data.contentType as ContentType);
         setNewlyCreatedScheduledAt(data.scheduledAt ? new Date(data.scheduledAt).toISOString() : null);
@@ -299,12 +309,13 @@ export default function CalendarPage() {
         platform: "",
         channelId: "",
         contentType: "",
-        date: "",
-        time: "10:00",
+        datetime: "",
         assignee: "",
         status: "planned",
         tags: "",
       });
+      setCreateTasksOnSubmit(false);
+      setInlineTaskAssignees({});
       utils.calendar.getItems.invalidate();
       utils.calendar.getStats.invalidate();
     },
@@ -369,6 +380,23 @@ export default function CalendarPage() {
     { enabled: isTaskTemplateOpen && !!newlyCreatedContentType }
   );
 
+  // Fetch task template for inline task creation in create form
+  const { data: inlineTaskTemplate, isLoading: isLoadingInlineTemplate } = trpc.calendar.getTemplateByContentType.useQuery(
+    { contentType: newContent.contentType as ContentType },
+    { enabled: !!newContent.contentType }
+  );
+
+  // Mutation to update individual tasks
+  const updateTaskMutation = trpc.task.update.useMutation({
+    onSuccess: () => {
+      toast.success("Task updated");
+      utils.calendar.getById.invalidate();
+    },
+    onError: (error: { message: string }) => {
+      toast.error(`Failed to update task: ${error.message}`);
+    },
+  });
+
   // Mutation to create tasks from template
   const createTasksMutation = trpc.calendar.createTasksFromTemplate.useMutation({
     onSuccess: (tasks) => {
@@ -402,6 +430,16 @@ export default function CalendarPage() {
     setNewlyCreatedContentType(null);
     setNewlyCreatedScheduledAt(null);
     setTaskAssignees({});
+  };
+
+  // Task editing handlers for edit form
+  const handleToggleTaskStatus = (taskId: string, currentStatus: string) => {
+    const newStatus = currentStatus === "done" ? "todo" : "done";
+    updateTaskMutation.mutate({ id: taskId, status: newStatus });
+  };
+
+  const handleChangeTaskAssignee = (taskId: string, assigneeId: string) => {
+    updateTaskMutation.mutate({ id: taskId, assigneeId });
   };
 
   // Upload hook for attachments
@@ -499,12 +537,15 @@ export default function CalendarPage() {
   const handleContentClick = (content: CalendarItem) => {
     setSelectedContent(content);
     const scheduledDate = content.scheduledAt ? new Date(content.scheduledAt) : null;
+    // Convert to datetime-local format: "YYYY-MM-DDTHH:mm"
+    const datetimeValue = scheduledDate
+      ? scheduledDate.toISOString().slice(0, 16)
+      : "";
     setEditContent({
       platform: content.platform,
       channelId: content.channelId || "",
       status: content.status,
-      date: scheduledDate ? scheduledDate.toISOString().split("T")[0] : "",
-      time: scheduledDate ? scheduledDate.toTimeString().slice(0, 5) : "",
+      datetime: datetimeValue,
       description: content.description || "",
       contentType: content.contentType || "",
       assignee: content.creator?.name || "",
@@ -514,12 +555,12 @@ export default function CalendarPage() {
   };
 
   const handleCreateContent = () => {
-    if (!newContent.title || !newContent.platform || !newContent.date) {
+    if (!newContent.title || !newContent.platform || !newContent.datetime) {
       toast.error("Please fill in all required fields");
       return;
     }
 
-    const scheduledAt = new Date(`${newContent.date}T${newContent.time || "10:00"}:00`);
+    const scheduledAt = new Date(newContent.datetime);
 
     createMutation.mutate({
       title: newContent.title,
@@ -535,8 +576,8 @@ export default function CalendarPage() {
   const handleUpdateContent = () => {
     if (!selectedContent) return;
 
-    const scheduledAt = editContent.date && editContent.time
-      ? new Date(`${editContent.date}T${editContent.time}:00`).toISOString()
+    const scheduledAt = editContent.datetime
+      ? new Date(editContent.datetime).toISOString()
       : null;
 
     updateMutation.mutate({
@@ -964,18 +1005,9 @@ export default function CalendarPage() {
                   <div>
                     <Label className="text-sm text-muted-foreground">{t.calendar.scheduledAt}</Label>
                     <Input
-                      type="date"
-                      value={editContent.date}
-                      onChange={(e) => setEditContent({ ...editContent, date: e.target.value })}
-                      className="mt-1"
-                    />
-                  </div>
-                  <div>
-                    <Label className="text-sm text-muted-foreground">{t.calendar.scheduledAt}</Label>
-                    <Input
-                      type="time"
-                      value={editContent.time}
-                      onChange={(e) => setEditContent({ ...editContent, time: e.target.value })}
+                      type="datetime-local"
+                      value={editContent.datetime}
+                      onChange={(e) => setEditContent({ ...editContent, datetime: e.target.value })}
                       className="mt-1"
                     />
                   </div>
@@ -989,6 +1021,79 @@ export default function CalendarPage() {
                     rows={3}
                     className="mt-1"
                   />
+                </div>
+
+                {/* Linked Tasks Section - Moved up before Attachments */}
+                <div className="border-t pt-4">
+                  <Label className="flex items-center gap-2 mb-3">
+                    <ListTodo className="w-4 h-4" />
+                    Tasks liên kết ({contentDetail?.tasks?.length || 0})
+                  </Label>
+
+                  {isLoadingDetail ? (
+                    <div className="text-sm text-muted-foreground">{t.common.loading}</div>
+                  ) : contentDetail?.tasks && contentDetail.tasks.length > 0 ? (
+                    <div className="space-y-2 max-h-48 overflow-y-auto">
+                      {contentDetail.tasks.map((task: LinkedTask) => (
+                        <div
+                          key={task.id}
+                          className="flex items-center justify-between p-2 bg-muted/50 rounded-md"
+                        >
+                          <div className="flex items-center gap-3">
+                            {/* Clickable status toggle */}
+                            <button
+                              type="button"
+                              onClick={() => handleToggleTaskStatus(task.id, task.status)}
+                              className="hover:scale-110 transition-transform"
+                              disabled={updateTaskMutation.isPending}
+                            >
+                              {task.status === "done" ? (
+                                <CheckCircle2 className="w-4 h-4 text-green-500" />
+                              ) : (
+                                <Circle className="w-4 h-4 text-muted-foreground hover:text-primary" />
+                              )}
+                            </button>
+                            <div className="flex-1">
+                              <p className={`text-sm font-medium ${task.status === "done" ? "line-through text-muted-foreground" : ""}`}>
+                                {task.title}
+                              </p>
+                              <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                                {task.dueDate && (
+                                  <span>{new Date(task.dueDate).toLocaleDateString("vi-VN")}</span>
+                                )}
+                              </div>
+                              {/* Editable assignee */}
+                              <Select
+                                value={task.assignee?.id || ""}
+                                onValueChange={(value) => handleChangeTaskAssignee(task.id, value)}
+                              >
+                                <SelectTrigger className="h-7 w-32 text-xs mt-1">
+                                  <SelectValue placeholder="Assign" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  {teamMembers.map((member) => (
+                                    <SelectItem key={member.id} value={member.id}>
+                                      {member.name}
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                            </div>
+                          </div>
+                          <Badge
+                            variant={task.status === "done" ? "default" : "outline"}
+                            className="text-xs"
+                          >
+                            {task.status === "done" ? "Hoàn thành" :
+                             task.status === "in_progress" ? "Đang làm" :
+                             task.status === "review" ? "Review" : "Chờ"}
+                          </Badge>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-sm text-muted-foreground">Chưa có tasks liên kết</p>
+                  )}
                 </div>
 
                 {/* Attachments Section */}
@@ -1112,61 +1217,6 @@ export default function CalendarPage() {
                     </div>
                   ) : (
                     <p className="text-sm text-muted-foreground">{t.common.noData}</p>
-                  )}
-                </div>
-
-                {/* Linked Tasks Section */}
-                <div className="border-t pt-4">
-                  <Label className="flex items-center gap-2 mb-3">
-                    <ListTodo className="w-4 h-4" />
-                    Tasks liên kết ({contentDetail?.tasks?.length || 0})
-                  </Label>
-
-                  {isLoadingDetail ? (
-                    <div className="text-sm text-muted-foreground">{t.common.loading}</div>
-                  ) : contentDetail?.tasks && contentDetail.tasks.length > 0 ? (
-                    <div className="space-y-2 max-h-48 overflow-y-auto">
-                      {contentDetail.tasks.map((task: LinkedTask) => (
-                        <div
-                          key={task.id}
-                          className="flex items-center justify-between p-2 bg-muted/50 rounded-md"
-                        >
-                          <div className="flex items-center gap-3">
-                            {task.status === "done" ? (
-                              <CheckCircle2 className="w-4 h-4 text-green-500" />
-                            ) : (
-                              <Circle className="w-4 h-4 text-muted-foreground" />
-                            )}
-                            <div>
-                              <p className={`text-sm font-medium ${task.status === "done" ? "line-through text-muted-foreground" : ""}`}>
-                                {task.title}
-                              </p>
-                              <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                                {task.dueDate && (
-                                  <span>{new Date(task.dueDate).toLocaleDateString("vi-VN")}</span>
-                                )}
-                                {task.assignee && (
-                                  <>
-                                    <span>•</span>
-                                    <span>{task.assignee.name}</span>
-                                  </>
-                                )}
-                              </div>
-                            </div>
-                          </div>
-                          <Badge
-                            variant={task.status === "done" ? "default" : "outline"}
-                            className="text-xs"
-                          >
-                            {task.status === "done" ? "Hoàn thành" :
-                             task.status === "in_progress" ? "Đang làm" :
-                             task.status === "review" ? "Review" : "Chờ"}
-                          </Badge>
-                        </div>
-                      ))}
-                    </div>
-                  ) : (
-                    <p className="text-sm text-muted-foreground">Chưa có tasks liên kết</p>
                   )}
                 </div>
               </div>
@@ -1328,26 +1378,14 @@ export default function CalendarPage() {
               </div>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div>
-                <Label>{t.calendar.scheduledAt} *</Label>
-                <Input
-                  type="date"
-                  className="mt-1"
-                  value={newContent.date}
-                  onChange={(e) => setNewContent({ ...newContent, date: e.target.value })}
-                />
-              </div>
-
-              <div>
-                <Label>{t.calendar.scheduledAt}</Label>
-                <Input
-                  type="time"
-                  value={newContent.time}
-                  className="mt-1"
-                  onChange={(e) => setNewContent({ ...newContent, time: e.target.value })}
-                />
-              </div>
+            <div>
+              <Label>{t.calendar.scheduledAt} *</Label>
+              <Input
+                type="datetime-local"
+                className="mt-1"
+                value={newContent.datetime}
+                onChange={(e) => setNewContent({ ...newContent, datetime: e.target.value })}
+              />
             </div>
 
             <div>
@@ -1378,6 +1416,70 @@ export default function CalendarPage() {
                 onChange={(e) => setNewContent({ ...newContent, tags: e.target.value })}
               />
             </div>
+
+            {/* Inline Task Creation Section */}
+            {newContent.contentType && (
+              <div className="border-t pt-4 mt-4">
+                <div className="flex items-center justify-between mb-3">
+                  <Label className="flex items-center gap-2">
+                    <ListTodo className="w-4 h-4" />
+                    Tasks liên kết
+                  </Label>
+                  <label className="flex items-center gap-2 text-sm cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={createTasksOnSubmit}
+                      onChange={(e) => setCreateTasksOnSubmit(e.target.checked)}
+                      className="rounded"
+                    />
+                    Tạo tasks tự động
+                  </label>
+                </div>
+
+                {isLoadingInlineTemplate ? (
+                  <LoadingSpinner />
+                ) : inlineTaskTemplate && createTasksOnSubmit ? (
+                  <div className="space-y-3 max-h-48 overflow-y-auto">
+                    {inlineTaskTemplate.tasks.map((task: TemplateTask, index: number) => (
+                      <div key={index} className="border rounded-lg p-3">
+                        <div className="flex items-start justify-between">
+                          <p className="font-medium text-sm">{task.title}</p>
+                          <Badge variant="outline" className="text-xs ml-2">
+                            {task.daysBeforeDeadline === 0 ? "Ngày đăng" : `-${task.daysBeforeDeadline} ngày`}
+                          </Badge>
+                        </div>
+                        <Select
+                          value={inlineTaskAssignees[index.toString()] || ""}
+                          onValueChange={(value) => setInlineTaskAssignees({
+                            ...inlineTaskAssignees,
+                            [index.toString()]: value
+                          })}
+                        >
+                          <SelectTrigger className="h-8 mt-2">
+                            <SelectValue placeholder="Chọn người thực hiện" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {teamMembers.map((member) => (
+                              <SelectItem key={member.id} value={member.id}>
+                                {member.name}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    ))}
+                  </div>
+                ) : !createTasksOnSubmit ? (
+                  <p className="text-sm text-muted-foreground">
+                    Bật "Tạo tasks tự động" để xem danh sách tasks
+                  </p>
+                ) : (
+                  <p className="text-sm text-muted-foreground">
+                    Không có template cho loại nội dung này
+                  </p>
+                )}
+              </div>
+            )}
           </div>
 
           <DialogFooter>
