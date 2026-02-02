@@ -164,6 +164,7 @@ export const taskRouter = createTRPCRouter({
         assigneeId: z.string().optional(),
         proposalId: z.string().optional(),
         parentTaskId: z.string().optional(),
+        calendarItemId: z.string().optional(),
       })
     )
     .mutation(async ({ ctx, input }) => {

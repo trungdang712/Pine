@@ -41,6 +41,8 @@ import {
   Circle,
   ListTodo,
   Users,
+  Pencil,
+  X,
 } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useUpload, formatFileSize } from "@/hooks/use-upload";
@@ -136,6 +138,16 @@ interface TemplateTask {
   daysBeforeDeadline: number;
 }
 
+interface InlineTask {
+  title: string;
+  description: string;
+  assigneeId: string;
+  priority: string;
+  category: string;
+  daysBeforeDeadline: number;
+  isFromTemplate: boolean;
+}
+
 const platformColors: Record<string, string> = {
   facebook: "bg-blue-500",
   zalo: "bg-blue-600",
@@ -219,8 +231,22 @@ export default function CalendarPage() {
   });
 
   // State for inline task creation in create form
-  const [createTasksOnSubmit, setCreateTasksOnSubmit] = useState(false);
-  const [inlineTaskAssignees, setInlineTaskAssignees] = useState<Record<string, string>>({});
+  const [inlineTasks, setInlineTasks] = useState<InlineTask[]>([]);
+  const [editingTaskIndex, setEditingTaskIndex] = useState<number | null>(null);
+  const [isTaskEditDialogOpen, setIsTaskEditDialogOpen] = useState(false);
+  const [editingTask, setEditingTask] = useState<InlineTask | null>(null);
+
+  // State for adding task in edit form
+  const [isAddTaskDialogOpen, setIsAddTaskDialogOpen] = useState(false);
+  const [newTaskForEdit, setNewTaskForEdit] = useState<InlineTask>({
+    title: "",
+    description: "",
+    assigneeId: "",
+    priority: "normal",
+    category: "content",
+    daysBeforeDeadline: 0,
+    isFromTemplate: false,
+  });
 
   // Form state for editing content
   const [editContent, setEditContent] = useState({
@@ -282,25 +308,25 @@ export default function CalendarPage() {
   const utils = trpc.useUtils();
 
   const createMutation = trpc.calendar.create.useMutation({
-    onSuccess: (data) => {
+    onSuccess: async (data) => {
       toast.success("Content created successfully");
       setIsNewContentOpen(false);
 
-      // If createTasksOnSubmit is enabled and we have a template, create tasks directly
-      if (createTasksOnSubmit && data.contentType && data.scheduledAt) {
-        createTasksMutation.mutate({
-          calendarItemId: data.id,
-          contentType: data.contentType as ContentType,
-          scheduledAt: new Date(data.scheduledAt).toISOString(),
-          assigneeIds: inlineTaskAssignees,
-        });
-      } else if (data.contentType && !createTasksOnSubmit) {
-        // Show task template modal only if tasks were not created inline
-        setNewlyCreatedItemId(data.id);
-        setNewlyCreatedContentType(data.contentType as ContentType);
-        setNewlyCreatedScheduledAt(data.scheduledAt ? new Date(data.scheduledAt).toISOString() : null);
-        setTaskAssignees({});
-        setIsTaskTemplateOpen(true);
+      // Create tasks from inlineTasks if any
+      if (inlineTasks.length > 0 && data.scheduledAt) {
+        const scheduledAt = new Date(data.scheduledAt);
+        for (const task of inlineTasks) {
+          const dueDate = new Date(scheduledAt.getTime() - task.daysBeforeDeadline * 24 * 60 * 60 * 1000);
+          createLinkedTaskMutation.mutate({
+            title: task.title,
+            description: task.description || undefined,
+            assigneeId: task.assigneeId || undefined,
+            priority: task.priority as "low" | "normal" | "high" | "urgent",
+            category: task.category as "content" | "design" | "video" | "campaign" | "admin",
+            dueDate: dueDate.toISOString(),
+            calendarItemId: data.id,
+          });
+        }
       }
 
       setNewContent({
@@ -314,8 +340,7 @@ export default function CalendarPage() {
         status: "planned",
         tags: "",
       });
-      setCreateTasksOnSubmit(false);
-      setInlineTaskAssignees({});
+      setInlineTasks([]);
       utils.calendar.getItems.invalidate();
       utils.calendar.getStats.invalidate();
     },
@@ -397,6 +422,39 @@ export default function CalendarPage() {
     },
   });
 
+  // Mutation to create a linked task (for both create form and edit form)
+  const createLinkedTaskMutation = trpc.task.create.useMutation({
+    onSuccess: () => {
+      utils.calendar.getById.invalidate();
+      utils.task.getAll.invalidate();
+    },
+    onError: (error: { message: string }) => {
+      toast.error(`Failed to create task: ${error.message}`);
+    },
+  });
+
+  // Mutation to add new task from edit form
+  const addTaskFromEditMutation = trpc.task.create.useMutation({
+    onSuccess: () => {
+      toast.success("Task created");
+      setIsAddTaskDialogOpen(false);
+      setNewTaskForEdit({
+        title: "",
+        description: "",
+        assigneeId: "",
+        priority: "normal",
+        category: "content",
+        daysBeforeDeadline: 0,
+        isFromTemplate: false,
+      });
+      utils.calendar.getById.invalidate();
+      utils.task.getAll.invalidate();
+    },
+    onError: (error: { message: string }) => {
+      toast.error(`Failed to create task: ${error.message}`);
+    },
+  });
+
   // Mutation to create tasks from template
   const createTasksMutation = trpc.calendar.createTasksFromTemplate.useMutation({
     onSuccess: (tasks) => {
@@ -440,6 +498,90 @@ export default function CalendarPage() {
 
   const handleChangeTaskAssignee = (taskId: string, assigneeId: string) => {
     updateTaskMutation.mutate({ id: taskId, assigneeId });
+  };
+
+  // Inline task handlers for create form
+  const handleAddInlineTask = () => {
+    setEditingTask({
+      title: "",
+      description: "",
+      assigneeId: "",
+      priority: "normal",
+      category: "content",
+      daysBeforeDeadline: 0,
+      isFromTemplate: false,
+    });
+    setEditingTaskIndex(null);
+    setIsTaskEditDialogOpen(true);
+  };
+
+  const handleEditInlineTask = (index: number) => {
+    setEditingTask({ ...inlineTasks[index] });
+    setEditingTaskIndex(index);
+    setIsTaskEditDialogOpen(true);
+  };
+
+  const handleSaveInlineTask = () => {
+    if (!editingTask || !editingTask.title.trim()) {
+      toast.error("Tên task không được để trống");
+      return;
+    }
+
+    if (editingTaskIndex !== null) {
+      // Update existing task
+      const newTasks = [...inlineTasks];
+      newTasks[editingTaskIndex] = editingTask;
+      setInlineTasks(newTasks);
+    } else {
+      // Add new task
+      setInlineTasks([...inlineTasks, editingTask]);
+    }
+    setIsTaskEditDialogOpen(false);
+    setEditingTask(null);
+    setEditingTaskIndex(null);
+  };
+
+  const handleDeleteInlineTask = (index: number) => {
+    const newTasks = inlineTasks.filter((_, i) => i !== index);
+    setInlineTasks(newTasks);
+  };
+
+  // Load tasks from template when contentType changes
+  const loadTasksFromTemplate = () => {
+    if (inlineTaskTemplate?.tasks) {
+      const templateTasks: InlineTask[] = inlineTaskTemplate.tasks.map((t: TemplateTask) => ({
+        title: t.title,
+        description: t.description,
+        assigneeId: "",
+        priority: t.priority,
+        category: t.category,
+        daysBeforeDeadline: t.daysBeforeDeadline,
+        isFromTemplate: true,
+      }));
+      setInlineTasks(templateTasks);
+    }
+  };
+
+  // Handler to add task from edit form
+  const handleAddTaskFromEdit = () => {
+    if (!selectedContent || !newTaskForEdit.title.trim()) {
+      toast.error("Tên task không được để trống");
+      return;
+    }
+
+    const dueDate = selectedContent.scheduledAt
+      ? new Date(new Date(selectedContent.scheduledAt).getTime() - newTaskForEdit.daysBeforeDeadline * 24 * 60 * 60 * 1000)
+      : new Date();
+
+    addTaskFromEditMutation.mutate({
+      title: newTaskForEdit.title,
+      description: newTaskForEdit.description || undefined,
+      assigneeId: newTaskForEdit.assigneeId || undefined,
+      priority: newTaskForEdit.priority as "low" | "normal" | "high" | "urgent",
+      category: newTaskForEdit.category as "content" | "design" | "video" | "campaign" | "admin",
+      dueDate: dueDate.toISOString(),
+      calendarItemId: selectedContent.id,
+    });
   };
 
   // Upload hook for attachments
@@ -903,7 +1045,7 @@ export default function CalendarPage() {
             <>
               <DialogHeader>
                 <DialogTitle className="text-xl">{selectedContent.title}</DialogTitle>
-                <DialogDescription>Content ID: #{selectedContent.id.slice(0, 8)}</DialogDescription>
+                <DialogDescription className="sr-only">Chi tiết sự kiện</DialogDescription>
               </DialogHeader>
 
               <div className="space-y-6">
@@ -1025,10 +1167,22 @@ export default function CalendarPage() {
 
                 {/* Linked Tasks Section - Moved up before Attachments */}
                 <div className="border-t pt-4">
-                  <Label className="flex items-center gap-2 mb-3">
-                    <ListTodo className="w-4 h-4" />
-                    Tasks liên kết ({contentDetail?.tasks?.length || 0})
-                  </Label>
+                  <div className="flex items-center justify-between mb-3">
+                    <Label className="flex items-center gap-2">
+                      <ListTodo className="w-4 h-4" />
+                      Tasks liên kết ({contentDetail?.tasks?.length || 0})
+                    </Label>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className="gap-1"
+                      onClick={() => setIsAddTaskDialogOpen(true)}
+                    >
+                      <Plus className="w-3 h-3" />
+                      Thêm
+                    </Button>
+                  </div>
 
                   {isLoadingDetail ? (
                     <div className="text-sm text-muted-foreground">{t.common.loading}</div>
@@ -1091,9 +1245,7 @@ export default function CalendarPage() {
                         </div>
                       ))}
                     </div>
-                  ) : (
-                    <p className="text-sm text-muted-foreground">Chưa có tasks liên kết</p>
-                  )}
+                  ) : null}
                 </div>
 
                 {/* Attachments Section */}
@@ -1154,9 +1306,7 @@ export default function CalendarPage() {
                         </div>
                       ))}
                     </div>
-                  ) : (
-                    <p className="text-sm text-muted-foreground">{t.common.noData}</p>
-                  )}
+                  ) : null}
                 </div>
 
                 {/* Comments Section */}
@@ -1215,9 +1365,7 @@ export default function CalendarPage() {
                         </div>
                       ))}
                     </div>
-                  ) : (
-                    <p className="text-sm text-muted-foreground">{t.common.noData}</p>
-                  )}
+                  ) : null}
                 </div>
               </div>
 
@@ -1423,59 +1571,79 @@ export default function CalendarPage() {
                 <div className="flex items-center justify-between mb-3">
                   <Label className="flex items-center gap-2">
                     <ListTodo className="w-4 h-4" />
-                    Tasks liên kết
+                    Tasks liên kết ({inlineTasks.length})
                   </Label>
-                  <label className="flex items-center gap-2 text-sm cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={createTasksOnSubmit}
-                      onChange={(e) => setCreateTasksOnSubmit(e.target.checked)}
-                      className="rounded"
-                    />
-                    Tạo tasks tự động
-                  </label>
+                  <div className="flex items-center gap-2">
+                    {inlineTaskTemplate && inlineTasks.length === 0 && (
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={loadTasksFromTemplate}
+                        disabled={isLoadingInlineTemplate}
+                      >
+                        Dùng template
+                      </Button>
+                    )}
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className="gap-1"
+                      onClick={handleAddInlineTask}
+                    >
+                      <Plus className="w-3 h-3" />
+                      Thêm
+                    </Button>
+                  </div>
                 </div>
 
-                {isLoadingInlineTemplate ? (
-                  <LoadingSpinner />
-                ) : inlineTaskTemplate && createTasksOnSubmit ? (
-                  <div className="space-y-3 max-h-48 overflow-y-auto">
-                    {inlineTaskTemplate.tasks.map((task: TemplateTask, index: number) => (
-                      <div key={index} className="border rounded-lg p-3">
-                        <div className="flex items-start justify-between">
-                          <p className="font-medium text-sm">{task.title}</p>
-                          <Badge variant="outline" className="text-xs ml-2">
-                            {task.daysBeforeDeadline === 0 ? "Ngày đăng" : `-${task.daysBeforeDeadline} ngày`}
-                          </Badge>
+                {inlineTasks.length > 0 ? (
+                  <div className="space-y-2 max-h-48 overflow-y-auto">
+                    {inlineTasks.map((task, index) => (
+                      <div
+                        key={index}
+                        className="flex items-center justify-between p-2 bg-muted/50 rounded-md hover:bg-muted/70 cursor-pointer group"
+                        onClick={() => handleEditInlineTask(index)}
+                      >
+                        <div className="flex items-center gap-3 flex-1 min-w-0">
+                          <Circle className="w-4 h-4 text-muted-foreground flex-shrink-0" />
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-medium truncate">{task.title}</p>
+                            <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                              {task.assigneeId && (
+                                <span>{teamMembers.find(m => m.id === task.assigneeId)?.name || "Chưa gán"}</span>
+                              )}
+                              {!task.assigneeId && <span>Chưa gán</span>}
+                              <span>•</span>
+                              <span>{task.daysBeforeDeadline === 0 ? "Ngày đăng" : `-${task.daysBeforeDeadline} ngày`}</span>
+                              {task.isFromTemplate && (
+                                <>
+                                  <span>•</span>
+                                  <Badge variant="secondary" className="text-[10px] px-1 py-0">Template</Badge>
+                                </>
+                              )}
+                            </div>
+                          </div>
                         </div>
-                        <Select
-                          value={inlineTaskAssignees[index.toString()] || ""}
-                          onValueChange={(value) => setInlineTaskAssignees({
-                            ...inlineTaskAssignees,
-                            [index.toString()]: value
-                          })}
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          className="h-6 w-6 opacity-0 group-hover:opacity-100"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleDeleteInlineTask(index);
+                          }}
                         >
-                          <SelectTrigger className="h-8 mt-2">
-                            <SelectValue placeholder="Chọn người thực hiện" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {teamMembers.map((member) => (
-                              <SelectItem key={member.id} value={member.id}>
-                                {member.name}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
+                          <X className="w-3 h-3" />
+                        </Button>
                       </div>
                     ))}
                   </div>
-                ) : !createTasksOnSubmit ? (
-                  <p className="text-sm text-muted-foreground">
-                    Bật "Tạo tasks tự động" để xem danh sách tasks
-                  </p>
                 ) : (
                   <p className="text-sm text-muted-foreground">
-                    Không có template cho loại nội dung này
+                    Chưa có tasks. Click &quot;Thêm&quot; để tạo task mới hoặc &quot;Dùng template&quot; để tải từ mẫu.
                   </p>
                 )}
               </div>
@@ -1596,6 +1764,252 @@ export default function CalendarPage() {
                   <CheckCircle2 className="w-4 h-4 mr-2" />
                   Tạo {taskTemplate?.tasks.length || 0} tasks
                 </>
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Task Edit Dialog - for inline task editing in create form */}
+      <Dialog open={isTaskEditDialogOpen} onOpenChange={setIsTaskEditDialogOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>
+              {editingTaskIndex !== null ? "Chỉnh sửa task" : "Thêm task mới"}
+            </DialogTitle>
+            <DialogDescription className="sr-only">
+              Form chỉnh sửa thông tin task
+            </DialogDescription>
+          </DialogHeader>
+
+          {editingTask && (
+            <div className="space-y-4">
+              <div>
+                <Label>Tên task *</Label>
+                <Input
+                  placeholder="Nhập tên task"
+                  className="mt-1"
+                  value={editingTask.title}
+                  onChange={(e) => setEditingTask({ ...editingTask, title: e.target.value })}
+                />
+              </div>
+
+              <div>
+                <Label>Mô tả</Label>
+                <Textarea
+                  placeholder="Mô tả chi tiết"
+                  rows={2}
+                  className="mt-1"
+                  value={editingTask.description}
+                  onChange={(e) => setEditingTask({ ...editingTask, description: e.target.value })}
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label>Độ ưu tiên</Label>
+                  <Select
+                    value={editingTask.priority}
+                    onValueChange={(value) => setEditingTask({ ...editingTask, priority: value })}
+                  >
+                    <SelectTrigger className="mt-1">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="low">Thấp</SelectItem>
+                      <SelectItem value="normal">Bình thường</SelectItem>
+                      <SelectItem value="high">Cao</SelectItem>
+                      <SelectItem value="urgent">Khẩn cấp</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div>
+                  <Label>Phân loại</Label>
+                  <Select
+                    value={editingTask.category}
+                    onValueChange={(value) => setEditingTask({ ...editingTask, category: value })}
+                  >
+                    <SelectTrigger className="mt-1">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="content">Nội dung</SelectItem>
+                      <SelectItem value="design">Thiết kế</SelectItem>
+                      <SelectItem value="video">Video</SelectItem>
+                      <SelectItem value="campaign">Chiến dịch</SelectItem>
+                      <SelectItem value="admin">Admin</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+
+              <div>
+                <Label>Người thực hiện</Label>
+                <Select
+                  value={editingTask.assigneeId}
+                  onValueChange={(value) => setEditingTask({ ...editingTask, assigneeId: value })}
+                >
+                  <SelectTrigger className="mt-1">
+                    <SelectValue placeholder="Chọn người thực hiện" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {teamMembers.map((member) => (
+                      <SelectItem key={member.id} value={member.id}>
+                        {member.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div>
+                <Label>Deadline (số ngày trước ngày đăng)</Label>
+                <Input
+                  type="number"
+                  min="0"
+                  className="mt-1"
+                  value={editingTask.daysBeforeDeadline}
+                  onChange={(e) => setEditingTask({ ...editingTask, daysBeforeDeadline: parseInt(e.target.value) || 0 })}
+                />
+                <p className="text-xs text-muted-foreground mt-1">
+                  0 = deadline vào ngày đăng, 1 = 1 ngày trước ngày đăng, v.v.
+                </p>
+              </div>
+            </div>
+          )}
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsTaskEditDialogOpen(false)}>
+              Hủy
+            </Button>
+            <Button onClick={handleSaveInlineTask}>
+              {editingTaskIndex !== null ? "Cập nhật" : "Thêm task"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Add Task Dialog - for adding new task in edit form */}
+      <Dialog open={isAddTaskDialogOpen} onOpenChange={setIsAddTaskDialogOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Thêm task mới</DialogTitle>
+            <DialogDescription className="sr-only">
+              Form thêm task mới cho sự kiện
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4">
+            <div>
+              <Label>Tên task *</Label>
+              <Input
+                placeholder="Nhập tên task"
+                className="mt-1"
+                value={newTaskForEdit.title}
+                onChange={(e) => setNewTaskForEdit({ ...newTaskForEdit, title: e.target.value })}
+              />
+            </div>
+
+            <div>
+              <Label>Mô tả</Label>
+              <Textarea
+                placeholder="Mô tả chi tiết"
+                rows={2}
+                className="mt-1"
+                value={newTaskForEdit.description}
+                onChange={(e) => setNewTaskForEdit({ ...newTaskForEdit, description: e.target.value })}
+              />
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label>Độ ưu tiên</Label>
+                <Select
+                  value={newTaskForEdit.priority}
+                  onValueChange={(value) => setNewTaskForEdit({ ...newTaskForEdit, priority: value })}
+                >
+                  <SelectTrigger className="mt-1">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="low">Thấp</SelectItem>
+                    <SelectItem value="normal">Bình thường</SelectItem>
+                    <SelectItem value="high">Cao</SelectItem>
+                    <SelectItem value="urgent">Khẩn cấp</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div>
+                <Label>Phân loại</Label>
+                <Select
+                  value={newTaskForEdit.category}
+                  onValueChange={(value) => setNewTaskForEdit({ ...newTaskForEdit, category: value })}
+                >
+                  <SelectTrigger className="mt-1">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="content">Nội dung</SelectItem>
+                    <SelectItem value="design">Thiết kế</SelectItem>
+                    <SelectItem value="video">Video</SelectItem>
+                    <SelectItem value="campaign">Chiến dịch</SelectItem>
+                    <SelectItem value="admin">Admin</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            <div>
+              <Label>Người thực hiện</Label>
+              <Select
+                value={newTaskForEdit.assigneeId}
+                onValueChange={(value) => setNewTaskForEdit({ ...newTaskForEdit, assigneeId: value })}
+              >
+                <SelectTrigger className="mt-1">
+                  <SelectValue placeholder="Chọn người thực hiện" />
+                </SelectTrigger>
+                <SelectContent>
+                  {teamMembers.map((member) => (
+                    <SelectItem key={member.id} value={member.id}>
+                      {member.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div>
+              <Label>Deadline (số ngày trước ngày đăng)</Label>
+              <Input
+                type="number"
+                min="0"
+                className="mt-1"
+                value={newTaskForEdit.daysBeforeDeadline}
+                onChange={(e) => setNewTaskForEdit({ ...newTaskForEdit, daysBeforeDeadline: parseInt(e.target.value) || 0 })}
+              />
+              <p className="text-xs text-muted-foreground mt-1">
+                0 = deadline vào ngày đăng, 1 = 1 ngày trước ngày đăng, v.v.
+              </p>
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsAddTaskDialogOpen(false)}>
+              Hủy
+            </Button>
+            <Button
+              onClick={handleAddTaskFromEdit}
+              disabled={addTaskFromEditMutation.isPending}
+            >
+              {addTaskFromEditMutation.isPending ? (
+                <>
+                  <LoadingSpinner size="sm" className="mr-2 p-0" />
+                  Đang tạo...
+                </>
+              ) : (
+                "Thêm task"
               )}
             </Button>
           </DialogFooter>
